@@ -1,30 +1,28 @@
 {% extends "base.html" %}
-{% block title %}📌 Viewing {{ filename }}{% endblock %}
+{% block title %}📌 Viewing {% include "item-title.html" %}{% endblock %}
+{% block canonical %}{{ url_for('view_item', iid=item.id) }}{% endblock %}
 {% block content %}
-{% raw %}
-<!-- <style>
-  img { max-width: 49%; border-radius: 10px; }
-  .meta { display: inline-block; max-width: 49%; vertical-align: top; padding: 1em; box-sizing: border-box; }
-</style> -->
-<!-- <img src="{{ url_for('serve_media', filename=filename) }}" />
-<div class="meta">
-  <p>{{ meta.description }}</p>
-  <p><strong>File:</strong> {{ filename }}</p>
-  <p><strong>Link:</strong> <a href="{{ url_for('view_item', filename=filename) }}">{{ request.url }}</a></p>
-</div> -->
-{% endraw %}
 <div class="uk-flex uk-flex-wrap">
   <div class="uk-width-1-1 uk-width-1-2@s uk-padding-small">
     {% if item.image %}
-      <img src="{{ url_for('serve_media', filename=filename) }}" />
+      <img src="{{ url_for('serve_media', filename=item.image) }}" />
     {% endif %}
   </div>
   <div class="uk-width-1-1 uk-width-1-2@s uk-padding-small">
     <h3>{% include "item-title.html" %}</h3>
+    <div class="uk-text-truncate">
+      <a href="{{ item.link }}" target="_blank">{{ item.link }}</a>
+    </div>
     <span>{{ item.created }}</span>
     <p>{{ item.description }}</p>
-    <a class="uk-button uk-button-default" href="{{ url_for('add_item') }}?item={{ item.id }}">Edit</a>
-    <a class="uk-button uk-button-danger" href="{{ url_for('add_item') }}?item={{ item.id }}">Remove</a>
+    <div class="uk-margin">
+      <a class="uk-button uk-button-default" href="{{ url_for('add_item') }}?item={{ item.id }}">Edit</a>
+      <a class="uk-button uk-button-danger" href="{{ url_for('remove_item') }}?item={{ item.id }}">Remove</a>
+      <!-- <form class="uk-inline" method="POST" action="{{ url_for('remove_item') }}">
+        <input type="hidden" name="item" value="{{ item.id }}" />
+        <button class="uk-input uk-button uk-button-danger" type="submit">Remove</button>
+      </form> -->
+    </div>
   </div>
 </div>
 {% endblock %}

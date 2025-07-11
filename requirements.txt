@@ -1,3 +1,6 @@
 flask
+flask-bcrypt
+flask-login
+flask-wtf
 requests
 snowflake-id

@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}🗑 Remove item{% endblock %}
+{% block content %}
+  <form method="POST">
+    <input type="hidden" name="id" value="{{ item.id }}" />
+    <div class="uk-margin">
+      <button class="uk-input uk-button uk-button-danger" type="submit">Remove {{ item.id }}</button>
+    </div>
+  </form>
+{% endblock %}

@@ -1,41 +1,77 @@
 {% extends "base.html" %}
 {% block title %}🆕 Add item{% endblock %}
 {% block content %}
+  <!--
+  <ul uk-tab="connect: .my-class">
+    <li><a href="">New</a></li>
+    <li><a href="">Text</a></li>
+  </ul>
+  <div class="uk-switcher my-class">
+    <div>a</div>
+    <div>b</div>
+  </div>
+  -->
   <form method="POST" enctype="multipart/form-data">
-    <input type="hidden" name="id" value="{{ item['id'] }}" />
-    <div class="uk-margin">
-      <div uk-form-custom>
-        <input type="file" name="file" aria-label="Custom controls" />
-        <button class="uk-button uk-button-default" type="button" tabindex="-1">Select file</button>
-      </div>
+    <input type="hidden" name="id" value="{{ item.id }}" />
+    <input type="hidden" name="image" />
+    <div class="uk-margin" {% if not item.image %} hidden {% endif %}>
+      <img src="{{ url_for('serve_media', filename=item.image) }}" class="image" />
     </div>
     <div class="uk-margin">
-      <input class="uk-input" type="text" name="url" placeholder="URL..." value="{{ item.url }}" />
+      <label>
+        <input type="checkbox" class="uk-checkbox" checked />
+        Fill Data from Link
+      </label>
+    </div>
+    {% if not item.id %}
+      <div class="uk-margin">
+        <div uk-form-custom>
+          <input class="uk-input" type="file" name="file" aria-label="Custom controls" />
+          <button class="uk-button uk-button-default" type="button" tabindex="-1">Select file</button>
+        </div>
+      </div>
+    {% endif %}
+    <div class="uk-margin">
+      <input type="color" class="uk-input" name="color" value="{{ item.text }}" />
+    </div>
+    <div class="uk-margin">
+      <input class="uk-input" type="text" name="link" placeholder="URL..." value="{{ item.link }}" />
     </div>
     <div class="uk-margin">
       <input class="uk-input" type="text" name="title" placeholder="Title" value="{{ item.title }}" />
     </div>
     <div class="uk-margin">
-      <textarea class="uk-textarea" name="description" placeholder="Write anything...">{{ item.description }}</textarea>
+      <textarea class="uk-textarea" name="description" placeholder="Description">{{ item.description }}</textarea>
     </div>
     <div class="uk-margin">
-      <button class="uk-input" type="submit">{{ ("Edit " + item.id) if item.id else "Add" }}</button>
+      <textarea class="uk-textarea" name="text" placeholder="Text">{{ item.text }}</textarea>
+    </div>
+    <div class="uk-margin">
+      <button class="uk-input uk-button uk-button-default" type="submit">{{ ("Edit " + item.id) if item.id else "Add" }}</button>
     </div>
   </form>
   <script>
-    var url = document.querySelector('form input[name="url"]');
+    var link = document.querySelector('form input[name="link"]');
+    var check = document.querySelector('form input[type="checkbox"]');
     ['change', 'input', 'paste'].forEach(handler => {
-      url.addEventListener(handler, () => {
-        fetch('http://localhost:5000/api/preview?url=' + url.value)
-        .then(res => res.json())
-        .then(data => {
-          for (var key in data) {
-            var field = document.querySelector(`form [name="${key}"]`);
-            if (field) {
-              field.value = data[key];
+      link.addEventListener(handler, () => {
+        if (check.checked) {
+          fetch('http://localhost:5000/api/preview?url=' + encodeURIComponent(link.value))
+          .then(res => res.json())
+          .then(data => {
+            for (var key in data) {
+              var field = document.querySelector(`form [name="${key}"]`);
+              if (field) {
+                field.value = data[key];
+              }
+              var el = document.querySelector(`form [class="${key}"]`);
+              if (el) {
+                el.src = data[key];
+                el.parentElement.hidden = false;
+              }
             }
-          }
-        })
+          })
+        }
       })
     });
   </script>

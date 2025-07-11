@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+{% block content %}
+  <form method="POST">
+    {{ form.hidden_tag() }}
+    <div class="uk-margin">
+      {{ form.username(class_="uk-input", placeholder="Username") }}
+    </div>
+    <div class="uk-margin">
+      {{ form.password(class_="uk-input", placeholder="Password") }}
+    </div>
+    <div class="uk-margin">
+      {{ form.submit(class_="uk-input uk-button uk-button-default") }}
+    </div>
+  </form>
+{% endblock %}

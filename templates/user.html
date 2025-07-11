@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}User {{ user.username }}{% endblock %}
+{% block content %}
+  {{ user.username }}
+  <img src="{{ url_for('serve_media', filename=load_item(user.data.propic).image) }}" />
+  {% for folder, collection in collections.items() %}
+    {% for item in collection %}
+      {{ item }}
+    {% endfor %}
+  {% endfor %}
+{% endblock %}
