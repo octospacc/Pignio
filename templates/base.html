@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}My Media Gallery{% endblock %}</title>
+  <link rel="canonical" href="{% block canonical %}{% endblock %}" />
+
+  <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2.1.1/css/pico.min.css" /> -->
+
+  <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css" /> -->
+
+  <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script> -->
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uikit@3.23.11/dist/css/uikit.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/uikit@3.23.11/dist/js/uikit.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/uikit@3.23.11/dist/js/uikit-icons.min.js"></script>
+
+  <!-- <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300italic,700,700italic">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.css"> -->
+
+  <style>
+    /* body { font-family: sans-serif; margin: 1em; }
+    .container { margin: 1em; }
+    h2 { margin-top: 40px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+    .grid img { width: 100%; height: auto; border-radius: 8px; }
+    .search { display: flex; }
+    .search input { flex: 1; height: 2em; } */
+    /* img { max-width: 31%; } */
+  </style>
+</head>
+<body>
+  <nav class="uk-navbar-container" uk-navbar>
+    <div class="uk-navbar-left">
+      <a class="uk-button uk-button-primary" href="{{ url_for('index') }}">🏠 Home</a>
+    </div>
+    <div class="uk-navbar-center">
+      <form class="uk-search uk-search-default" action="{{ url_for('search') }}">
+        <input class="uk-search-input" type="search" name="query" placeholder="Search or Add..." value="{{ query }}" required>
+        <button class="uk-search-icon-flip" uk-search-icon></button>
+      </form>
+    </div>
+    <div class="uk-navbar-right">
+      <a class="uk-button uk-button-secondary" href="{{ url_for('add_item') }}">🆕 Add</a>
+    </div>
+  </nav>
+  <div class="uk-container uk-margin">
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>

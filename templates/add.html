@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}🆕 Add item{% endblock %}
+{% block content %}
+  <form method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="id" value="{{ item['id'] }}" />
+    <div class="uk-margin">
+      <div uk-form-custom>
+        <input type="file" name="file" aria-label="Custom controls" />
+        <button class="uk-button uk-button-default" type="button" tabindex="-1">Select file</button>
+      </div>
+    </div>
+    <div class="uk-margin">
+      <input class="uk-input" type="text" name="url" placeholder="URL..." value="{{ item.url }}" />
+    </div>
+    <div class="uk-margin">
+      <input class="uk-input" type="text" name="title" placeholder="Title" value="{{ item.title }}" />
+    </div>
+    <div class="uk-margin">
+      <textarea class="uk-textarea" name="description" placeholder="Write anything...">{{ item.description }}</textarea>
+    </div>
+    <div class="uk-margin">
+      <button class="uk-input" type="submit">{{ ("Edit " + item.id) if item.id else "Add" }}</button>
+    </div>
+  </form>
+  <script>
+    var url = document.querySelector('form input[name="url"]');
+    ['change', 'input', 'paste'].forEach(handler => {
+      url.addEventListener(handler, () => {
+        fetch('http://localhost:5000/api/preview?url=' + url.value)
+        .then(res => res.json())
+        .then(data => {
+          for (var key in data) {
+            var field = document.querySelector(`form [name="${key}"]`);
+            if (field) {
+              field.value = data[key];
+            }
+          }
+        })
+      })
+    });
+  </script>
+{% endblock %}

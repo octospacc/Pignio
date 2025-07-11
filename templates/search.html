@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Search Results for "{{ query }}"{% endblock %}
+{% block content %}
+  {% if media_data %}
+    <p>🔍 Results for "{{ query }}"</p>
+    {% include "results.html" %}
+  {% else %}
+    <p>No matches found for "<strong>{{ query }}</strong>".</p>
+  {% endif %}
+{% endblock %}
