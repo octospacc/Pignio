@@ -1,0 +1,7 @@
+{% if item.text %}
+  <div class="uk-background-cover uk-height-small uk-flex uk-flex-center uk-flex-middle uk-text-center uk-text-middle uk-overflow-hidden" style="background-image: url('https://getuikit.com/docs/images/dark.jpg');">
+    <p class="uk-text-stroke uk-text-primary">{{ item.text }}</p>
+  </div>
+{% elif item.image %}
+  <img class="uk-width-expand" src="{{ url_for('serve_media', filename=item.image) }}" alt="{{ item.description }}" />
+{% endif %}

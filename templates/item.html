@@ -1,28 +1,33 @@
 {% extends "base.html" %}
-{% block title %}📌 Viewing {% include "item-title.html" %}{% endblock %}
+{% block title %}{% include "item-title.html" %}{% endblock %}
 {% block canonical %}{{ url_for('view_item', iid=item.id) }}{% endblock %}
 {% block content %}
-<div class="uk-flex uk-flex-wrap">
-  <div class="uk-width-1-1 uk-width-1-2@s uk-padding-small">
-    {% if item.image %}
-      <img src="{{ url_for('serve_media', filename=item.image) }}" />
-    {% endif %}
-  </div>
-  <div class="uk-width-1-1 uk-width-1-2@s uk-padding-small">
-    <h3>{% include "item-title.html" %}</h3>
-    <div class="uk-text-truncate">
-      <a href="{{ item.link }}" target="_blank">{{ item.link }}</a>
+  <div class="uk-flex uk-flex-wrap">
+    <div class="uk-width-1-1 uk-width-1-2@s uk-padding-small">
+      {% include "item-content.html" %}
     </div>
-    <span>{{ item.created }}</span>
-    <p>{{ item.description }}</p>
-    <div class="uk-margin">
-      <a class="uk-button uk-button-default" href="{{ url_for('add_item') }}?item={{ item.id }}">Edit</a>
-      <a class="uk-button uk-button-danger" href="{{ url_for('remove_item') }}?item={{ item.id }}">Remove</a>
-      <!-- <form class="uk-inline" method="POST" action="{{ url_for('remove_item') }}">
-        <input type="hidden" name="item" value="{{ item.id }}" />
-        <button class="uk-input uk-button uk-button-danger" type="submit">Remove</button>
-      </form> -->
+    <div class="uk-width-1-1 uk-width-1-2@s uk-padding-small">
+      <h3>{% include "item-title.html" %}</h3>
+      by <a href="{{ url_for('view_user', username=item.creator) }}">{{ item.creator }}</a>
+      <!-- at <span>{{ item.datetime }}</span> -->
+      <div class="uk-text-truncate">
+        <a href="{{ item.link }}" target="_blank">{{ item.link }}</a>
+      </div>
+      <p>{{ item.description }}</p>
+      <div class="uk-margin">
+        <a class="uk-button uk-button-default uk-icon-link" href="{{ url_for('add_item') }}?item={{ item.id }}">
+          Edit
+          <span uk-icon="icon: file-edit"></span>
+        </a>
+        <a class="uk-button uk-button-danger" href="{{ url_for('remove_item') }}?item={{ item.id }}">
+          Remove
+          <span uk-icon="icon: trash"></span>
+        </a>
+        <!-- <form class="uk-inline" method="POST" action="{{ url_for('remove_item') }}">
+          <input type="hidden" name="item" value="{{ item.id }}" />
+          <button class="uk-input uk-button uk-button-danger" type="submit">Remove</button>
+        </form> -->
+      </div>
     </div>
   </div>
-</div>
 {% endblock %}

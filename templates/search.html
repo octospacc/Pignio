@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Search Results for "{{ query }}"{% endblock %}
 {% block content %}
-  {% if media_data %}
+  {% if items %}
     <p>🔍 Results for "{{ query }}"</p>
     {% include "results.html" %}
   {% else %}

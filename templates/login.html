@@ -4,13 +4,22 @@
   <form method="POST">
     {{ form.hidden_tag() }}
     <div class="uk-margin">
-      {{ form.username(class_="uk-input", placeholder="Username") }}
+      <div class="uk-inline uk-width-1-1">
+        <span class="uk-form-icon" uk-icon="icon: user"></span>
+        {{ form.username(class_="uk-input", placeholder="Username") }}
+      </div>
     </div>
     <div class="uk-margin">
-      {{ form.password(class_="uk-input", placeholder="Password") }}
+      <div class="uk-inline uk-width-1-1">
+        <span class="uk-form-icon" uk-icon="icon: lock"></span>
+        {{ form.password(class_="uk-input", placeholder="Password") }}
+      </div>
     </div>
     <div class="uk-margin">
-      {{ form.submit(class_="uk-input uk-button uk-button-default") }}
+      <div class="uk-inline uk-width-1-1">
+        {{ form.submit(class_="uk-input uk-button uk-button-default") }}
+        <span class="uk-form-icon uk-form-icon-flip" uk-icon="icon: lock"></span>
+      </div>
     </div>
   </form>
 {% endblock %}

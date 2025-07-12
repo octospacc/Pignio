@@ -19,35 +19,35 @@
     </div>
     <div class="uk-margin">
       <label>
-        <input type="checkbox" class="uk-checkbox" checked />
-        Fill Data from Link
+        <input type="checkbox" class="uk-checkbox" {% if not item.id %} checked {% endif %} />
+        Fill data from link
       </label>
     </div>
-    {% if not item.id %}
-      <div class="uk-margin">
-        <div uk-form-custom>
-          <input class="uk-input" type="file" name="file" aria-label="Custom controls" />
-          <button class="uk-button uk-button-default" type="button" tabindex="-1">Select file</button>
+    <div class="uk-margin">
+      <div uk-grid>
+        <div uk-form-custom class="uk-width-1-1">
+          <input class="uk-input" type="file" name="file" />
+          <button class="uk-button uk-width-1-1 uk-button-default" type="button" tabindex="-1">Select image</button>
         </div>
       </div>
-    {% endif %}
-    <div class="uk-margin">
-      <input type="color" class="uk-input" name="color" value="{{ item.text }}" />
     </div>
+    <!-- <div class="uk-margin">
+      <input type="color" class="uk-input" name="color" value="{{ item.text }}" />
+    </div> -->
     <div class="uk-margin">
-      <input class="uk-input" type="text" name="link" placeholder="URL..." value="{{ item.link }}" />
+      <input class="uk-input" type="text" name="link" placeholder="URL" value="{{ item.link }}" />
     </div>
     <div class="uk-margin">
       <input class="uk-input" type="text" name="title" placeholder="Title" value="{{ item.title }}" />
     </div>
     <div class="uk-margin">
-      <textarea class="uk-textarea" name="description" placeholder="Description">{{ item.description }}</textarea>
+      <textarea class="uk-textarea" rows="5" name="description" placeholder="Description">{{ item.description }}</textarea>
     </div>
     <div class="uk-margin">
-      <textarea class="uk-textarea" name="text" placeholder="Text">{{ item.text }}</textarea>
+      <textarea class="uk-textarea" rows="5" name="text" placeholder="Text">{{ item.text }}</textarea>
     </div>
     <div class="uk-margin">
-      <button class="uk-input uk-button uk-button-default" type="submit">{{ ("Edit " + item.id) if item.id else "Add" }}</button>
+      <button class="uk-input uk-button uk-button-primary" type="submit">{{ ("Edit " + item.id) if item.id else "Add" }}</button>
     </div>
   </form>
   <script>
@@ -55,8 +55,9 @@
     var check = document.querySelector('form input[type="checkbox"]');
     ['change', 'input', 'paste'].forEach(handler => {
       link.addEventListener(handler, () => {
-        if (check.checked) {
-          fetch('http://localhost:5000/api/preview?url=' + encodeURIComponent(link.value))
+        var url = link.value.trim();
+        if (check.checked && url) {
+          fetch('{{ url_for("link_preview") }}?url=' + encodeURIComponent(url))
           .then(res => res.json())
           .then(data => {
             for (var key in data) {

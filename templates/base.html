@@ -1,27 +1,36 @@
 <!DOCTYPE html>
+{% set title %}{% block title %}{% endblock %}{% endset %}
+{% set canonical %}{% block canonical %}{% endblock %}{% endset %}
 <html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{% block title %}My Media Gallery{% endblock %}</title>
-  <link rel="canonical" href="{% block canonical %}{% endblock %}" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uikit@3.23.11/dist/css/uikit.min.css" />
-  <script src="https://cdn.jsdelivr.net/npm/uikit@3.23.11/dist/js/uikit.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/uikit@3.23.11/dist/js/uikit-icons.min.js"></script>
+  <title>{% if title %}{{ title }} | {% endif %}{{ config.APP_ICON }} {{ config.APP_NAME }}</title>
+  <link rel="stylesheet" href="{{ url_for('serve_module', module='uikit', filename='css/uikit.min.css') }}" />
+  <script src="{{ url_for('serve_module', module='uikit', filename='js/uikit.min.js') }}"></script>
+  <script src="{{ url_for('serve_module', module='uikit', filename='js/uikit-icons.min.js') }}"></script>
+  {% if canonical %}
+    <link rel="canonical" href="{{ config.LINKS_PREFIX }}{{ canonical }}" />
+  {% endif %}
 </head>
 <body>
-  <nav class="uk-navbar-container" uk-navbar>
-    <div class="uk-navbar-left">
-      <a class="uk-button uk-button-primary" href="{{ url_for('index') }}">🏠 Home</a>
-    </div>
-    <div class="uk-navbar-center">
-      <form class="uk-search uk-search-default" action="{{ url_for('search') }}">
-        <input class="uk-search-input" type="search" name="query" placeholder="Search or Add..." value="{{ query }}" required>
-        <button class="uk-search-icon-flip" uk-search-icon></button>
-      </form>
-    </div>
-    <div class="uk-navbar-right">
-      <a class="uk-button uk-button-default" href="{{ url_for('add_item') }}">🆕 Add</a>
+  <nav class="uk-navbar-container" uk-sticky="sel-target: .uk-navbar-container; cls-active: uk-navbar-sticky">
+    <div class="uk-container uk-container-expand" uk-navbar>
+      <div class="uk-navbar-left uk-width-expand">
+        <a class="uk-logo" href="{{ url_for('index') }}">
+          <span uk-icon="icon: home"></span>
+          {{ config.APP_NAME }}
+        </a>
+        <form class="uk-search uk-search-navbar uk-width-auto uk-flex-1" action="{{ url_for('search') }}">
+          <input class="uk-search-input" type="search" name="query" placeholder="Search..." value="{{ query }}" required>
+          <button class="uk-search-icon-flip" uk-search-icon></button>
+        </form>
+      </div>
+      <div class="uk-navbar-right uk-margin-left">
+        <a class="uk-button uk-button-default uk-icon-link" uk-icon="plus" href="{{ url_for('add_item') }}">
+          <span class="uk-visible@s">Create</span>
+        </a>
+      </div>
     </div>
   </nav>
   <div class="uk-container uk-margin">
@@ -32,8 +41,6 @@
         {% endfor %}
       {% endif %}
     {% endwith %}
-  </div>
-  <div class="uk-container uk-margin">
     {% block content %}{% endblock %}
   </div>
 </body>

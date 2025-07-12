@@ -2,5 +2,7 @@ flask
 flask-bcrypt
 flask-login
 flask-wtf
+beautifulsoup4
 requests
 snowflake-id
+waitress

@@ -1,18 +1,7 @@
-<div uk-grid="masonry: pack" class="uk-child-width-1-2 uk-child-width-1-3@s uk-child-width-1-4@m uk-child-width-1-5@l uk-child-width-1-6@xl">
-{% for folder, items in media.items() %}
+<div uk-grid="masonry: pack" class="uk-grid-small uk-child-width-1-2 uk-child-width-1-3@s uk-child-width-1-4@m uk-child-width-1-5@l uk-child-width-1-6@xl">
+{% for folder, items in items.items() %}
   {% for item in items %}
-    <div margin="uk-grid-margin-small">
-      <a class="uk-link-text" href="{{ url_for('view_item', iid=item.id) }}">
-        {% if item.image %}
-          <img src="{{ url_for('serve_media', filename=item.image) }}" />
-        {% elif item.description %}
-          <div class="uk-background-cover uk-height-small uk-flex uk-flex-center uk-flex-middle uk-text-center uk-text-middle uk-overflow-hidden" style="background-image: url('https://getuikit.com/docs/images/dark.jpg');">
-            <p class="uk-text-stroke uk-text-primary">{{ item.description }}</p>
-          </div>
-        {% endif %}
-        <span class="uk-text-break">{% include "item-title.html" %}</span>
-      </a>
-    </div>
+    {% include "item-card.html" %}
   {% endfor %}
 {% endfor %}
 </div>
