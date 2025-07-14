@@ -1,0 +1,5 @@
+{
+    "name": "{{ config.APP_NAME }}",
+    "start_url": "{{ url_for('index') }}",
+    "display": "standalone"
+}

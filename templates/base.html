@@ -11,15 +11,25 @@
   <script src="{{ url_for('serve_module', module='uikit', filename='js/uikit-icons.min.js') }}"></script>
   {% if canonical %}
     <link rel="canonical" href="{{ config.LINKS_PREFIX }}{{ canonical }}" />
+    <meta name="og:url" content="{{ config.LINKS_PREFIX }}{{ canonical }}" />
   {% endif %}
+  <meta name="og:site_name" content="{{ config.APP_NAME }}" />
+  {% block metadata %}{% endblock %}
+  <link rel="manifest" href="{{ url_for('serve_manifest') }}" />
+  <meta name="generator" content="{{ config.APP_NAME }}" />
 </head>
-<body>
+<body class="uk-height-viewport uk-flex uk-flex-column">
   <nav class="uk-navbar-container" uk-sticky="sel-target: .uk-navbar-container; cls-active: uk-navbar-sticky">
     <div class="uk-container uk-container-expand" uk-navbar>
       <div class="uk-navbar-left uk-width-expand">
-        <a class="uk-logo" href="{{ url_for('index') }}">
-          <span uk-icon="icon: home"></span>
-          {{ config.APP_NAME }}
+        <a class="uk-link-reset" href="{{ url_for('index') }}">
+          <span class="uk-logo">
+            <span uk-icon="icon: home"></span>
+            {{ config.APP_NAME }}
+          </span>
+          {%if config.DEVELOPMENT %}
+            <span class="uk-text-small">DEV</span>
+          {% endif %}
         </a>
         <form class="uk-search uk-search-navbar uk-width-auto uk-flex-1" action="{{ url_for('search') }}">
           <input class="uk-search-input" type="search" name="query" placeholder="Search..." value="{{ query }}" required>
@@ -27,21 +37,38 @@
         </form>
       </div>
       <div class="uk-navbar-right uk-margin-left">
-        <a class="uk-button uk-button-default uk-icon-link" uk-icon="plus" href="{{ url_for('add_item') }}">
+        <a class="uk-button uk-button-default uk-icon-link" uk-icon="plus" href="{{ url_for('add_item') }}" rel="nofollow">
           <span class="uk-visible@s">Create</span>
         </a>
       </div>
     </div>
   </nav>
-  <div class="uk-container uk-margin">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <p uk-alert class="uk-alert-{{ category }}">{{ message }}</p>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-    {% block content %}{% endblock %}
+  <div class="uk-flex uk-flex-center uk-margin uk-flex-auto">
+    <div class="uk-container uk-flex-auto">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <p uk-alert class="uk-alert-{{ category }}">{{ message }}</p>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </div>
   </div>
+  <footer class="uk-section uk-section-xsmall uk-background-muted">
+    <div class="uk-container">
+      <p class="uk-text-meta">
+        Powered by <a class="uk-text-primary" target="_blank" href="https://gitlab.com/octospacc/Pignio">{{ config.APP_NAME }}</a>, © 2025 OctoSpacc
+        <span class="uk-float-right">
+          {% if current_user.is_authenticated %}
+            Logged in as <a href="{{ url_for('view_user', username=current_user.username) }}">{{ current_user.username }}</a>
+            — <a class="uk-button uk-button-text uk-text-baseline" href="{{ url_for('logout') }}">Logout</a>
+          {% else %}
+            <a class="uk-button uk-button-text uk-text-baseline" href="{{ url_for('login') }}">Login</a>
+          {% endif %}
+        </span>
+      </p>
+    </div>
+  </footer>
 </body>
 </html>

@@ -24,10 +24,10 @@
       </label>
     </div>
     <div class="uk-margin">
-      <div uk-grid>
+      <div class="uk-grid-collapse" uk-grid>
         <div uk-form-custom class="uk-width-1-1">
           <input class="uk-input" type="file" name="file" />
-          <button class="uk-button uk-width-1-1 uk-button-default" type="button" tabindex="-1">Select image</button>
+          <button class="uk-button uk-width-1-1 uk-button-default" type="button" tabindex="-1">Select or drop an image file</button>
         </div>
       </div>
     </div>
@@ -50,30 +50,5 @@
       <button class="uk-input uk-button uk-button-primary" type="submit">{{ ("Edit " + item.id) if item.id else "Add" }}</button>
     </div>
   </form>
-  <script>
-    var link = document.querySelector('form input[name="link"]');
-    var check = document.querySelector('form input[type="checkbox"]');
-    ['change', 'input', 'paste'].forEach(handler => {
-      link.addEventListener(handler, () => {
-        var url = link.value.trim();
-        if (check.checked && url) {
-          fetch('{{ url_for("link_preview") }}?url=' + encodeURIComponent(url))
-          .then(res => res.json())
-          .then(data => {
-            for (var key in data) {
-              var field = document.querySelector(`form [name="${key}"]`);
-              if (field) {
-                field.value = data[key];
-              }
-              var el = document.querySelector(`form [class="${key}"]`);
-              if (el) {
-                el.src = data[key];
-                el.parentElement.hidden = false;
-              }
-            }
-          })
-        }
-      })
-    });
-  </script>
+  <script src="{{ url_for('static', filename='add.js') }}"></script>
 {% endblock %}

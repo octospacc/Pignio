@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}🗑 Remove item{% endblock %}
+{% block title %}🗑 Delete item{% endblock %}
 {% block content %}
   <form method="POST">
     <input type="hidden" name="id" value="{{ item.id }}" />
@@ -8,7 +8,7 @@
         <a class="uk-button uk-button-default" href="{{ url_for('view_item', iid=item.id) }}">Back</a>
       </div>
       <div>
-        <button class="uk-input uk-button uk-button-danger" type="submit">Remove {{ item.id }}</button>
+        <button class="uk-input uk-button uk-button-danger" type="submit">Delete {{ item.id }}</button>
       </div>
     </div>
   </form>
