@@ -11,12 +11,16 @@
     <meta name="og:image" content="{{ url_for('serve_media', filename=item.image) }}" />
     <meta name="twitter:image" content="{{ url_for('serve_media', filename=item.image) }}" />
     <meta name="twitter:card" content="summary_large_image" />
+  {% elif item.video %}
+    <meta name="og:video" content="{{ url_for('serve_media', filename=item.video) }}" />
   {% endif %}
 {% endblock %}
 {% block content %}
   <div class="uk-flex uk-flex-wrap">
     <div class="uk-width-1-1 uk-width-1-2@s uk-padding-small">
-      {% include "item-content.html" %}
+      {% with full=true %}
+        {% include "item-content.html" %}
+      {% endwith %}
     </div>
     <div class="uk-width-1-1 uk-width-1-2@s uk-padding-small">
       <h3>{% include "item-title.html" %}</h3>
@@ -25,7 +29,7 @@
       <div class="uk-text-truncate">
         <a href="{{ item.link }}" target="_blank">{{ item.link }}</a>
       </div>
-      <p>{{ item.description }}</p>
+      <p class="uk-text-break" style="white-space: pre-line;">{{ item.description }}</p>
       <div class="uk-margin">
         <a class="uk-button uk-button-default uk-icon-link" href="{{ url_for('add_item') }}?item={{ item.id }}" rel="nofollow">
           Edit

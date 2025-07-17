@@ -91,7 +91,11 @@ def noindex(view_func):
 
 @app.route("/")
 def index():
-    return render_template("index.html", items=walk_items())
+    limit = 50
+    page = int(request.args.get("page", 1))
+    next_count = (limit * page)
+    items = walk_items()
+    return render_template("index.html", items=items[(limit * (page - 1)):next_count], next_page=(page + 1 if len(items) > next_count else None))
 
 @app.route("/manifest.json")
 @noindex
@@ -102,7 +106,12 @@ def serve_manifest():
 
 @app.route("/static/module/<path:module>/<path:filename>")
 @noindex
-def serve_module(module:str, filename:str):
+def serve_module_main(module:str, filename:str):
+    return send_from_directory(os.path.join("node_modules", module), filename)
+
+@app.route("/static/module/dist/<path:module>/<path:filename>")
+@noindex
+def serve_module_dist(module:str, filename:str):
     return send_from_directory(os.path.join("node_modules", module, "dist"), filename)
 
 @app.route("/media/<path:filename>")
@@ -127,15 +136,17 @@ def view_user(username:str):
 def search():
     query = request.args.get("query", "").lower()
     found = False
-    results = {}
+    results = [] # {}
 
-    for folder, items in walk_items().items():
-        results[folder] = []
+    for item in walk_items():
+    # for folder, items in walk_items().items():
+        # results[folder] = []
 
-        for item in items:
-            if any([query in text.lower() for text in item.values()]):
-                results[folder].append(item)
-                found = True
+        #for item in items:
+        if any([query in text.lower() for text in item.values()]):
+            # results[folder].append(item)
+            results.append(item)
+            found = True
 
     return render_template("search.html", items=(results if found else None), query=query)
 
@@ -282,7 +293,7 @@ def walk_items():
             data = load_item(iid)
             results[rel_path].append(data)
 
-    return results
+    return [value for values in results.values() for value in values] # results
 
 def walk_collections(username:str):
     results: dict[str, list[str]] = {"": []}
@@ -330,9 +341,10 @@ def load_item(iid:str):
         for file in files:
             if file.lower().endswith(ITEMS_EXT):
                 data = data | read_metadata(read_textual(file))
-
             elif file.lower().endswith(tuple([f".{ext}" for ext in EXTENSIONS["image"]])):
                 data["image"] = file.replace(os.sep, "/").removeprefix(f"{ITEMS_ROOT}/")
+            elif file.lower().endswith(tuple([f".{ext}" for ext in EXTENSIONS["video"]])):
+                data["video"] = file.replace(os.sep, "/").removeprefix(f"{ITEMS_ROOT}/")
 
         return data
 
@@ -343,6 +355,7 @@ def store_item(iid:str, data:dict, files:dict|None=None):
     filepath = os.path.join(ITEMS_ROOT, *filename)
     mkdirs(os.path.join(ITEMS_ROOT, filename[0]))
     image = False
+    extra = {key: data[key] for key in ["provenance"] if key in data}
     data = {key: data[key] for key in ["link", "title", "description", "image", "text"] if key in data}
 
     if files and len(files):
@@ -351,7 +364,7 @@ def store_item(iid:str, data:dict, files:dict|None=None):
             file.seek(0, os.SEEK_SET)
             mime = file.content_type.split("/")
             ext = mime[1]
-            if mime[0] == "image" and ext in EXTENSIONS["image"]:
+            if mime[0] == "image" and ext in EXTENSIONS["image"] or mime[0] == "video" and ext in EXTENSIONS["video"]:
                 file.save(f"{filepath}.{ext}")
                 image = True
     if not image and "image" in data and data["image"]:
@@ -373,8 +386,8 @@ def store_item(iid:str, data:dict, files:dict|None=None):
         return False
 
     if existing:
-        if "creator" in existing:
-            data["creator"] = existing["creator"]
+        if (creator := safe_str_get(existing, "creator")):
+            data["creator"] = creator
     else:
         data["creator"] = current_user.username
         items = current_user.data["items"] if "items" in current_user.data else []
@@ -382,6 +395,8 @@ def store_item(iid:str, data:dict, files:dict|None=None):
         current_user.data["items"] = items
         write_textual(current_user.filepath, write_metadata(current_user.data))
 
+    if (provenance := safe_str_get(extra, "provenance")):
+        data["systags"] = provenance
     write_textual(filepath + ITEMS_EXT, write_metadata(data))
     return True
 
@@ -404,12 +419,15 @@ def read_metadata(text:str) -> dict:
 def write_metadata(data:dict) -> str:
     output = StringIO()
     config = ConfigParser(interpolation=None)
-    for key in ("image", "datetime"):
+    for key in ("image", "video", "datetime"):
         if key in data:
             del data[key]
-    for key in data:
-        if type(data[key]) == list:
-            data[key] = list_to_wsv(data[key])
+    for key in list(data.keys()):
+        if (value := data[key]):
+            if type(value) == list:
+                data[key] = list_to_wsv(value)
+        else:
+            del data[key]
     config["DEFAULT"] = data
     config.write(output)
     return "\n".join(output.getvalue().splitlines()[1:]) # remove section header
@@ -456,6 +474,9 @@ def list_to_wsv(data:list, sep="\n") -> str:
 
 def wsv_to_list(data:str) -> list:
     return data.strip().replace(" ", "\n").replace("\t", "\n").splitlines()
+
+def safe_str_get(dikt:dict[str, str|None], key:str) -> str:
+    return dikt.get(key) or ""
 
 def mkdirs(*paths:str):
     for path in paths:

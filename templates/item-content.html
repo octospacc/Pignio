@@ -4,4 +4,6 @@
   </div>
 {% elif item.image %}
   <img class="uk-width-expand" src="{{ url_for('serve_media', filename=item.image) }}" alt="{{ item.description }}" />
+{% elif item.video %}
+  <video src="{{ url_for('serve_media', filename=item.video) }}" {% if full %} controls {% else %} autoplay muted {% endif %} loop></video>
 {% endif %}

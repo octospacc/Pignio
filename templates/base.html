@@ -6,9 +6,16 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{% if title %}{{ title }} | {% endif %}{{ config.APP_ICON }} {{ config.APP_NAME }}</title>
-  <link rel="stylesheet" href="{{ url_for('serve_module', module='uikit', filename='css/uikit.min.css') }}" />
-  <script src="{{ url_for('serve_module', module='uikit', filename='js/uikit.min.js') }}"></script>
-  <script src="{{ url_for('serve_module', module='uikit', filename='js/uikit-icons.min.js') }}"></script>
+  <link rel="stylesheet" href="{{ url_for('serve_module_dist', module='uikit', filename='css/uikit.min.css') }}" />
+  <script src="{{ url_for('serve_module_dist', module='uikit', filename='js/uikit.min.js') }}"></script>
+  <script src="{{ url_for('serve_module_dist', module='uikit', filename='js/uikit-icons.min.js') }}"></script>
+  <script src="{{ url_for('serve_module_main', module='unpoly', filename='unpoly.min.js') }}" onload="(function(){
+    up.link.config.followSelectors.push('a[href]');
+    up.link.config.instantSelectors.push('a[href]');
+    up.form.config.submitSelectors.push(['form']);
+  })();"></script>
+  <link rel="stylesheet" href="{{ url_for('serve_module_main', module='unpoly', filename='unpoly.min.css') }}" />
+  <script src="{{ url_for('static', filename='add.js') }}" defer></script>
   {% if canonical %}
     <link rel="canonical" href="{{ config.LINKS_PREFIX }}{{ canonical }}" />
     <meta name="og:url" content="{{ config.LINKS_PREFIX }}{{ canonical }}" />
@@ -43,8 +50,8 @@
       </div>
     </div>
   </nav>
-  <div class="uk-flex uk-flex-center uk-margin uk-flex-auto">
-    <div class="uk-container uk-flex-auto">
+  <div class="uk-margin uk-flex-auto">
+    <div class="uk-container">
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           {% for category, message in messages %}

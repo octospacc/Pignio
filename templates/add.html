@@ -11,23 +11,34 @@
     <div>b</div>
   </div>
   -->
-  <form method="POST" enctype="multipart/form-data">
+  <form method="POST" enctype="multipart/form-data" class="add">
     <input type="hidden" name="id" value="{{ item.id }}" />
     <input type="hidden" name="image" />
     <div class="uk-margin" {% if not item.image %} hidden {% endif %}>
       <img src="{{ url_for('serve_media', filename=item.image) }}" class="image" />
     </div>
-    <div class="uk-margin">
+    <div class="uk-margin uk-grid">
       <label>
-        <input type="checkbox" class="uk-checkbox" {% if not item.id %} checked {% endif %} />
+        <input type="checkbox" class="from-link uk-checkbox" {% if not item.id %} checked {% endif %} />
         Fill data from link
       </label>
+      <label>
+        <select class="uk-select" name="provenance">
+          <option value="">No provenance</option>
+          <option value="oc" {% if item.systags == 'oc' %} selected {% endif %}>Original content</option>
+          <option value="ai" {% if item.systags == 'ai' %} selected {% endif %}>AI-generated</option>
+        </select>
+      </label>      
+      <!-- <label>
+        <input type="checkbox" class="with-proxatore uk-checkbox" />
+        Transparently use Proxatore
+      </label> -->
     </div>
     <div class="uk-margin">
       <div class="uk-grid-collapse" uk-grid>
         <div uk-form-custom class="uk-width-1-1">
           <input class="uk-input" type="file" name="file" />
-          <button class="uk-button uk-width-1-1 uk-button-default" type="button" tabindex="-1">Select or drop an image file</button>
+          <button class="uk-button uk-width-1-1 uk-button-default" type="button" tabindex="-1">Select or drop a media file</button>
         </div>
       </div>
     </div>
@@ -50,5 +61,4 @@
       <button class="uk-input uk-button uk-button-primary" type="submit">{{ ("Edit " + item.id) if item.id else "Add" }}</button>
     </div>
   </form>
-  <script src="{{ url_for('static', filename='add.js') }}"></script>
 {% endblock %}
