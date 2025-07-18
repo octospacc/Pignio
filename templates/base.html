@@ -17,12 +17,13 @@
   <link rel="stylesheet" href="{{ url_for('serve_module_unpoly', filename='unpoly.min.css') }}" />
   <script src="{{ url_for('static', filename='add.js') }}" defer></script>
   {% if canonical %}
-    <link rel="canonical" href="{{ config.LINKS_PREFIX }}{{ canonical }}" />
-    <meta name="og:url" content="{{ config.LINKS_PREFIX }}{{ canonical }}" />
+    <link rel="canonical" href="{% include 'links-prefix.txt' %}{{ canonical }}" />
+    <meta name="og:url" content="{% include 'links-prefix.txt' %}{{ canonical }}" />
   {% endif %}
   <meta name="og:site_name" content="{{ config.APP_NAME }}" />
   {% block metadata %}{% endblock %}
   <link rel="manifest" href="{{ url_for('serve_manifest') }}" />
+  <link rel="shortcut icon" href="{{ url_for('static', filename='icon.png') }}" type="image/png" />
   <meta name="generator" content="{{ config.APP_NAME }}" />
   {% if config.SITE_VERIFICATION.GOOGLE %}
     <meta name="google-site-verification" content="{{ config.SITE_VERIFICATION.GOOGLE }}" />
@@ -71,7 +72,7 @@
   <footer class="uk-section uk-section-xsmall uk-background-muted">
     <div class="uk-container">
       <p class="uk-text-meta">
-        Powered by <a class="uk-text-primary" target="_blank" href="https://gitlab.com/octospacc/Pignio">{{ config.APP_NAME }}</a>, © 2025 OctoSpacc
+        Powered by <a class="uk-text-primary" target="_blank" href="https://gitlab.com/octospacc/Pignio">{{ config.APP_NAME }}</a>, © 2025 OctoSpacc (AGPLv3)
         <span class="uk-float-right">
           {% if current_user.is_authenticated %}
             Logged in as <a href="{{ url_for('view_user', username=current_user.username) }}">{{ current_user.username }}</a>

@@ -23,7 +23,7 @@
       {% endwith %}
     </div>
     <div class="uk-width-1-1 uk-width-1-2@s uk-padding-small">
-      <h3>{% include "item-title.html" %}</h3>
+      <h3 class="uk-text-break">{% include "item-title.html" %}</h3>
       by <a href="{{ url_for('view_user', username=item.creator) }}">{{ item.creator }}</a>
       <!-- at <span>{{ item.datetime }}</span> -->
       <div class="uk-text-truncate">
@@ -49,6 +49,17 @@
       </div>
       <p class="uk-text-break" style="white-space: pre-line;">{{ item.description }}</p>
       <div class="uk-margin">
+        <!-- <div class="uk-inline">
+          <button class="uk-button uk-button-default" type="button">
+            Pin
+            <span uk-icon="icon: tag"></span>
+          </button>
+          <div uk-dropdown="mode: click; stretch: y;">
+            <ul class="uk-list">
+              <li><label><input class="uk-checkbox" type="checkbox"> Collection...</label></li>
+            </ul>
+          </div>
+        </div> -->
         <a class="uk-button uk-button-default uk-icon-link" href="{{ url_for('add_item') }}?item={{ item.id }}" rel="nofollow">
           Edit
           <span uk-icon="icon: file-edit"></span>

@@ -1,24 +1,15 @@
 import os
-import requests
 import urllib.parse
 from functools import wraps
 from typing import Any, cast
 from random import shuffle
-from base64 import b64decode, urlsafe_b64encode
-from io import StringIO
-from configparser import ConfigParser
-from bs4 import BeautifulSoup
 from flask import Flask, request, redirect, render_template, send_from_directory, abort, url_for, flash, session, make_response
 from flask_bcrypt import Bcrypt # type: ignore[import-untyped]
-from flask_login import LoginManager, UserMixin, current_user, login_user, logout_user, login_required # type: ignore[import-untyped]
+from flask_login import LoginManager, UserMixin, current_user, login_user, logout_user, login_required, login_url # type: ignore[import-untyped]
 from flask_wtf import FlaskForm # type: ignore[import-untyped]
 from wtforms import StringField, PasswordField, BooleanField, SubmitField # type: ignore[import-untyped]
 from wtforms.validators import DataRequired # type: ignore[import-untyped]
-from glob import glob
-from pathlib import Path
-from datetime import datetime
-from snowflake import Snowflake, SnowflakeGenerator # type: ignore[import-untyped]
-from hashlib import sha256
+from _pignio import *
 from _util import *
 
 # config #
@@ -35,15 +26,12 @@ SITE_VERIFICATION = {
 try:
     from _config import *
 except ModuleNotFoundError:
-    # print("Configuration file not found! Generating...")
     from secrets import token_urlsafe
     config = read_textual(__file__).split("# config #")[1].split("# endconfig #")[0].strip()
     write_textual("_config.py", f"""\
 SECRET_KEY = "{token_urlsafe()}"
 {config}
 """)
-    # print("Saved configuration to _config.py. Exiting!")
-    # exit()
     from _config import *
 
 app = Flask(__name__)
@@ -61,27 +49,14 @@ login_manager.login_view = "login"
 login_manager.init_app(app)
 bcrypt = Bcrypt(app)
 
-snowflake_epoch = int(datetime(2025, 1, 1, 0, 0, 0).timestamp() * 1000)
-snowflake = SnowflakeGenerator(1, epoch=snowflake_epoch)
-
-DATA_ROOT = "data"
-ITEMS_ROOT = f"{DATA_ROOT}/items"
-USERS_ROOT = f"{DATA_ROOT}/users"
-EXTENSIONS = {
-    "image": ("jpg", "jpeg", "png", "gif", "webp", "avif"),
-    "video": ("mp4", "mov", "mpeg", "ogv", "webm", "mkv"),
-    "audio": ("mp3", "m4a", "flac", "opus", "ogg", "wav"),
-}
-ITEMS_EXT = ".ini"
-
 class User(UserMixin):
-    def __init__(self, username, filepath):
-        self.username = username
-        self.filepath = filepath
-        self.data = read_metadata(read_textual(filepath))
+    def __init__(self, username:str, filepath:str):
+        self.username: str = username
+        self.filepath: str = filepath
+        self.data = cast(UserDict, read_metadata(read_textual(filepath)))
 
-    def get_id(self):
-        return self.username
+    def get_id(self) -> str:
+        return generate_user_hash(self.username, self.data["password"])
 
 class LoginForm(FlaskForm):
     username = StringField("Username", validators=[DataRequired()])
@@ -157,18 +132,11 @@ def view_user_feed(username:str):
 def search():
     query = request.args.get("query", "").lower()
     found = False
-    results = [] # {}
-
+    results = []
     for item in walk_items():
-    # for folder, items in walk_items().items():
-        # results[folder] = []
-
-        #for item in items:
-        if any([query in text.lower() for text in item.values()]):
-            # results[folder].append(item)
+        if any([query in (value if type(value) == str else list_to_wsv(value)).lower() for value in item.values()]):
             results.append(item)
             found = True
-
     return render_template("search.html", items=(results if found else None), query=query)
 
 @app.route("/add", methods=["GET", "POST"])
@@ -176,20 +144,16 @@ def search():
 @login_required
 def add_item():
     item = {}
-
     if request.method == "GET":
         if (iid := request.args.get("item")):
             if not (item := load_item(iid)):
                 abort(404)
-
     elif request.method == "POST":
         iid = request.form.get("id") or generate_iid()
-
         if store_item(iid, request.form, request.files):
             return redirect(url_for("view_item", iid=iid))
         else:
             flash("Cannot save item", "danger")
-
     return render_template("add.html", item=item)
 
 @app.route("/delete", methods=["GET", "POST"])
@@ -200,13 +164,11 @@ def remove_item():
         if (iid := request.args.get("item")):
             if (item := load_item(iid)):
                 return render_template("delete.html", item=item)
-
     elif request.method == "POST":
         if (iid := request.form.get("id")):
             if (item := load_item(iid)):
                 delete_item(item)
                 return redirect(url_for("index"))
-
     abort(404)
 
 @app.errorhandler(404)
@@ -219,24 +181,21 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for("index"))
     form = LoginForm()
-    if form.validate_on_submit():
-        if (user := load_user(form.username.data)):
-            pass_equals = user.data["password"] == form.password.data
-            try:
-                hash_equals = bcrypt.check_password_hash(user.data["password"], form.password.data)
-            except ValueError as e:
-                hash_equals = False
-            if pass_equals or hash_equals:
-                if pass_equals:
-                    user.data["password"] = bcrypt.generate_password_hash(user.data["password"]).decode("utf-8")
-                    write_textual(user.filepath, write_metadata(user.data))
-                session["session_hash"] = generate_user_hash(user.username, user.data["password"])
-                login_user(user)
-                # login_user(user, remember=bool(form.remember.data))
-                # next_url = flask.request.args.get('next')
-                # if not url_has_allowed_host_and_scheme(next_url, request.host): return flask.abort(400)
-                # return redirect(next_url or url_for("index"))
-                return redirect(url_for("index"))
+    if form.validate_on_submit() and (user := load_user(form.username.data)):
+        pass_equals = user.data["password"] == form.password.data
+        try:
+            hash_equals = bcrypt.check_password_hash(user.data["password"], form.password.data)
+        except ValueError as e:
+            hash_equals = False
+        if pass_equals or hash_equals:
+            if pass_equals:
+                user.data["password"] = bcrypt.generate_password_hash(user.data["password"]).decode("utf-8")
+                write_textual(user.filepath, write_metadata(user.data))
+            session["session_hash"] = generate_user_hash(user.username, user.data["password"])
+            login_user(user, remember=bool(form.remember.data))
+            next_url = urllib.parse.urlparse(request.args.get("next", ""))
+            next_url = next_url.path + (f"?{next_url.query}" if next_url.query else "")
+            return redirect(next_url or url_for("index"))
     if request.method == "POST":
         flash("Invalid username or password", "danger")
     return render_template("login.html", form=form)
@@ -270,10 +229,12 @@ def items_api(iid:str):
         return {}
 
 @login_manager.user_loader
-def load_user(username:str):
-    filepath = os.path.join(USERS_ROOT, (username + ITEMS_EXT))
-    if os.path.exists(filepath):
-        return User(username, filepath)
+def login_user_loader(userhash:str) -> User|None:
+    username = userhash.split(":")[0]
+    if (user := load_user(username)):
+        if userhash == generate_user_hash(username, user.data["password"]):
+            return user
+    return None
 
 @login_manager.unauthorized_handler
 def unauthorized():
@@ -281,229 +242,13 @@ def unauthorized():
         return {"error": "Unauthorized"}, 401
     else:
         flash("Please log in to access this page.")
-        return redirect(url_for("login"))
+        return redirect(login_url("login", request.url))
 
-@app.before_request
-def validate_session():
-    if current_user.is_authenticated:
-        expected_hash = generate_user_hash(current_user.username, current_user.data["password"])
-        if session.get("session_hash") != expected_hash:
-            logout_user()
-
-def generate_user_hash(username:str, password:str):
-    text = f"{username}:{password}"
-    return urlsafe_b64encode(sha256(text.encode()).digest()).decode()
-
-def walk_items():
-    results, iids = {}, {}
-
-    for root, dirs, files in os.walk(ITEMS_ROOT):
-        rel_path = os.path.relpath(root, ITEMS_ROOT).replace(os.sep, "/")
-        if rel_path == ".":
-            rel_path = ""
-
-        results[rel_path], iids[rel_path] = [], []
-
-        for file in files:
-            #if file.lower().endswith(ITEMS_EXT) or file.lower().endswith(tuple([f".{ext}" for ext in EXTENSIONS["images"]])):
-            iid = strip_ext(os.path.join(rel_path, file).replace(os.sep, "/"))
-            iid = filename_to_iid(iid)
-            if iid not in iids[rel_path]:
-                iids[rel_path].append(iid)
-
-        for iid in iids[rel_path]:
-            data = load_item(iid)
-            results[rel_path].append(data)
-
-    return [value for values in results.values() for value in values] # results
-
-def walk_collections(username:str):
-    results: dict[str, list[str]] = {"": []}
-    filepath = USERS_ROOT
-
-    # if username:
-    filepath = os.path.join(filepath, username)
-    data = read_metadata(read_textual(filepath + ITEMS_EXT))
-    results[""] = data["items"] if "items" in data else []
-    results[""].reverse()
-
-    # for root, dirs, files in os.walk(filepath):
-    #     rel_path = os.path.relpath(root, filepath).replace(os.sep, "/")
-    #     if rel_path == ".":
-    #         rel_path = ""
-    #     else:
-    #         results[rel_path] = []
-
-    #     for file in files:
-    #         print(file, rel_path)
-    #         results[rel_path] = read_metadata(read_textual(os.path.join(filepath, rel_path, file)))["items"].strip().replace(" ", "\n").splitlines()
-
-    return results
-
-def iid_to_filename(iid:str):
-    if len(iid.split("/")) == 1:
-        date = Snowflake.parse(int(iid), snowflake_epoch).datetime
-        iid = f"{date.year}/{date.month}/{iid}"
-    return iid
-
-def filename_to_iid(iid:str):
-    toks = iid.split("/")
-    if len(toks) == 3 and "".join(toks).isnumeric():
-        iid = toks[2]
-    return iid
-
-def load_item(iid:str):
-    iid = filename_to_iid(iid)
-    filename = iid_to_filename(iid)
-    filepath = os.path.join(ITEMS_ROOT, filename)
-    files = glob(f"{filepath}.*")
-
-    if len(files):
-        data = {"id": iid}
-
-        for file in files:
-            if file.lower().endswith(ITEMS_EXT):
-                data = data | read_metadata(read_textual(file))
-            elif file.lower().endswith(tuple([f".{ext}" for ext in EXTENSIONS["image"]])):
-                data["image"] = file.replace(os.sep, "/").removeprefix(f"{ITEMS_ROOT}/")
-            elif file.lower().endswith(tuple([f".{ext}" for ext in EXTENSIONS["video"]])):
-                data["video"] = file.replace(os.sep, "/").removeprefix(f"{ITEMS_ROOT}/")
-
-        return data
-
-def store_item(iid:str, data:dict, files:dict|None=None):
-    iid = filename_to_iid(iid)
-    existing = load_item(iid)
-    filename = split_iid(iid_to_filename(iid))
-    filepath = os.path.join(ITEMS_ROOT, *filename)
-    mkdirs(os.path.join(ITEMS_ROOT, filename[0]))
-    image = False
-    extra = {key: data[key] for key in ["provenance"] if key in data}
-    data = {key: data[key] for key in ["link", "title", "description", "image", "text"] if key in data}
-
-    if files and len(files):
-        file = files["file"]
-        if file.seek(0, os.SEEK_END):
-            file.seek(0, os.SEEK_SET)
-            mime = file.content_type.split("/")
-            ext = mime[1]
-            if mime[0] == "image" and ext in EXTENSIONS["image"] or mime[0] == "video" and ext in EXTENSIONS["video"]:
-                file.save(f"{filepath}.{ext}")
-                image = True
-    if not image and "image" in data and data["image"]:
-        if data["image"].lower().startswith("data:image/"):
-            ext = data["image"].lower().split(";")[0].split("/")[1]
-            if ext in EXTENSIONS["image"]:
-                with open(f"{filepath}.{ext}", "wb") as f:
-                    f.write(b64decode(data["image"].split(",")[1]))
-                    image = True
-        else:
-            response = requests.get(data["image"], timeout=5)
-            mime = response.headers["Content-Type"].split("/")
-            ext = mime[1]
-            if mime[0] == "image" and ext in EXTENSIONS["image"]:
-                with open(f"{filepath}.{ext}", "wb") as f:
-                    f.write(response.content)
-                    image = True
-    if not (existing or image or ("text" in data and data["text"])):
-        return False
-
-    if existing:
-        if (creator := safe_str_get(existing, "creator")):
-            data["creator"] = creator
-    else:
-        data["creator"] = current_user.username
-        items = current_user.data["items"] if "items" in current_user.data else []
-        items.append(iid)
-        current_user.data["items"] = items
-        write_textual(current_user.filepath, write_metadata(current_user.data))
-
-    if (provenance := safe_str_get(extra, "provenance")):
-        data["systags"] = provenance
-    write_textual(filepath + ITEMS_EXT, write_metadata(data))
-    return True
-
-def delete_item(item:dict|str):
-    iid = cast(str, item["id"] if type(item) == dict else item)
-    filepath = os.path.join(ITEMS_ROOT, iid_to_filename(iid))
-    files = glob(f"{filepath}.*")
-    for file in files:
-        os.remove(file)
-
-def read_metadata(text:str) -> dict:
-    config = ConfigParser(interpolation=None)
-    config.read_string(f"[DEFAULT]\n{text}")
-    data = config._defaults # type: ignore[attr-defined]
-    for key in ("items", "systags"):
-        if key in data:
-            data[key] = wsv_to_list(data[key])
-    return data
-
-def write_metadata(data:dict) -> str:
-    output = StringIO()
-    config = ConfigParser(interpolation=None)
-    for key in ("image", "video", "datetime"):
-        if key in data:
-            del data[key]
-    for key in list(data.keys()):
-        if (value := data[key]):
-            if type(value) == list:
-                data[key] = list_to_wsv(value)
-        else:
-            del data[key]
-    config["DEFAULT"] = data
-    config.write(output)
-    return "\n".join(output.getvalue().splitlines()[1:]) # remove section header
-
-def fetch_url_data(url:str):
-    response = requests.get(url, timeout=5)
-    soup = BeautifulSoup(response.text, "html.parser")
-
-    description = None
-    desc_tag = soup.find("meta", attrs={"name": "description"}) or \
-                soup.find("meta", attrs={"property": "og:description"})
-    if desc_tag and "content" in desc_tag.attrs: # type: ignore[attr-defined]
-        description = desc_tag["content"] # type: ignore[index]
-
-    image = None
-    img_tag = soup.find("meta", attrs={"property": "og:image"}) or \
-                soup.find("meta", attrs={"name": "twitter:image"})
-    if img_tag and "content" in img_tag.attrs: # type: ignore[attr-defined]
-        image = img_tag["content"] # type: ignore[index]
-
-    return {
-        "title": soup_or_default(soup, "meta", {"property": "og:title"}, "content", (soup.title.string if soup.title else None)),
-        "description": description,
-        "image": image,
-        "link": soup_or_default(soup, "link", {"rel": "canonical"}, "href", url),
-    }
-
-def soup_or_default(soup:BeautifulSoup, tag:str, attrs:dict, prop:str, default):
-    elem = soup.find(tag, attrs=attrs)
-    return (elem.get(prop) if elem else None) or default # type: ignore[attr-defined]
-
-def generate_iid() -> str:
-    return str(next(snowflake))
-
-def split_iid(iid:str):
-    toks = iid.split("/")
-    return ["/".join(toks[:-1]), toks[-1]]
-
-def strip_ext(filename:str):
-    return os.path.splitext(filename)[0]
-
-def list_to_wsv(data:list, sep="\n") -> str:
-    return sep.join(data)
-
-def wsv_to_list(data:str) -> list:
-    return data.strip().replace(" ", "\n").replace("\t", "\n").splitlines()
-
-def safe_str_get(dikt:dict[str, str|None], key:str) -> str:
-    return dikt.get(key) or ""
-
-def mkdirs(*paths:str):
-    for path in paths:
-        Path(path).mkdir(parents=True, exist_ok=True)
+def load_user(username:str) -> User|None:
+    filepath = os.path.join(USERS_ROOT, (username + ITEMS_EXT))
+    if os.path.exists(filepath):
+        return User(username, filepath)
+    return None
 
 mkdirs(ITEMS_ROOT, USERS_ROOT)
 

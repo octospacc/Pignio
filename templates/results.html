@@ -6,7 +6,7 @@
 <div class="load-wrapper uk-margin">
   {% if next_page %}
     <a href="/?page={{ next_page }}" class="uk-button uk-button-secondary uk-width-1-1"
-        up-target=".results:after, .load-wrapper" up-select=".results > *, .load-wrapper"
+       up-target=".results:after, .load-wrapper" up-preload
     >Load More</a>
   {% endif %}
 </div>
