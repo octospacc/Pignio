@@ -17,6 +17,9 @@
     <div class="uk-margin" {% if not item.image %} hidden {% endif %}>
       <img src="{{ url_for('serve_media', filename=item.image) }}" class="image" />
     </div>
+    <div class="uk-margin" {% if not item.video %} hidden {% endif %}>
+      <video src="{{ url_for('serve_media', filename=item.video) }}" class="video" controls></video>
+    </div>
     <div class="uk-margin uk-grid">
       <label>
         <input type="checkbox" class="from-link uk-checkbox" {% if not item.id %} checked {% endif %} />
@@ -25,8 +28,8 @@
       <label>
         <select class="uk-select" name="provenance">
           <option value="">No provenance</option>
-          <option value="oc" {% if item.systags == 'oc' %} selected {% endif %}>Original content</option>
-          <option value="ai" {% if item.systags == 'ai' %} selected {% endif %}>AI-generated</option>
+          <option value="oc" {% if 'oc' in item.systags %} selected {% endif %}>Original content</option>
+          <option value="ai" {% if 'ai' in item.systags %} selected {% endif %}>AI-generated</option>
         </select>
       </label>      
       <!-- <label>

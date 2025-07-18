@@ -12,6 +12,7 @@ function addHandler(form) {
   var checkLink = form.querySelector('input.from-link');
   // var checkProxatore = form.querySelector('input.with-proxatore');
   var image = form.querySelector('img.image');
+  var video = form.querySelector('video.video');
   var upload = form.querySelector('input[name="file"]');
 
   upload.addEventListener('change', function(ev) {
@@ -19,19 +20,27 @@ function addHandler(form) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = function(e) {
-      image.src = e.target.result;
-      image.parentElement.hidden = false;
+      var uri = e.target.result;
+      image.parentElement.hidden = video.parentElement.hidden = true;
+      if (uri.startsWith('data:image/')) {
+        image.src = e.target.result;
+        image.parentElement.hidden = false;
+      } else if (uri.startsWith('data:video/')) {
+        video.src = e.target.result;
+        video.parentElement.hidden = false;
+      }
     };
     reader.readAsDataURL(file);
   });
 
-  document.addEventListener('paste', function(ev) {
+  form.addEventListener('paste', function(ev) {
     const items = (ev.clipboardData || ev.originalEvent.clipboardData).items;
     for (let item of items) {
-      if (item.type.indexOf('image') !== -1) {
+      if (item.type.startsWith('image/')) {
         const file = item.getAsFile();
         const reader = new FileReader();
         reader.onload = function(e) {
+          video.parentElement.hidden = true;
           image.src = e.target.result;
           image.parentElement.hidden = false;
           const dataTransfer = new DataTransfer();

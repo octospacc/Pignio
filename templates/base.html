@@ -6,15 +6,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{% if title %}{{ title }} | {% endif %}{{ config.APP_ICON }} {{ config.APP_NAME }}</title>
-  <link rel="stylesheet" href="{{ url_for('serve_module_dist', module='uikit', filename='css/uikit.min.css') }}" />
-  <script src="{{ url_for('serve_module_dist', module='uikit', filename='js/uikit.min.js') }}"></script>
-  <script src="{{ url_for('serve_module_dist', module='uikit', filename='js/uikit-icons.min.js') }}"></script>
-  <script src="{{ url_for('serve_module_main', module='unpoly', filename='unpoly.min.js') }}" onload="(function(){
+  <link rel="stylesheet" href="{{ url_for('serve_module_uikit', filename='css/uikit.min.css') }}" />
+  <script src="{{ url_for('serve_module_uikit', filename='js/uikit.min.js') }}"></script>
+  <script src="{{ url_for('serve_module_uikit', filename='js/uikit-icons.min.js') }}"></script>
+  <script src="{{ url_for('serve_module_unpoly', filename='unpoly.min.js') }}" onload="(function(){
     up.link.config.followSelectors.push('a[href]');
     up.link.config.instantSelectors.push('a[href]');
     up.form.config.submitSelectors.push(['form']);
   })();"></script>
-  <link rel="stylesheet" href="{{ url_for('serve_module_main', module='unpoly', filename='unpoly.min.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('serve_module_unpoly', filename='unpoly.min.css') }}" />
   <script src="{{ url_for('static', filename='add.js') }}" defer></script>
   {% if canonical %}
     <link rel="canonical" href="{{ config.LINKS_PREFIX }}{{ canonical }}" />
@@ -24,6 +24,12 @@
   {% block metadata %}{% endblock %}
   <link rel="manifest" href="{{ url_for('serve_manifest') }}" />
   <meta name="generator" content="{{ config.APP_NAME }}" />
+  {% if config.SITE_VERIFICATION.GOOGLE %}
+    <meta name="google-site-verification" content="{{ config.SITE_VERIFICATION.GOOGLE }}" />
+  {% endif %}
+  {% if config.SITE_VERIFICATION.BING %}
+    <meta name="msvalidate.01" content="{{ config.SITE_VERIFICATION.BING }}" />
+  {% endif %}
 </head>
 <body class="uk-height-viewport uk-flex uk-flex-column">
   <nav class="uk-navbar-container" uk-sticky="sel-target: .uk-navbar-container; cls-active: uk-navbar-sticky">

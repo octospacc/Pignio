@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>{{ user.username }} Feed | {{ config.APP_ICON }} {{ config.APP_NAME }}</title>
+  <id>{{ url_for('view_user', username=user.username, _external=True) }}</id>
+  <link href="{{ url_for('view_user', username=user.username, _external=True) }}" />
+  {% for folder, collection in collections.items() %}
+    {% for iid in collection %}
+      {% with item=load_item(iid) %}
+        <entry>
+          <id>{{ item.id }}</id>
+          <link href="{{ url_for('view_item', iid=item.id, _external=True) }}" />
+          <!-- <title>{{ item.title }}</title> -->
+          <!-- <updated>{{ item.datetime }}</updated> -->
+          <summary>{{ item.description }}</summary>
+          <content type="html">
+            <![CDATA[
+              <p>
+                {% if item.image %}
+                  <img src="{{ url_for('serve_media', filename=item.image, _external=True) }}">
+                {% elif item.video %}
+                  <video src="{{ url_for('serve_media', filename=item.video, _external=True) }}" controls></video>
+                {% endif %}
+              </p>
+              <p>{{ item.description }}</p>
+              <p>{{ item.link }}</p>
+            ]]>
+          </content>
+        </entry>
+      {% endwith %}
+    {% endfor %}
+  {% endfor %}
+</feed>

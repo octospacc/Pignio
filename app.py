@@ -3,6 +3,7 @@ import requests
 import urllib.parse
 from functools import wraps
 from typing import Any, cast
+from random import shuffle
 from base64 import b64decode, urlsafe_b64encode
 from io import StringIO
 from configparser import ConfigParser
@@ -11,7 +12,7 @@ from flask import Flask, request, redirect, render_template, send_from_directory
 from flask_bcrypt import Bcrypt # type: ignore[import-untyped]
 from flask_login import LoginManager, UserMixin, current_user, login_user, logout_user, login_required # type: ignore[import-untyped]
 from flask_wtf import FlaskForm # type: ignore[import-untyped]
-from wtforms import StringField, PasswordField, SubmitField # type: ignore[import-untyped]
+from wtforms import StringField, PasswordField, BooleanField, SubmitField # type: ignore[import-untyped]
 from wtforms.validators import DataRequired # type: ignore[import-untyped]
 from glob import glob
 from pathlib import Path
@@ -25,6 +26,10 @@ DEVELOPMENT = False
 HTTP_PORT = 5000
 HTTP_THREADS = 32
 LINKS_PREFIX = ""
+SITE_VERIFICATION = {
+    "GOOGLE": "",
+    "BING": "",
+}
 # endconfig #
 
 try:
@@ -42,12 +47,14 @@ SECRET_KEY = "{token_urlsafe()}"
     from _config import *
 
 app = Flask(__name__)
-app.config["LINKS_PREFIX"] = LINKS_PREFIX
-app.config["APP_NAME"] = "Pignio"
-app.config["APP_ICON"] = "📌"
 app.config["DEVELOPMENT"] = DEVELOPMENT
 app.config["SECRET_KEY"] = SECRET_KEY
 app.config["BCRYPT_HANDLE_LONG_PASSWORDS"] = True
+
+app.config["LINKS_PREFIX"] = LINKS_PREFIX
+app.config["APP_NAME"] = "Pignio"
+app.config["APP_ICON"] = "📌"
+app.config["SITE_VERIFICATION"] = SITE_VERIFICATION
 
 login_manager = LoginManager()
 login_manager.login_view = "login"
@@ -79,6 +86,7 @@ class User(UserMixin):
 class LoginForm(FlaskForm):
     username = StringField("Username", validators=[DataRequired()])
     password = PasswordField("Password", validators=[DataRequired()])
+    remember = BooleanField()
     submit = SubmitField("Login")
 
 def noindex(view_func):
@@ -94,8 +102,12 @@ def index():
     limit = 50
     page = int(request.args.get("page", 1))
     next_count = (limit * page)
-    items = walk_items()
-    return render_template("index.html", items=items[(limit * (page - 1)):next_count], next_page=(page + 1 if len(items) > next_count else None))
+    all_items = walk_items()
+    items = all_items[(limit * (page - 1)):next_count]
+    if len(items) == 0 and len(all_items) > 0:
+        abort(404)
+    shuffle(items)
+    return render_template("index.html", items=items, next_page=(page + 1 if len(all_items) > next_count else None))
 
 @app.route("/manifest.json")
 @noindex
@@ -104,15 +116,15 @@ def serve_manifest():
     response.headers["Content-Type"] = "application/json"
     return response
 
-@app.route("/static/module/<path:module>/<path:filename>")
+@app.route("/static/module/dist/uikit/<path:filename>")
 @noindex
-def serve_module_main(module:str, filename:str):
-    return send_from_directory(os.path.join("node_modules", module), filename)
+def serve_module_uikit(filename:str):
+    return send_from_directory(os.path.join("node_modules", "uikit", "dist"), filename)
 
-@app.route("/static/module/dist/<path:module>/<path:filename>")
+@app.route("/static/module/unpoly/<path:filename>")
 @noindex
-def serve_module_dist(module:str, filename:str):
-    return send_from_directory(os.path.join("node_modules", module, "dist"), filename)
+def serve_module_unpoly(filename:str):
+    return send_from_directory(os.path.join("node_modules", "unpoly"), filename)
 
 @app.route("/media/<path:filename>")
 def serve_media(filename:str):
@@ -129,6 +141,15 @@ def view_item(iid:str):
 def view_user(username:str):
     if (user := load_user(username)):
         return render_template("user.html", user=user, collections=walk_collections(username), load_item=load_item)
+    else:
+        abort(404)
+
+@app.route("/user/<path:username>/feed")
+def view_user_feed(username:str):
+    if (user := load_user(username)):
+        response = make_response(render_template("user-feed.xml", user=user, collections=walk_collections(username), load_item=load_item))
+        response.headers["Content-Type"] = "application/atom+xml"
+        return response
     else:
         abort(404)
 
@@ -211,6 +232,7 @@ def login():
                     write_textual(user.filepath, write_metadata(user.data))
                 session["session_hash"] = generate_user_hash(user.username, user.data["password"])
                 login_user(user)
+                # login_user(user, remember=bool(form.remember.data))
                 # next_url = flask.request.args.get('next')
                 # if not url_has_allowed_host_and_scheme(next_url, request.host): return flask.abort(400)
                 # return redirect(next_url or url_for("index"))
@@ -303,6 +325,7 @@ def walk_collections(username:str):
     filepath = os.path.join(filepath, username)
     data = read_metadata(read_textual(filepath + ITEMS_EXT))
     results[""] = data["items"] if "items" in data else []
+    results[""].reverse()
 
     # for root, dirs, files in os.walk(filepath):
     #     rel_path = os.path.relpath(root, filepath).replace(os.sep, "/")
@@ -411,7 +434,7 @@ def read_metadata(text:str) -> dict:
     config = ConfigParser(interpolation=None)
     config.read_string(f"[DEFAULT]\n{text}")
     data = config._defaults # type: ignore[attr-defined]
-    for key in ("items",):
+    for key in ("items", "systags"):
         if key in data:
             data[key] = wsv_to_list(data[key])
     return data

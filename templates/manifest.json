@@ -1,5 +1,12 @@
 {
     "name": "{{ config.APP_NAME }}",
     "start_url": "{{ url_for('index') }}",
-    "display": "standalone"
+    "display": "standalone",
+    "icons": [
+        {
+            "src": "{{ url_for('static', filename='icon.png') }}",
+            "type": "image/png",
+            "sizes": "768x768"
+        }
+    ]
 }

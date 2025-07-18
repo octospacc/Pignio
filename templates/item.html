@@ -29,6 +29,24 @@
       <div class="uk-text-truncate">
         <a href="{{ item.link }}" target="_blank">{{ item.link }}</a>
       </div>
+      <div class="uk-margin">
+        {% for tag in item.systags %}
+          <button class="uk-button uk-button-default uk-button-small" uk-toggle="target: #modal-systags-{{ tag }}">{{ tag }}</button>
+          <div id="modal-systags-{{ tag }}" uk-modal>
+            <div class="uk-modal-dialog uk-modal-body">
+              <button class="uk-modal-close-default" type="button" uk-close></button>
+              <h2 class="uk-modal-title">"{{ tag }}" marking</h2>
+              <p>
+                {% if tag == 'ai' %}
+                  This media is marked as being generated, in whole or substantial part, by artificial intelligence models.
+                {% elif tag == 'oc' %}
+                  The user who uploaded this media has marked it as being their own original content.
+                {% endif %}
+              </p>
+            </div>
+        </div>
+        {% endfor %}
+      </div>
       <p class="uk-text-break" style="white-space: pre-line;">{{ item.description }}</p>
       <div class="uk-margin">
         <a class="uk-button uk-button-default uk-icon-link" href="{{ url_for('add_item') }}?item={{ item.id }}" rel="nofollow">
