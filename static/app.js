@@ -1,9 +1,14 @@
 if ('up' in window) {
   up.compiler('form.add', addHandler);
+  up.compiler('div.item', itemHandler);
 } else {
-  var form = document.querySelector('form.add');
-  if (form) {
-    addHandler(form);
+  var add = document.querySelector('form.add');
+  if (add) {
+    addHandler(add);
+  }
+  var item = document.querySelector('div.item');
+  if (item) {
+    itemHandler(item);
   }
 }
 
@@ -71,8 +76,30 @@ function addHandler(form) {
               el.parentElement.hidden = false;
             }
           }
-        })
+        });
       }
+    });
+  });
+}
+
+function itemHandler(section) {
+  var button = section.querySelector('div.pin button');
+  var pins = section.querySelector('div.pin ul');
+  var url = `../api/collections/${section.dataset.itemId}`;
+
+  fetch(url)
+  .then(res => res.json())
+  .then(data => {
+    Object.keys(data).map(name => pins.appendChild(Object.assign(document.createElement('li'), { innerHTML: `
+      <label data-collection="${name}"><input class="uk-checkbox" type="checkbox" ${data[name] ? 'checked' : ''}> ${name || 'Profile'}</label>
+    ` })));
+
+    pins.querySelectorAll('li input').forEach(checkbox => {
+      checkbox.addEventListener('change', () => {
+        fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [checkbox.parentElement.dataset.collection]: checkbox.checked }) });
+      });
     })
+
+    button.classList.remove('uk-disabled');
   });
 }

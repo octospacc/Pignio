@@ -15,7 +15,7 @@
     up.form.config.submitSelectors.push(['form']);
   })();"></script>
   <link rel="stylesheet" href="{{ url_for('serve_module_unpoly', filename='unpoly.min.css') }}" />
-  <script src="{{ url_for('static', filename='add.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
   {% if canonical %}
     <link rel="canonical" href="{% include 'links-prefix.txt' %}{{ canonical }}" />
     <meta name="og:url" content="{% include 'links-prefix.txt' %}{{ canonical }}" />

@@ -16,9 +16,11 @@ class ItemDict(MetaDict, total=False):
     text: str
     systags: list[str]
 
-class UserDict(MetaDict, total=False):
-    password: Required[str]
+class CollectionDict(MetaDict, total=False):
     items: list[str]
+
+class UserDict(CollectionDict, total=False):
+    password: Required[str]
 
 DATA_ROOT = "data"
 ITEMS_ROOT = f"{DATA_ROOT}/items"

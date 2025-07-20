@@ -10,19 +10,15 @@
           <entry>
             <id>{{ item.id }}</id>
             <link href="{% include 'links-prefix.txt' %}{{ url_for('view_item', iid=item.id) }}" />
-            <!-- <title>{{ item.title }}</title> -->
+            <title>{% include 'item-title.txt' %}</title>
             <published>{{ item.datetime }}</published>
             <summary>{{ item.description }}</summary>
             <content type="html">
               <![CDATA[
                 <p>
-                  {% if item.text %}
-                    {{ item.text }}
-                  {% elif item.image %}
-                    <img src="{% include 'links-prefix.txt' %}{{ url_for('serve_media', filename=item.image) }}">
-                  {% elif item.video %}
-                    <video src="{% include 'links-prefix.txt' %}{{ url_for('serve_media', filename=item.video) }}" controls></video>
-                  {% endif %}
+                  {% with full=true, external=true %}
+                    {% include "item-content.html" %}
+                  {% endwith %}
                 </p>
                 <p>{{ item.description }}</p>
                 <p>{{ item.link }}</p>

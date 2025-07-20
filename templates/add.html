@@ -14,6 +14,7 @@
   <form method="POST" enctype="multipart/form-data" class="add">
     <input type="hidden" name="id" value="{{ item.id }}" />
     <input type="hidden" name="image" />
+    <input type="hidden" name="video" />
     <div class="uk-margin" {% if not item.image %} hidden {% endif %}>
       <img src="{{ url_for('serve_media', filename=item.image) }}" class="image" />
     </div>
@@ -57,11 +58,19 @@
     <div class="uk-margin">
       <textarea class="uk-textarea" rows="5" name="description" placeholder="Description">{{ item.description }}</textarea>
     </div>
+    <!-- <div class="uk-margin">
+      <textarea class="uk-textarea" rows="5" name="alttext" placeholder="Alt Text">{{ item.alttext }}</textarea>
+    </div> -->
     <div class="uk-margin">
       <textarea class="uk-textarea" rows="5" name="text" placeholder="Text">{{ item.text }}</textarea>
     </div>
-    <div class="uk-margin">
-      <button class="uk-input uk-button uk-button-primary" type="submit">{{ ("Edit " + item.id) if item.id else "Add" }}</button>
+    <div class="uk-margin uk-grid-small" uk-grid>
+      <div>
+        <a class="uk-button uk-button-default" href="{{ url_for('view_item', iid=item.id) }}">Back</a>
+      </div>
+      <div>
+        <button class="uk-button uk-button-primary" type="submit">{{ ("Edit " + item.id) if item.id else "Add" }}</button>
+      </div>
     </div>
   </form>
 {% endblock %}

@@ -57,6 +57,9 @@ class User(UserMixin):
 
     def get_id(self) -> str:
         return generate_user_hash(self.username, self.data["password"])
+    
+    def is_admin(self) -> bool:
+        return True # TODO
 
 class LoginForm(FlaskForm):
     username = StringField("Username", validators=[DataRequired()])
@@ -212,6 +215,24 @@ def logout():
 @login_required
 def link_preview():
     return fetch_url_data(request.args.get("url"))
+
+@app.route("/api/duplicates", methods=["POST"])
+@noindex
+@login_required
+def check_duplicates():
+    ...
+
+@app.route("/api/collections/<path:iid>", methods=["GET", "POST"])
+@noindex
+@login_required
+def collections_api(iid:str):
+    if request.method == "POST":
+        for collection, status in request.get_json().items():
+            toggle_in_collection(current_user.username, collection, iid, status)
+    results: dict[str, bool] = {}
+    for folder, collection in walk_collections(current_user.username).items():
+        results[folder] = iid in collection
+    return results
 
 @app.route("/api/items", defaults={'iid': None}, methods=["POST"])
 @app.route("/api/items/<path:iid>", methods=["GET", "PUT", "DELETE"])

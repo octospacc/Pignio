@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}🗑 Delete item{% endblock %}
 {% block content %}
+  <h3>Delete item <var>{{ item.id }}</var>?</h3>
   <form method="POST">
     <input type="hidden" name="id" value="{{ item.id }}" />
     <div class="uk-margin uk-grid-small" uk-grid>
@@ -8,7 +9,7 @@
         <a class="uk-button uk-button-default" href="{{ url_for('view_item', iid=item.id) }}">Back</a>
       </div>
       <div>
-        <button class="uk-input uk-button uk-button-danger" type="submit">Delete {{ item.id }}</button>
+        <button class="uk-button uk-button-danger" type="submit">Delete {{ item.id }}</button>
       </div>
     </div>
   </form>

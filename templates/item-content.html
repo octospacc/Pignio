@@ -1,9 +1,12 @@
+{% if item.image %}
+  {% set image %}{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('serve_media', filename=item.image) }}{% endset %}
+{% endif %}
 {% if item.text %}
-  <div class="uk-background-cover uk-height-small uk-flex uk-flex-center uk-flex-middle uk-text-center uk-text-middle uk-overflow-hidden" style="background-image: url('https://getuikit.com/docs/images/dark.jpg');">
+  <div class="uk-background-cover uk-height-small uk-flex uk-flex-center uk-flex-middle uk-text-center uk-text-middle uk-overflow-hidden" style="background-image: url('{{ image }}');">
     <p class="uk-text-stroke uk-text-primary">{{ item.text }}</p>
   </div>
 {% elif item.image %}
-  <img class="uk-width-expand" src="{{ url_for('serve_media', filename=item.image) }}" alt="{{ item.description }}" />
+  <img class="uk-width-expand" src="{{ image }}" alt="{{ item.description }}" />
 {% elif item.video %}
-  <video src="{{ url_for('serve_media', filename=item.video) }}" {% if full %} controls {% else %} autoplay muted {% endif %} loop></video>
+  <video src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('serve_media', filename=item.video) }}" {% if full %} controls {% else %} autoplay muted {% endif %} loop></video>
 {% endif %}

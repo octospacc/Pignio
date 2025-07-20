@@ -2,6 +2,7 @@ import os
 import requests
 from typing import Any, cast
 from base64 import b64decode, urlsafe_b64encode
+from urllib.parse import urlparse
 from io import StringIO
 from configparser import ConfigParser
 from bs4 import BeautifulSoup
@@ -15,8 +16,8 @@ from _pignio import *
 def generate_user_hash(username:str, password:str) -> str:
     return f"{username}:" + urlsafe_b64encode(sha256(password.encode()).digest()).decode()
 
-def walk_items():
-    results = {}
+def walk_items() -> list:
+    results: dict[str, dict[str, ItemDict|None]] = {}
 
     for root, dirs, files in os.walk(ITEMS_ROOT):
         rel_path = os.path.relpath(root, ITEMS_ROOT).replace(os.sep, "/")
@@ -114,15 +115,16 @@ def store_item(iid:str, data:dict[str, str], files:dict|None=None) -> bool:
                 file.save(f"{filepath}.{ext}")
                 has_media = True
 
-    if not has_media and "image" in data and data["image"]:
-        if data["image"].lower().startswith("data:image/"):
-            ext = data["image"].lower().split(";")[0].split("/")[1]
-            if is_file_type_allowed("image", ext):
+    if not has_media and (media := safe_str_get(data, "video") or safe_str_get(data, "image")):
+        if media.lower().startswith("data:"):
+            kind = media.split("/")[0].split(":")[1].lower()
+            ext = media.split(";")[0].split("/")[1].lower()
+            if is_file_type_allowed(kind, ext):
                 with open(f"{filepath}.{ext}", "wb") as f:
-                    f.write(b64decode(data["image"].split(",")[1]))
+                    f.write(b64decode(media.split(",")[1]))
                     has_media = True
         else:
-            response = requests.get(data["image"], timeout=5)
+            response = requests.get(media, timeout=5)
             mime = response.headers["Content-Type"].split("/")
             if is_file_type_allowed(mime[0], (ext := mime[1])):
                 with open(f"{filepath}.{ext}", "wb") as f:
@@ -137,10 +139,7 @@ def store_item(iid:str, data:dict[str, str], files:dict|None=None) -> bool:
             data["creator"] = creator
     else:
         data["creator"] = current_user.username
-        items = current_user.data["items"] if "items" in current_user.data else []
-        items.append(iid)
-        current_user.data["items"] = items
-        write_textual(current_user.filepath, write_metadata(current_user.data))
+        toggle_in_collection(current_user.username, "", iid, True)
 
     if (provenance := safe_str_get(extra, "provenance")):
         data["systags"] = provenance
@@ -159,6 +158,19 @@ def delete_item(item:dict|str) -> int:
 
 def is_file_type_allowed(kind:str, ext:str) -> bool:
     return ((kind == "image" and ext in EXTENSIONS["image"]) or (kind == "video" and ext in EXTENSIONS["video"]))
+
+def toggle_in_collection(username:str, collection:str, iid:str, status:bool) -> None:
+    filepath = get_collection_filepath(username, collection)
+    data = cast(CollectionDict, read_metadata(read_textual(filepath)))
+    items = data["items"] if "items" in data else []
+    if status:
+        items.append(iid)
+    else:
+        items.remove(iid)
+    write_textual(filepath, write_metadata(data))
+
+def get_collection_filepath(username:str, collection:str) -> str:
+    return f"{USERS_ROOT}/{username}" + (f"/{collection}" if collection else "") + ITEMS_EXT
 
 def read_metadata(text:str) -> MetaDict:
     config = ConfigParser(interpolation=None)
@@ -198,6 +210,17 @@ def fetch_url_data(url:str) -> dict[str, str|None]:
                 soup.find("meta", attrs={"name": "twitter:image"})
     if img_tag and "content" in img_tag.attrs: # type: ignore[attr-defined]
         image = img_tag["content"] # type: ignore[index]
+    
+    if image:
+        parsed = urlparse(image)
+        if not parsed.scheme and not parsed.netloc:
+            parsed = urlparse(url)
+            image = f"{parsed.scheme}://{parsed.netloc}" + image
+
+    # video = None
+    # video_tag = soup.find("meta", attrs={"property": "og:video"})
+    # if video_tag and "content" in video_tag.attrs:
+    #     video = video_tag["content"]
 
     return {
         "title": soup_or_default(soup, "meta", {"property": "og:title"}, "content", (soup.title.string if soup.title else None)),
