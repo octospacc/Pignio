@@ -16,10 +16,14 @@ from _pignio import *
 def generate_user_hash(username:str, password:str) -> str:
     return f"{username}:" + urlsafe_b64encode(sha256(password.encode()).digest()).decode()
 
-def walk_items() -> list:
+def walk_items(walk_path:str|None=None) -> list:
     results: dict[str, dict[str, ItemDict|None]] = {}
 
-    for root, dirs, files in os.walk(ITEMS_ROOT):
+    walk_root = ITEMS_ROOT
+    if walk_path:
+        walk_root += f"/{walk_path}"
+
+    for root, dirs, files in os.walk(walk_root):
         rel_path = os.path.relpath(root, ITEMS_ROOT).replace(os.sep, "/")
         if rel_path == ".":
             rel_path = ""
@@ -63,7 +67,7 @@ def datetime_from_snowflake(iid:str) -> datetime:
     return Snowflake.parse(int(iid), snowflake_epoch).datetime
 
 def iid_to_filename(iid:str) -> str:
-    if len(iid.split("/")) == 1:
+    if len(iid.split("/")) == 1 and iid.isnumeric():
         date = datetime_from_snowflake(iid)
         iid = f"{date.year}/{date.month}/{iid}"
     return iid

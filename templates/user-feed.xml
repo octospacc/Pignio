@@ -1,32 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
+{% set ns = namespace(count=0) %}
 <feed xmlns="http://www.w3.org/2005/Atom">
   <title>@{{ user.username }} Feed | {{ config.APP_ICON }} {{ config.APP_NAME }}</title>
   <id>{% include 'links-prefix.txt' %}{{ url_for('view_user', username=user.username) }}</id>
   <link href="{% include 'links-prefix.txt' %}{{ url_for('view_user', username=user.username) }}" />
   {% for folder, collection in collections.items() %}
     {% for iid in collection %}
-      {% with item=load_item(iid) %}
-        {% if item %}
-          <entry>
-            <id>{{ item.id }}</id>
-            <link href="{% include 'links-prefix.txt' %}{{ url_for('view_item', iid=item.id) }}" />
-            <title>{% include 'item-title.txt' %}</title>
-            <published>{{ item.datetime }}</published>
-            <summary>{{ item.description }}</summary>
-            <content type="html">
-              <![CDATA[
-                <p>
-                  {% with full=true, external=true %}
-                    {% include "item-content.html" %}
-                  {% endwith %}
-                </p>
-                <p>{{ item.description }}</p>
-                <p>{{ item.link }}</p>
-              ]]>
-            </content>
-          </entry>
-        {% endif %}
-      {% endwith %}
+      {% if ns.count < limit %}
+        {% with item=load_item(iid) %}
+          {% if item %}
+            <entry>
+              <id>{{ item.id }}</id>
+              <link href="{% include 'links-prefix.txt' %}{{ url_for('view_item', iid=item.id) }}" />
+              <title>{% include 'item-title.txt' %}</title>
+              <published>{{ item.datetime }}</published>
+              <summary>{{ item.description }}</summary>
+              <content type="html">
+                <![CDATA[
+                  <p>
+                    {% with full=true, external=true %}
+                      {% include "item-content.html" %}
+                    {% endwith %}
+                  </p>
+                  <p>{{ item.description }}</p>
+                  <p>{{ item.link }}</p>
+                ]]>
+              </content>
+            </entry>
+            {% set ns.count = ns.count + 1 %}
+          {% endif %}
+        {% endwith %}
+      {% endif %}
     {% endfor %}
   {% endfor %}
 </feed>

@@ -32,7 +32,13 @@
           <option value="oc" {% if 'oc' in item.systags %} selected {% endif %}>Original content</option>
           <option value="ai" {% if 'ai' in item.systags %} selected {% endif %}>AI-generated</option>
         </select>
-      </label>      
+      </label>
+      <!-- <label>
+        <select class="uk-select" name="lang">
+          <option value="">Content Language</option>
+          <option value="eng">English</option>
+        </select>
+      </label> -->
       <!-- <label>
         <input type="checkbox" class="with-proxatore uk-checkbox" />
         Transparently use Proxatore
@@ -50,7 +56,10 @@
       <input type="color" class="uk-input" name="color" value="{{ item.text }}" />
     </div> -->
     <div class="uk-margin">
-      <input class="uk-input" type="text" name="link" placeholder="URL" value="{{ item.link }}" />
+      <div class="uk-inline uk-width-1-1">
+        <button class="uk-form-icon uk-form-icon-flip paste-link" type="button" uk-icon="icon: move"></button>
+        <input class="uk-input" type="text" name="link" placeholder="URL" value="{{ item.link }}" />
+      </div>
     </div>
     <div class="uk-margin">
       <input class="uk-input" type="text" name="title" placeholder="Title" value="{{ item.title }}" />

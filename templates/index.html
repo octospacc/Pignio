@@ -1,5 +1,13 @@
 {% extends "base.html" %}
 {% block canonical %}{{ url_for('index') }}{% endblock %}
 {% block content %}
+  {% if root %}
+    <div class="uk-text-center">
+      <h2>{{ root.split('/')[-1] }}</h2>
+    </div>
+    {% with path=root, always=true %}
+      {% include "breadcrumbs.html" %}
+    {% endwith %}
+  {% endif %}
   {% include "results.html" %}
 {% endblock %}

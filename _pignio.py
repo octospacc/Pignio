@@ -14,6 +14,7 @@ class ItemDict(MetaDict, total=False):
     image: str
     video: str
     text: str
+    alttext: str
     systags: list[str]
 
 class CollectionDict(MetaDict, total=False):
@@ -26,7 +27,7 @@ DATA_ROOT = "data"
 ITEMS_ROOT = f"{DATA_ROOT}/items"
 USERS_ROOT = f"{DATA_ROOT}/users"
 EXTENSIONS = {
-    "image": ("jpg", "jpeg", "png", "gif", "webp", "avif"),
+    "image": ("jpg", "jpeg", "jfif", "png", "apng", "gif", "webp", "avif"),
     "video": ("mp4", "mov", "mpeg", "ogv", "webm", "mkv"),
     "audio": ("mp3", "m4a", "flac", "opus", "ogg", "wav"),
 }

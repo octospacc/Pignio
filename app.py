@@ -17,6 +17,7 @@ DEVELOPMENT = False
 HTTP_PORT = 5000
 HTTP_THREADS = 32
 LINKS_PREFIX = ""
+RESULTS_LIMIT = 50
 SITE_VERIFICATION = {
     "GOOGLE": "",
     "BING": "",
@@ -77,15 +78,7 @@ def noindex(view_func):
 
 @app.route("/")
 def index():
-    limit = 50
-    page = int(request.args.get("page", 1))
-    next_count = (limit * page)
-    all_items = walk_items()
-    items = all_items[(limit * (page - 1)):next_count]
-    if len(items) == 0 and len(all_items) > 0:
-        abort(404)
-    shuffle(items)
-    return render_template("index.html", items=items, next_page=(page + 1 if len(all_items) > next_count else None))
+    return view_random_items(request)
 
 @app.route("/manifest.json")
 @noindex
@@ -110,7 +103,9 @@ def serve_media(filename:str):
 
 @app.route("/item/<path:iid>")
 def view_item(iid:str):
-    if (item := load_item(iid)):
+    if os.path.isdir(os.path.join(ITEMS_ROOT, iid)):
+        return view_random_items(request, iid)
+    elif (item := load_item(iid)):
         return render_template("item.html", item=item)
     else:
         abort(404)
@@ -125,7 +120,8 @@ def view_user(username:str):
 @app.route("/user/<path:username>/feed")
 def view_user_feed(username:str):
     if (user := load_user(username)):
-        response = make_response(render_template("user-feed.xml", user=user, collections=walk_collections(username), load_item=load_item))
+        limit = int(request.args.get("limit") or 100)
+        response = make_response(render_template("user-feed.xml", user=user, collections=walk_collections(username), limit=limit, load_item=load_item))
         response.headers["Content-Type"] = "application/atom+xml"
         return response
     else:
@@ -265,11 +261,26 @@ def unauthorized():
         flash("Please log in to access this page.")
         return redirect(login_url("login", request.url))
 
+@app.before_request
+def remove_trailing_slash():
+    if request.path != "/" and request.path.endswith("/"):
+        return redirect(request.path.rstrip("/"))
+
 def load_user(username:str) -> User|None:
     filepath = os.path.join(USERS_ROOT, (username + ITEMS_EXT))
     if os.path.exists(filepath):
         return User(username, filepath)
     return None
+
+def view_random_items(request, root:str|None=None):
+    page = int(request.args.get("page") or 1)
+    next_count = (RESULTS_LIMIT * page)
+    all_items = walk_items(root)
+    items = all_items[(RESULTS_LIMIT * (page - 1)):next_count]
+    if len(items) == 0 and len(all_items) > 0:
+        abort(404)
+    shuffle(items)
+    return render_template("index.html", root=root, items=items, next_page=(page + 1 if len(all_items) > next_count else None))
 
 mkdirs(ITEMS_ROOT, USERS_ROOT)
 

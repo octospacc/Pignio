@@ -14,11 +14,17 @@ if ('up' in window) {
 
 function addHandler(form) {
   var link = form.querySelector('input[name="link"]');
+  var pasteLink = form.querySelector('button.paste-link');
   var checkLink = form.querySelector('input.from-link');
   // var checkProxatore = form.querySelector('input.with-proxatore');
   var image = form.querySelector('img.image');
   var video = form.querySelector('video.video');
   var upload = form.querySelector('input[name="file"]');
+
+  pasteLink.addEventListener('click', () => navigator.clipboard.readText().then(text => {
+    link.value = text;
+    linkHandler();
+  }));
 
   upload.addEventListener('change', function(ev) {
     const file = ev.target.files[0];
@@ -58,28 +64,30 @@ function addHandler(form) {
     }
   });
 
-  ['change', 'input', 'paste'].forEach(handler => {
-    link.addEventListener(handler, () => {
-      var url = link.value.trim();
-      if (checkLink.checked && url) {
-        fetch('../api/preview?url=' + encodeURIComponent(url))
-        .then(res => res.json())
-        .then(data => {
-          for (var key in data) {
-            var field = form.querySelector(`[name="${key}"]`);
-            if (field) {
-              field.value = data[key];
-            }
-            var el = form.querySelector(`[class="${key}"]`);
-            if (el) {
-              el.src = data[key];
-              el.parentElement.hidden = false;
-            }
-          }
-        });
-      }
-    });
+  [/* 'change', */ 'input', 'paste'].forEach(event => {
+    link.addEventListener(event, linkHandler);
   });
+
+  function linkHandler() {
+    var url = link.value.trim();
+    if (checkLink.checked && url) {
+      fetch('../api/preview?url=' + encodeURIComponent(url))
+      .then(res => res.json())
+      .then(data => {
+        for (var key in data) {
+          var field = form.querySelector(`[name="${key}"]`);
+          if (field) {
+            field.value = data[key];
+          }
+          var el = form.querySelector(`[class="${key}"]`);
+          if (el) {
+            el.src = data[key];
+            el.parentElement.hidden = false;
+          }
+        }
+      });
+    }
+  }
 }
 
 function itemHandler(section) {

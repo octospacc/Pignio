@@ -16,6 +16,9 @@
   {% endif %}
 {% endblock %}
 {% block content %}
+  {% with path=item.id, always=false %}
+    {% include "breadcrumbs.html" %}
+  {% endwith %}
   <div class="uk-flex uk-flex-wrap item" data-item-id="{{ item.id }}">
     <div class="uk-width-1-1 uk-width-1-2@s uk-padding-small">
       {% with full=true %}
@@ -24,7 +27,9 @@
     </div>
     <div class="uk-width-1-1 uk-width-1-2@s uk-padding-small">
       <h3 class="uk-text-break">{% include "item-title.txt" %}</h3>
-      by <a href="{{ url_for('view_user', username=item.creator) }}">{{ item.creator }}</a>
+      {% if item.creator %}
+        by <a href="{{ url_for('view_user', username=item.creator) }}">{{ item.creator }}</a>
+      {% endif %}
       <!-- at <span>{{ item.datetime }}</span> -->
       {% if item.link %}
       <div class="uk-text-truncate">
