@@ -1,3 +1,5 @@
+const API_BASE = '//' + document.documentElement.dataset.root.split('://').slice(1).join('://') + '/api';
+
 if ('up' in window) {
   up.compiler('form.add', addHandler);
   up.compiler('div.item', itemHandler);
@@ -71,7 +73,7 @@ function addHandler(form) {
   function linkHandler() {
     var url = link.value.trim();
     if (checkLink.checked && url) {
-      fetch('../api/preview?url=' + encodeURIComponent(url))
+      fetch(API_BASE + '/preview?url=' + encodeURIComponent(url))
       .then(res => res.json())
       .then(data => {
         for (var key in data) {
@@ -93,21 +95,30 @@ function addHandler(form) {
 function itemHandler(section) {
   var button = section.querySelector('div.pin button');
   var pins = section.querySelector('div.pin ul');
-  var url = `../api/collections/${section.dataset.itemId}`;
+  var create = document.querySelector('#new-collection');
+  var url = `${API_BASE}/collections/${section.dataset.itemId}`;
 
   fetch(url)
-  .then(res => res.json())
+  .then(res => (res.ok && res.json()))
   .then(data => {
-    Object.keys(data).map(name => pins.appendChild(Object.assign(document.createElement('li'), { innerHTML: `
+    if (!data) return;
+
+    Object.keys(data).forEach(name => pins.appendChild(Object.assign(document.createElement('li'), { innerHTML: `
       <label data-collection="${name}"><input class="uk-checkbox" type="checkbox" ${data[name] ? 'checked' : ''}> ${name || 'Profile'}</label>
     ` })));
 
     pins.querySelectorAll('li input').forEach(checkbox => {
       checkbox.addEventListener('change', () => {
-        fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [checkbox.parentElement.dataset.collection]: checkbox.checked }) });
+        fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [checkbox.parentElement.dataset.collection]: checkbox.checked }) })
+        .then(res => res.json())
+        .then(data => Object.keys(data).forEach(name => pins.querySelector(`li [data-collection="${name}"] input`).checked = data[name]));
       });
-    })
+    });
 
     button.classList.remove('uk-disabled');
+    button.disabled = false;
   });
+
+  pins.querySelector('button').addEventListener('click', () => UIkit.dropdown('div.pin div.uk-dropdown').hide());
+  create.querySelector('button.uk-button-primary').addEventListener('click', () => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [create.querySelector('input').value]: true }) }).then(() => location.reload()));
 }

@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 {% set title %}{% block title %}{% endblock %}{% endset %}
 {% set canonical %}{% block canonical %}{% endblock %}{% endset %}
-<html>
+<html data-root="{% include 'links-prefix.txt' %}">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{% if title %}{{ title }} | {% endif %}{{ config.APP_ICON }} {{ config.APP_NAME }}</title>
+  <title>{% if title %}{{ title }} | {% endif %}{{ config.INSTANCE_NAME }} {{ config.APP_ICON }}</title>
   <link rel="stylesheet" href="{{ url_for('serve_module_uikit', filename='css/uikit.min.css') }}" />
   <script src="{{ url_for('serve_module_uikit', filename='js/uikit.min.js') }}"></script>
   <script src="{{ url_for('serve_module_uikit', filename='js/uikit-icons.min.js') }}"></script>
@@ -20,8 +20,11 @@
     <link rel="canonical" href="{% include 'links-prefix.txt' %}{{ canonical }}" />
     <meta name="og:url" content="{% include 'links-prefix.txt' %}{{ canonical }}" />
   {% endif %}
-  <meta name="og:site_name" content="{{ config.APP_NAME }}" />
-  {% block metadata %}{% endblock %}
+  <meta name="og:site_name" content="{{ config.INSTANCE_NAME }}" />
+  {% block metadata %}
+    <meta name="og:description" content="{{ config.INSTANCE_DESCRIPTION }}" />
+    <meta name="description" content="{{ config.INSTANCE_DESCRIPTION }}" />
+  {% endblock %}
   <link rel="manifest" href="{{ url_for('serve_manifest') }}" />
   <link rel="shortcut icon" href="{{ url_for('static', filename='icon.png') }}" type="image/png" />
   <meta name="generator" content="{{ config.APP_NAME }}" />
@@ -36,10 +39,10 @@
   <nav class="uk-navbar-container" uk-sticky="sel-target: .uk-navbar-container; cls-active: uk-navbar-sticky">
     <div class="uk-container uk-container-expand" uk-navbar>
       <div class="uk-navbar-left uk-width-expand">
-        <a class="uk-link-reset" href="{{ url_for('index') }}">
+        <a class="uk-link-reset" href="{{ url_for('view_index') }}">
           <span class="uk-logo">
             <span uk-icon="icon: home"></span>
-            {{ config.APP_NAME }}
+            {{ config.INSTANCE_NAME }}
           </span>
           {%if config.DEVELOPMENT %}
             <span class="uk-text-small">DEV</span>
@@ -78,7 +81,7 @@
             Logged in as <a href="{{ url_for('view_user', username=current_user.username) }}">{{ current_user.username }}</a>
             — <a class="uk-button uk-button-text uk-text-baseline" href="{{ url_for('logout') }}">Logout</a>
           {% else %}
-            <a class="uk-button uk-button-text uk-text-baseline" href="{{ url_for('login') }}">Login</a>
+            <a class="uk-button uk-button-text uk-text-baseline" href="{{ url_for('view_login') }}">Login</a>
           {% endif %}
         </span>
       </p>

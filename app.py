@@ -3,12 +3,14 @@ import urllib.parse
 from functools import wraps
 from typing import Any, cast
 from random import shuffle
+from glob import glob
 from flask import Flask, request, redirect, render_template, send_from_directory, abort, url_for, flash, session, make_response
 from flask_bcrypt import Bcrypt # type: ignore[import-untyped]
 from flask_login import LoginManager, UserMixin, current_user, login_user, logout_user, login_required, login_url # type: ignore[import-untyped]
 from flask_wtf import FlaskForm # type: ignore[import-untyped]
 from wtforms import StringField, PasswordField, BooleanField, SubmitField # type: ignore[import-untyped]
 from wtforms.validators import DataRequired # type: ignore[import-untyped]
+from werkzeug.utils import safe_join
 from _pignio import *
 from _util import *
 
@@ -18,6 +20,9 @@ HTTP_PORT = 5000
 HTTP_THREADS = 32
 LINKS_PREFIX = ""
 RESULTS_LIMIT = 50
+INSTANCE_NAME = ""
+INSTANCE_DESCRIPTION = ""
+ALLOW_REGISTRATION = False
 SITE_VERIFICATION = {
     "GOOGLE": "",
     "BING": "",
@@ -43,10 +48,14 @@ app.config["BCRYPT_HANDLE_LONG_PASSWORDS"] = True
 app.config["LINKS_PREFIX"] = LINKS_PREFIX
 app.config["APP_NAME"] = "Pignio"
 app.config["APP_ICON"] = "📌"
+app.config["APP_DESCRIPTION"] = "Pignio is your personal self-hosted media pinboard, built on top of flat-file storage."
+app.config["INSTANCE_NAME"] = INSTANCE_NAME or app.config["APP_NAME"]
+app.config["INSTANCE_DESCRIPTION"] = INSTANCE_DESCRIPTION or app.config["APP_DESCRIPTION"]
+app.config["ALLOW_REGISTRATION"] = ALLOW_REGISTRATION
 app.config["SITE_VERIFICATION"] = SITE_VERIFICATION
 
 login_manager = LoginManager()
-login_manager.login_view = "login"
+login_manager.login_view = "view_login"
 login_manager.init_app(app)
 bcrypt = Bcrypt(app)
 
@@ -68,6 +77,10 @@ class LoginForm(FlaskForm):
     remember = BooleanField()
     submit = SubmitField("Login")
 
+class RegisterForm(LoginForm):
+    password2 = PasswordField("Confirm Password", validators=[DataRequired()])
+    submit = SubmitField("Register")
+
 def noindex(view_func):
     @wraps(view_func)
     def wrapped_view(*args, **kwargs):
@@ -77,8 +90,45 @@ def noindex(view_func):
     return wrapped_view
 
 @app.route("/")
-def index():
+def view_index():
     return view_random_items(request)
+
+@app.route("/.well-known/nodeinfo")
+@noindex
+def serve_nodeinfo():
+    return {
+        "links": [
+            {
+                "rel": "http://nodeinfo.diaspora.software/ns/schema/2.1",
+                "href": render_template("links-prefix.txt") + "/nodeinfo/2.1",
+            },
+        ],
+    }
+
+@app.route("/nodeinfo/2.1")
+@noindex
+def serve_nodeinfo_21():
+    return {
+        "version": "2.1",
+        "software": {
+            "name": app.config["APP_NAME"],
+            "repository": "https://gitlab.com/octospacc/Pignio",
+        },
+        "services": {
+            "outbound": ["atom1.0"],
+        },
+        "openRegistrations": app.config["ALLOW_REGISTRATION"],
+        "usage": {
+            "users": {
+                "total": len(glob(f"{USERS_ROOT}/*.ini")),
+            },
+            "localPosts": count_items(),
+        },
+        "metadata": {
+            "nodeName": app.config["INSTANCE_NAME"],
+            "nodeDescription": app.config["INSTANCE_DESCRIPTION"],
+        },
+    }
 
 @app.route("/manifest.json")
 @noindex
@@ -103,7 +153,7 @@ def serve_media(filename:str):
 
 @app.route("/item/<path:iid>")
 def view_item(iid:str):
-    if os.path.isdir(os.path.join(ITEMS_ROOT, iid)):
+    if (dirpath := safe_join(ITEMS_ROOT, iid)) and os.path.isdir(dirpath):
         return view_random_items(request, iid)
     elif (item := load_item(iid)):
         return render_template("item.html", item=item)
@@ -167,7 +217,7 @@ def remove_item():
         if (iid := request.form.get("id")):
             if (item := load_item(iid)):
                 delete_item(item)
-                return redirect(url_for("index"))
+                return redirect(url_for("view_index"))
     abort(404)
 
 @app.errorhandler(404)
@@ -176,9 +226,9 @@ def error_404(e):
 
 @app.route("/login", methods=["GET", "POST"])
 @noindex
-def login():
+def view_login():
     if current_user.is_authenticated:
-        return redirect(url_for("index"))
+        return redirect(url_for("view_index"))
     form = LoginForm()
     if form.validate_on_submit() and (user := load_user(form.username.data)):
         pass_equals = user.data["password"] == form.password.data
@@ -190,21 +240,35 @@ def login():
             if pass_equals:
                 user.data["password"] = bcrypt.generate_password_hash(user.data["password"]).decode("utf-8")
                 write_textual(user.filepath, write_metadata(user.data))
-            session["session_hash"] = generate_user_hash(user.username, user.data["password"])
-            login_user(user, remember=bool(form.remember.data))
-            next_url = urllib.parse.urlparse(request.args.get("next", ""))
-            next_url = next_url.path + (f"?{next_url.query}" if next_url.query else "")
-            return redirect(next_url or url_for("index"))
+            return init_user_session(user, form.remember.data)
     if request.method == "POST":
         flash("Invalid username or password", "danger")
-    return render_template("login.html", form=form)
+    return render_template("login.html", form=form, mode="Login")
+
+@app.route("/register", methods=["GET", "POST"])
+@noindex
+def view_register():
+    if not app.config["ALLOW_REGISTRATION"]:
+        abort(404)
+    if current_user.is_authenticated:
+        return redirect(url_for("view_index"))
+    form = RegisterForm()
+    if form.validate_on_submit() and not (user := load_user(form.username.data)) and form.password.data == form.password2.data:
+        write_textual(safe_join(USERS_ROOT, (form.username.data + ITEMS_EXT)), write_metadata({
+            "password": bcrypt.generate_password_hash(form.password.data).decode("utf-8"),
+        }))
+        user = load_user(form.username.data)
+        return init_user_session(user, form.remember.data)
+    if request.method == "POST":
+        flash("Invalid username or password", "danger")
+    return render_template("login.html", form=form, mode="Register")
 
 @app.route("/logout")
 @noindex
 def logout():
     if current_user.is_authenticated:
         logout_user()
-    return redirect(url_for("index"))
+    return redirect(url_for("view_index"))
 
 @app.route("/api/preview")
 @noindex
@@ -259,7 +323,7 @@ def unauthorized():
         return {"error": "Unauthorized"}, 401
     else:
         flash("Please log in to access this page.")
-        return redirect(login_url("login", request.url))
+        return redirect(login_url("view_login", request.url))
 
 @app.before_request
 def remove_trailing_slash():
@@ -267,10 +331,18 @@ def remove_trailing_slash():
         return redirect(request.path.rstrip("/"))
 
 def load_user(username:str) -> User|None:
-    filepath = os.path.join(USERS_ROOT, (username + ITEMS_EXT))
-    if os.path.exists(filepath):
+    filepath = safe_join(USERS_ROOT, (username + ITEMS_EXT))
+    if filepath and os.path.exists(filepath):
         return User(username, filepath)
-    return None
+    else:
+        return None
+
+def init_user_session(user:User, remember:bool):
+    session["session_hash"] = generate_user_hash(user.username, user.data["password"])
+    login_user(user, remember=remember)
+    next_data = urllib.parse.urlparse(request.args.get("next", ""))
+    next_url = next_data.path + (f"?{next_data.query}" if next_data.query else "")
+    return redirect(next_url or url_for("view_index"))
 
 def view_random_items(request, root:str|None=None):
     page = int(request.args.get("page") or 1)

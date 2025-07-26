@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block canonical %}{{ url_for('index') }}{% endblock %}
+{% block canonical %}{{ url_for('view_index') }}{% endblock %}
 {% block content %}
   {% if root %}
     <div class="uk-text-center">
@@ -9,5 +9,7 @@
       {% include "breadcrumbs.html" %}
     {% endwith %}
   {% endif %}
-  {% include "results.html" %}
+  {% with path=root %}
+    {% include "results.html" %}
+  {% endwith %}
 {% endblock %}

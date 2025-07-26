@@ -57,11 +57,13 @@
       <p class="uk-text-break" style="white-space: pre-line;">{{ item.description }}</p>
       <div class="uk-margin uk-grid-small" uk-grid>
         <div class="pin">
-          <button class="uk-button uk-button-default uk-disabled" type="button">
+          <button class="uk-button uk-button-default uk-disabled" type="button" disabled>
             Pin <span uk-icon="icon: tag"></span>
           </button>
           <div uk-dropdown="mode: click; stretch: y;">
-            <ul class="uk-list"></ul>
+            <ul class="uk-list">
+              <li><button class="uk-button uk-button-default uk-button-small" uk-toggle="target: #new-collection">New Collection</button></li>
+            </ul>
           </div>
         </div>
         <div>
@@ -75,6 +77,14 @@
           </a>
         </div>
       </div>
+    </div>
+  </div>
+  <div id="new-collection" uk-modal>
+    <div class="uk-modal-dialog uk-modal-body">
+      <button class="uk-modal-close-default" uk-close></button>
+      <h2 class="uk-modal-title">New Collection</h2>
+      <input class="uk-input" type="text" placeholder="Name" />
+      <button class="uk-button uk-button-primary">Create</button>
     </div>
   </div>
 {% endblock %}

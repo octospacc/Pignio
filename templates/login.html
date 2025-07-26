@@ -1,6 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Login{% endblock %}
+{% block title %}{{ mode }}{% endblock %}
 {% block content %}
+  {% if config.ALLOW_REGISTRATION %}
+    <ul uk-tab="connect: .mode; {% if mode == 'Register' %} active: 1 {% endif %}">
+      <li><a href="{{ url_for('view_login') }}">Login</a></li>
+      <li><a href="{{ url_for('view_register') }}">Register</a></li>
+    </ul>
+  {% endif %}
   <form method="POST">
     {{ form.hidden_tag() }}
     <div class="uk-margin">
@@ -15,6 +21,14 @@
         {{ form.password(class_="uk-input", placeholder="Password") }}
       </div>
     </div>
+    {% if mode == "Register" %}
+      <div class="uk-margin">
+        <div class="uk-inline uk-width-1-1">
+          <span class="uk-form-icon" uk-icon="icon: lock"></span>
+          {{ form.password2(class_="uk-input", placeholder="Confirm Password", required=True) }}
+        </div>
+      </div>
+    {% endif %}
     <div class="uk-margin">
       <label>
         {{ form.remember(class_="uk-checkbox") }}
@@ -24,7 +38,7 @@
     <div class="uk-margin">
       <div class="uk-inline uk-width-1-1">
         {{ form.submit(class_="uk-input uk-button uk-button-default") }}
-        <span class="uk-form-icon uk-form-icon-flip" uk-icon="icon: lock"></span>
+        <span class="uk-form-icon uk-form-icon-flip" uk-icon="icon: unlock"></span>
       </div>
     </div>
   </form>

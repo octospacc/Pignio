@@ -1,5 +1,6 @@
 import os
 import requests
+import urllib.parse
 from typing import Any, cast
 from base64 import b64decode, urlsafe_b64encode
 from urllib.parse import urlparse
@@ -11,6 +12,7 @@ from glob import glob
 from pathlib import Path
 from snowflake import Snowflake # type: ignore[import-untyped]
 from hashlib import sha256
+from werkzeug.utils import safe_join
 from _pignio import *
 
 def generate_user_hash(username:str, password:str) -> str:
@@ -40,6 +42,16 @@ def walk_items(walk_path:str|None=None) -> list:
             results[rel_path][iid] = load_item(iid)
 
     return [value for inner in results.values() for value in inner.values()]
+
+def count_items() -> int:
+    results: dict[str, None] = {}
+    for root, dirs, files in os.walk(ITEMS_ROOT):
+        rel_path = os.path.relpath(root, ITEMS_ROOT).replace(os.sep, "/")
+        for file in files:
+            iid = strip_ext(os.path.join(rel_path, file).replace(os.sep, "/"))
+            iid = filename_to_iid(iid)
+            results[iid] = None
+    return len(results)
 
 def walk_collections(username:str) -> dict:
     results: dict[str, list[str]] = {"": []}
@@ -81,7 +93,7 @@ def filename_to_iid(iid:str) -> str:
 def load_item(iid:str) -> ItemDict|None:
     iid = filename_to_iid(iid)
     filename = iid_to_filename(iid)
-    filepath = os.path.join(ITEMS_ROOT, filename)
+    filepath = safe_join(ITEMS_ROOT, filename)
     files = glob(f"{filepath}.*")
 
     if len(files):
@@ -104,11 +116,16 @@ def store_item(iid:str, data:dict[str, str], files:dict|None=None) -> bool:
     iid = filename_to_iid(iid)
     existing = load_item(iid)
     filename = split_iid(iid_to_filename(iid))
-    filepath = os.path.join(ITEMS_ROOT, *filename)
-    mkdirs(os.path.join(ITEMS_ROOT, filename[0]))
+    filepath = safe_join(ITEMS_ROOT, *filename)
+    dirpath = safe_join(ITEMS_ROOT, filename[0])
+
+    if not filepath or not dirpath:
+        return False
+
+    mkdirs(dirpath)
     has_media = False
     extra = {key: data[key] for key in ["provenance"] if key in data}
-    data = {key: data[key] for key in ["link", "title", "description", "image", "text"] if key in data}
+    data = {key: data[key] for key in ["link", "title", "description", "image", "video", "text"] if key in data}
 
     if files and len(files):
         file = files["file"]
@@ -153,11 +170,11 @@ def store_item(iid:str, data:dict[str, str], files:dict|None=None) -> bool:
 def delete_item(item:dict|str) -> int:
     deleted = 0
     iid = cast(str, item["id"] if type(item) == dict else item)
-    filepath = os.path.join(ITEMS_ROOT, iid_to_filename(iid))
-    files = glob(f"{filepath}.*")
-    for file in files:
-        os.remove(file)
-        deleted += 1
+    if (filepath := safe_join(ITEMS_ROOT, iid_to_filename(iid))):
+        files = glob(f"{filepath}.*")
+        for file in files:
+            os.remove(file)
+            deleted += 1
     return deleted
 
 def is_file_type_allowed(kind:str, ext:str) -> bool:
@@ -165,12 +182,16 @@ def is_file_type_allowed(kind:str, ext:str) -> bool:
 
 def toggle_in_collection(username:str, collection:str, iid:str, status:bool) -> None:
     filepath = get_collection_filepath(username, collection)
-    data = cast(CollectionDict, read_metadata(read_textual(filepath)))
-    items = data["items"] if "items" in data else []
+    try:
+        data = cast(CollectionDict, read_metadata(read_textual(filepath)))
+    except FileNotFoundError:
+        data = cast(CollectionDict, {})
+    if not "items" in data:
+        data["items"] = []
     if status:
-        items.append(iid)
+        data["items"].append(iid)
     else:
-        items.remove(iid)
+        data["items"].remove(iid)
     write_textual(filepath, write_metadata(data))
 
 def get_collection_filepath(username:str, collection:str) -> str:
@@ -248,10 +269,10 @@ def strip_ext(filename:str) -> str:
     return os.path.splitext(filename)[0]
 
 def list_to_wsv(data:list[str], sep="\n") -> str:
-    return sep.join(data)
+    return sep.join([urllib.parse.quote(item) for item in data])
 
 def wsv_to_list(data:str) -> list[str]:
-    return data.strip().replace(" ", "\n").replace("\t", "\n").splitlines()
+    return [urllib.parse.unquote(item) for item in data.strip().replace(" ", "\n").replace("\t", "\n").splitlines()]
 
 def safe_str_get(dikt:dict[str,str]|dict[str,str|None], key:str) -> str:
     return dikt.get(key) or ""

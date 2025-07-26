@@ -1,6 +1,7 @@
 {
-    "name": "{{ config.APP_NAME }}",
-    "start_url": "{{ url_for('index') }}",
+    "name": "{{ config.INSTANCE_NAME }}",
+    "description": "{{ config.INSTANCE_DESCRIPTION }}",
+    "start_url": "{{ url_for('view_index') }}",
     "display": "standalone",
     "icons": [
         {
