@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 {% set ns = namespace(count=0) %}
 <feed xmlns="http://www.w3.org/2005/Atom">
-  <title>@{{ user.username }} Feed | {{ config.APP_ICON }} {{ config.APP_NAME }}</title>
+  <title>@{{ user.username }} Feed | {% include 'app-title.txt' %}</title>
   <id>{% include 'links-prefix.txt' %}{{ url_for('view_user', username=user.username) }}</id>
   <link href="{% include 'links-prefix.txt' %}{{ url_for('view_user', username=user.username) }}" />
   {% for folder, collection in collections.items() %}
@@ -22,7 +22,14 @@
                       {% include "item-content.html" %}
                     {% endwith %}
                   </p>
-                  <p>{{ item.description }}</p>
+                  {% if item.description %}
+                    <p>
+                      {%- for line in item.description.splitlines() -%}
+                        {{- line -}}
+                        <br />
+                      {%- endfor -%}
+                    </p>
+                  {% endif %}
                   <p>{{ item.link }}</p>
                 ]]>
               </content>

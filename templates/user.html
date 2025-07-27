@@ -14,6 +14,11 @@
       {% endwith %}
     {% endif %}
     <p>{{ user.data.description }}</p>
+    {% if current_user.is_authenticated and current_user.username == user.username %}
+      <a class="uk-button uk-button-default uk-icon-link" href="{{ url_for('export_api') }}" target="_blank">
+        Export Data <span uk-icon="icon: download"></span>
+      </a>
+    {% endif %}
   </div>
   <hr />
   {% for folder, collection in collections.items() %}

@@ -1,16 +1,14 @@
 {% extends "base.html" %}
 {% block title %}🆕 Add item{% endblock %}
 {% block content %}
-  <!--
-  <ul uk-tab="connect: .my-class">
-    <li><a href="">New</a></li>
-    <li><a href="">Text</a></li>
+  <ul uk-tab="connect: .item-type; {% if item.text %} active: 1 {% endif %}">
+    <li><a href="">
+      Media <span uk-icon="icon: image"></span>
+    </a></li>
+    <li><a href="">
+      Text <span uk-icon="icon: quote-right"></span>
+    </a></li>
   </ul>
-  <div class="uk-switcher my-class">
-    <div>a</div>
-    <div>b</div>
-  </div>
-  -->
   <form method="POST" enctype="multipart/form-data" class="add">
     <input type="hidden" name="id" value="{{ item.id }}" />
     <input type="hidden" name="image" />
@@ -21,24 +19,36 @@
     <div class="uk-margin" {% if not item.video %} hidden {% endif %}>
       <video src="{{ url_for('serve_media', filename=item.video) }}" class="video" controls></video>
     </div>
-    <div class="uk-margin uk-grid">
-      <label>
-        <input type="checkbox" class="from-link uk-checkbox" {% if not item.id %} checked {% endif %} />
-        Fill data from link
-      </label>
-      <label>
-        <select class="uk-select" name="provenance">
-          <option value="">No provenance</option>
-          <option value="oc" {% if 'oc' in item.systags %} selected {% endif %}>Original content</option>
-          <option value="ai" {% if 'ai' in item.systags %} selected {% endif %}>AI-generated</option>
-        </select>
-      </label>
-      <!-- <label>
-        <select class="uk-select" name="lang">
-          <option value="">Content Language</option>
-          <option value="eng">English</option>
-        </select>
-      </label> -->
+    <div class="uk-margin" uk-grid>
+      <div>
+        <label>
+          <input type="checkbox" class="from-link uk-checkbox" {% if not item.id %} checked {% endif %} />
+          Fill data from link
+        </label>
+      </div>
+      <div>
+        <label>
+          <select class="uk-select" name="provenance">
+            <option value="">No provenance</option>
+            <option value="oc" {% if 'oc' in item.systags %} selected {% endif %}>Original content</option>
+            <option value="ai" {% if 'ai' in item.systags %} selected {% endif %}>AI-generated</option>
+          </select>
+        </label>
+      </div>
+      <div>
+        <label>
+          Content Languages
+          <button class="langs-reset uk-button uk-button-default uk-button-small" type="button">Reset</button>
+          <select class="uk-select" name="langs" multiple>
+            <option value="deu" {% if 'deu' in item.langs %} selected {% endif %}>🇩🇪 German</option>
+            <option value="eng" {% if 'eng' in item.langs %} selected {% endif %}>🇬🇧 English</option>
+            <option value="fra" {% if 'fra' in item.langs %} selected {% endif %}>🇫🇷 French</option>
+            <option value="ita" {% if 'ita' in item.langs %} selected {% endif %}>🇮🇹 Italian</option>
+            <option value="jpn" {% if 'jpn' in item.langs %} selected {% endif %}>🇯🇵 Japanese</option>
+            <option value="rus" {% if 'rus' in item.langs %} selected {% endif %}>🇷🇺 Russian</option>
+          </select>
+        </label>
+      </div>
       <!-- <label>
         <input type="checkbox" class="with-proxatore uk-checkbox" />
         Transparently use Proxatore
@@ -48,7 +58,9 @@
       <div class="uk-grid-collapse" uk-grid>
         <div uk-form-custom class="uk-width-1-1">
           <input class="uk-input" type="file" name="file" />
-          <button class="uk-button uk-width-1-1 uk-button-default" type="button" tabindex="-1">Select or drop a media file</button>
+          <button class="uk-button uk-width-1-1 uk-button-default" type="button" tabindex="-1">
+            Select or drop a media file <span uk-icon="icon: upload"></span>
+          </button>
         </div>
       </div>
     </div>
@@ -58,27 +70,35 @@
     <div class="uk-margin">
       <div class="uk-inline uk-width-1-1">
         <button class="uk-form-icon uk-form-icon-flip paste-link" type="button" uk-icon="icon: move"></button>
-        <input class="uk-input" type="text" name="link" placeholder="URL" value="{{ item.link }}" />
+        <span class="uk-form-icon" uk-icon="icon: link"></span>
+        <input class="uk-input" type="text" name="link" placeholder="Link" value="{{ item.link }}" />
       </div>
     </div>
     <div class="uk-margin">
-      <input class="uk-input" type="text" name="title" placeholder="Title" value="{{ item.title }}" />
+      <div class="uk-inline uk-width-1-1">
+        <span class="uk-form-icon" uk-icon="icon: info"></span>
+        <input class="uk-input" type="text" name="title" placeholder="Title" value="{{ item.title }}" />
+      </div>
     </div>
     <div class="uk-margin">
       <textarea class="uk-textarea" rows="5" name="description" placeholder="Description">{{ item.description }}</textarea>
     </div>
-    <!-- <div class="uk-margin">
-      <textarea class="uk-textarea" rows="5" name="alttext" placeholder="Alt Text">{{ item.alttext }}</textarea>
-    </div> -->
-    <div class="uk-margin">
-      <textarea class="uk-textarea" rows="5" name="text" placeholder="Text">{{ item.text }}</textarea>
+    <div class="uk-switcher item-type">
+      <div class="uk-margin">
+        <textarea class="uk-textarea" rows="5" name="alttext" placeholder="Alt Text">{{ item.alttext }}</textarea>
+      </div>
+      <div class="uk-margin">
+        <textarea class="uk-textarea" rows="5" name="text" placeholder="Text">{{ item.text }}</textarea>
+      </div>
     </div>
     <div class="uk-margin uk-grid-small" uk-grid>
-      <div>
-        <a class="uk-button uk-button-default" href="{{ url_for('view_item', iid=item.id) }}">Back</a>
-      </div>
-      <div>
-        <button class="uk-button uk-button-primary" type="submit">{{ ("Edit " + item.id) if item.id else "Add" }}</button>
+      {% if item %}
+        <div class="uk-width-auto">
+          <a class="uk-button uk-button-default" href="{{ url_for('view_item', iid=item.id) }}">Back</a>
+        </div>
+      {% endif %}
+      <div class="uk-width-expand">
+        <button class="uk-button uk-button-primary uk-width-1-1" type="submit">{{ ("Edit " + item.id) if item.id else "Add" }}</button>
       </div>
     </div>
   </form>

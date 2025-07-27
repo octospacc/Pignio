@@ -6,3 +6,5 @@ beautifulsoup4
 requests
 snowflake-id
 waitress
+pillow
+pytesseract

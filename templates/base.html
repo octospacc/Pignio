@@ -5,7 +5,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{% if title %}{{ title }} | {% endif %}{{ config.INSTANCE_NAME }} {{ config.APP_ICON }}</title>
+  <title>{% if title %}{{ title }} | {% endif %}{% include 'app-title.txt' %}</title>
   <link rel="stylesheet" href="{{ url_for('serve_module_uikit', filename='css/uikit.min.css') }}" />
   <script src="{{ url_for('serve_module_uikit', filename='js/uikit.min.js') }}"></script>
   <script src="{{ url_for('serve_module_uikit', filename='js/uikit-icons.min.js') }}"></script>
@@ -13,6 +13,7 @@
     up.link.config.followSelectors.push('a[href]');
     up.link.config.instantSelectors.push('a[href]');
     up.form.config.submitSelectors.push(['form']);
+    up.network.config.lateDelay = 0;
   })();"></script>
   <link rel="stylesheet" href="{{ url_for('serve_module_unpoly', filename='unpoly.min.css') }}" />
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>

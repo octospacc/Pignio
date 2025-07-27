@@ -19,9 +19,12 @@ function addHandler(form) {
   var pasteLink = form.querySelector('button.paste-link');
   var checkLink = form.querySelector('input.from-link');
   // var checkProxatore = form.querySelector('input.with-proxatore');
+  var langs = form.querySelector('select[name="langs"]');
   var image = form.querySelector('img.image');
   var video = form.querySelector('video.video');
   var upload = form.querySelector('input[name="file"]');
+
+  form.querySelector('button.langs-reset').addEventListener('click', () => (langs.selectedIndex = -1));
 
   pasteLink.addEventListener('click', () => navigator.clipboard.readText().then(text => {
     link.value = text;

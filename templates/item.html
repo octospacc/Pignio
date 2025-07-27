@@ -30,7 +30,9 @@
       {% if item.creator %}
         by <a href="{{ url_for('view_user', username=item.creator) }}">{{ item.creator }}</a>
       {% endif %}
-      <!-- at <span>{{ item.datetime }}</span> -->
+      {% if item.datetime %}
+        at <span>{{ item.datetime }}</span>
+      {% endif %}
       {% if item.link %}
       <div class="uk-text-truncate">
         <a href="{{ item.link }}" target="_blank">{{ item.link }}</a>
@@ -56,6 +58,9 @@
       </div>
       <p class="uk-text-break" style="white-space: pre-line;">{{ item.description }}</p>
       <div class="uk-margin uk-grid-small" uk-grid>
+        <div>
+          <button class="uk-icon-button" uk-icon="icon: forward" onclick="(function(){ navigator.clipboard.writeText(document.querySelector('link[rel=canonical]').href); UIkit.notification('Link copied to clipboard'); })()"></button>
+        </div>
         <div class="pin">
           <button class="uk-button uk-button-default uk-disabled" type="button" disabled>
             Pin <span uk-icon="icon: tag"></span>
@@ -66,16 +71,60 @@
             </ul>
           </div>
         </div>
-        <div>
-          <a class="uk-button uk-button-default uk-icon-link" href="{{ url_for('add_item') }}?item={{ item.id }}" rel="nofollow">
-            Edit <span uk-icon="icon: file-edit"></span>
-          </a>
-        </div>
-        <div>
-          <a class="uk-button uk-button-danger" href="{{ url_for('remove_item') }}?item={{ item.id }}" rel="nofollow">
-            Delete <span uk-icon="icon: trash"></span>
-          </a>
-        </div>
+        {% if not current_user.is_authenticated or get_item_permissions(item).edit %}
+          <div>
+            <a class="uk-button uk-button-default uk-icon-link" href="{{ url_for('add_item') }}?item={{ item.id }}" rel="nofollow">
+              Edit <span uk-icon="icon: file-edit"></span>
+            </a>
+          </div>
+          <div>
+            <a class="uk-button uk-button-danger" href="{{ url_for('remove_item') }}?item={{ item.id }}" rel="nofollow">
+              Delete <span uk-icon="icon: trash"></span>
+            </a>
+          </div>
+        {% endif %}
+      </div>
+      <div class="uk-padding uk-padding-remove-left uk-padding-remove-right">
+      <!-- { % if subitems | length > 0 % } -->
+        <!-- <hr /> -->
+        <form method="POST">
+          <div class="uk-margin">
+            <div class="uk-inline uk-width-1-1">
+              <input class="uk-input" type="text" name="comment" placeholder="{% if current_user.is_authenticated %} What's on your mind? " {% else %} Please login to comment. " disabled {% endif %} required />
+            </div>
+            <div class="uk-inline uk-width-1-1">
+              <input class="uk-input uk-button uk-button-default {% if not current_user.is_authenticated %} uk-disabled" disabled {% else %} " {% endif %} type="submit" value="Comment" />
+              <span class="uk-form-icon uk-form-icon-flip" uk-icon="icon: comment"></span>
+            </div>
+          </div>
+        </form>
+        {% for item in subitems %}
+          {% set iid %}{{ item.id.split('/')[-1] }}{% endset %}
+          <div class="uk-card uk-margin uk-card-default uk-card-small" id="{{ iid }}">
+            <div class="uk-card-header">
+              <h3 class="uk-card-title">
+                {% if item.creator %}
+                  <a class="uk-link-text" href="{{ url_for('view_user', username=item.creator) }}">{{ item.creator }}</a>
+                {% else %}
+                  <i>Anon</i>
+                {% endif %}
+                <a href="#{{ iid }}" class="uk-text-small uk-link-reset">
+                  {% if item.datetime %}
+                    # {{ item.datetime }}
+                  {% else %}
+                    #{{ iid }}
+                  {% endif %}
+                </a>
+                {% if get_item_permissions(item).edit %}
+                  <a href="{{ url_for('remove_item', item=item.id) }}" class="uk-icon-button uk-float-right" uk-icon="icon: trash" title="Delete"></a>
+                {% endif %}
+              </h3>
+            </div>
+            <div class="uk-card-body">{{ item.text }}</div>
+            <!-- <div class="uk-card-footer"></div> -->
+          </div>
+        {% endfor %}
+      <!-- { % endif % } -->
       </div>
     </div>
   </div>

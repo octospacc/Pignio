@@ -1,6 +1,7 @@
 import os
 import requests
 import urllib.parse
+from PIL import Image
 from typing import Any, cast
 from base64 import b64decode, urlsafe_b64encode
 from urllib.parse import urlparse
@@ -12,6 +13,7 @@ from glob import glob
 from pathlib import Path
 from snowflake import Snowflake # type: ignore[import-untyped]
 from hashlib import sha256
+from pytesseract import image_to_string, TesseractNotFoundError # type: ignore[import-untyped]
 from werkzeug.utils import safe_join
 from _pignio import *
 
@@ -39,7 +41,8 @@ def walk_items(walk_path:str|None=None) -> list:
             results[rel_path][iid] = None
 
         for iid in results[rel_path]:
-            results[rel_path][iid] = load_item(iid)
+            if not (rel_rel_path := "/".join(rel_path.split("/")[:-1])) or (rel_rel_path not in results) or (filename_to_iid(rel_path) not in results[rel_rel_path]):
+                results[rel_path][iid] = load_item(iid)
 
     return [value for inner in results.values() for value in inner.values()]
 
@@ -99,7 +102,7 @@ def load_item(iid:str) -> ItemDict|None:
     if len(files):
         data: ItemDict = {"id": iid}
         if iid != filename:
-            data["datetime"] = str(datetime_from_snowflake(iid))
+            data["datetime"] = str(datetime_from_snowflake(iid)).split(".")[0]
 
         for file in files:
             if file.lower().endswith(ITEMS_EXT):
@@ -109,12 +112,19 @@ def load_item(iid:str) -> ItemDict|None:
             elif file.lower().endswith(tuple([f".{ext}" for ext in EXTENSIONS["video"]])):
                 data["video"] = file.replace(os.sep, "/").removeprefix(f"{ITEMS_ROOT}/")
 
+        if safe_str_get(cast(dict, data), "type") == "comment":
+            data["datetime"] = str(datetime_from_snowflake(iid.split("/")[-1])).split(".")[0]
+
         return data
     return None
 
-def store_item(iid:str, data:dict[str, str], files:dict|None=None) -> bool:
+def store_item(iid:str, data:dict[str, str], files:dict|None=None, ocr:bool=False, *, comment:bool=False) -> bool:
     iid = filename_to_iid(iid)
     existing = load_item(iid)
+    
+    if existing and not get_item_permissions(existing)["edit"]:
+        return False
+
     filename = split_iid(iid_to_filename(iid))
     filepath = safe_join(ITEMS_ROOT, *filename)
     dirpath = safe_join(ITEMS_ROOT, filename[0])
@@ -123,9 +133,15 @@ def store_item(iid:str, data:dict[str, str], files:dict|None=None) -> bool:
         return False
 
     mkdirs(dirpath)
-    has_media = False
+
+    has_media: bool|str = False
+    media_path: str|None = None
+    existing_media: str|None = None
+
     extra = {key: data[key] for key in ["provenance"] if key in data}
-    data = {key: data[key] for key in ["link", "title", "description", "image", "video", "text"] if key in data}
+    data = {key: data[key] for key in ["link", "title", "description", "image", "video", "alttext", "langs", "text"] if key in data}
+    if comment:
+        data["type"] = "comment"
 
     if files and len(files):
         file = files["file"]
@@ -133,52 +149,71 @@ def store_item(iid:str, data:dict[str, str], files:dict|None=None) -> bool:
             file.seek(0, os.SEEK_SET)
             mime = file.content_type.split("/")
             if is_file_type_allowed(mime[0], (ext := mime[1])):
-                file.save(f"{filepath}.{ext}")
-                has_media = True
+                file.save(media_path := f"{filepath}.{ext}")
+                has_media = mime[0]
 
     if not has_media and (media := safe_str_get(data, "video") or safe_str_get(data, "image")):
         if media.lower().startswith("data:"):
             kind = media.split("/")[0].split(":")[1].lower()
             ext = media.split(";")[0].split("/")[1].lower()
             if is_file_type_allowed(kind, ext):
-                with open(f"{filepath}.{ext}", "wb") as f:
+                with open(media_path := f"{filepath}.{ext}", "wb") as f:
                     f.write(b64decode(media.split(",")[1]))
-                    has_media = True
+                    has_media = kind
         else:
             response = requests.get(media, timeout=5)
             mime = response.headers["Content-Type"].split("/")
             if is_file_type_allowed(mime[0], (ext := mime[1])):
-                with open(f"{filepath}.{ext}", "wb") as f:
+                with open(media_path := f"{filepath}.{ext}", "wb") as f:
                     f.write(response.content)
-                    has_media = True
+                    has_media = mime[0]
 
     if not (existing or has_media or safe_str_get(data, "text")):
         return False
+
+    langs = list(data["langs"] if "langs" in data else [])
+    if ocr and (has_media == "image" or (existing_media := safe_str_get(cast(dict, existing), "image"))) and not safe_str_get(data, "alttext"):
+        if existing_media:
+            media_path = safe_join(ITEMS_ROOT, existing_media)
+        if media_path and len(langs) > 0:
+            data["alttext"] = ocr_image(media_path, langs)
 
     if existing:
         if (creator := safe_str_get(cast(dict, existing), "creator")):
             data["creator"] = creator
     else:
         data["creator"] = current_user.username
-        toggle_in_collection(current_user.username, "", iid, True)
+        if not comment:
+            toggle_in_collection(current_user.username, "", iid, True)
 
     if (provenance := safe_str_get(extra, "provenance")):
         data["systags"] = provenance
+
     write_textual(filepath + ITEMS_EXT, write_metadata(data))
     return True
 
 def delete_item(item:dict|str) -> int:
     deleted = 0
-    iid = cast(str, item["id"] if type(item) == dict else item)
-    if (filepath := safe_join(ITEMS_ROOT, iid_to_filename(iid))):
+    if (filepath := safe_join(ITEMS_ROOT, iid_to_filename(ensure_item_id(item)))):
         files = glob(f"{filepath}.*")
         for file in files:
             os.remove(file)
             deleted += 1
     return deleted
 
+def get_item_permissions(item:ItemDict|str) -> dict[str, bool]:
+    item = ensure_item_dict(item)
+    creator = safe_str_get(cast(dict, item), "creator")
+    return {"view": True, "edit": current_user.is_authenticated and (not creator or creator == current_user.username)}
+
 def is_file_type_allowed(kind:str, ext:str) -> bool:
     return ((kind == "image" and ext in EXTENSIONS["image"]) or (kind == "video" and ext in EXTENSIONS["video"]))
+
+def ensure_item_id(data:dict|str) -> str:
+    return cast(str, data["id"] if type(data) == dict else data)
+
+def ensure_item_dict(data:ItemDict|str) -> ItemDict:
+    return cast(ItemDict, data if type(data) == dict else load_item(cast(str, data)))
 
 def toggle_in_collection(username:str, collection:str, iid:str, status:bool) -> None:
     filepath = get_collection_filepath(username, collection)
@@ -192,6 +227,7 @@ def toggle_in_collection(username:str, collection:str, iid:str, status:bool) -> 
         data["items"].append(iid)
     else:
         data["items"].remove(iid)
+    mkdirs("/".join(filepath.split("/")[:-1]))
     write_textual(filepath, write_metadata(data))
 
 def get_collection_filepath(username:str, collection:str) -> str:
@@ -201,7 +237,7 @@ def read_metadata(text:str) -> MetaDict:
     config = ConfigParser(interpolation=None)
     config.read_string(f"[DEFAULT]\n{text}")
     data = config._defaults # type: ignore[attr-defined]
-    for key in ("items", "systags"):
+    for key in ("items", "systags", "langs"):
         if key in data:
             data[key] = wsv_to_list(data[key])
     return data
@@ -258,6 +294,17 @@ def soup_or_default(soup:BeautifulSoup, tag:str, attrs:dict, prop:str, default:A
     elem = soup.find(tag, attrs=attrs)
     return (elem.get(prop) if elem else None) or default # type: ignore[attr-defined]
 
+def ocr_image(filepath:str, langs:list[str]) -> str:
+    text = ""
+    try:
+        image = Image.open(filepath)
+        width, height = image.size
+        monochrome = image.resize((width * 2, height * 2), resample=Image.Resampling.LANCZOS).convert("L").point(lambda x: 0 if x < 140 else 255, "1")
+        text = image_to_string(monochrome, lang=("+".join(langs) if len(langs) > 0 else None))
+    except TesseractNotFoundError:
+        pass
+    return text
+
 def generate_iid() -> str:
     return str(next(snowflake))
 
@@ -275,7 +322,7 @@ def wsv_to_list(data:str) -> list[str]:
     return [urllib.parse.unquote(item) for item in data.strip().replace(" ", "\n").replace("\t", "\n").splitlines()]
 
 def safe_str_get(dikt:dict[str,str]|dict[str,str|None], key:str) -> str:
-    return dikt.get(key) or ""
+    return dikt and dikt.get(key) or ""
 
 def mkdirs(*paths:str) -> None:
     for path in paths:

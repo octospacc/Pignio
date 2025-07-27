@@ -1,10 +1,12 @@
 import os
 import urllib.parse
+from io import BytesIO
+from zipfile import ZipFile, ZIP_DEFLATED
 from functools import wraps
 from typing import Any, cast
 from random import shuffle
 from glob import glob
-from flask import Flask, request, redirect, render_template, send_from_directory, abort, url_for, flash, session, make_response
+from flask import Flask, request, redirect, render_template, send_from_directory, send_file, abort, url_for, flash, session, make_response
 from flask_bcrypt import Bcrypt # type: ignore[import-untyped]
 from flask_login import LoginManager, UserMixin, current_user, login_user, logout_user, login_required, login_url # type: ignore[import-untyped]
 from flask_wtf import FlaskForm # type: ignore[import-untyped]
@@ -20,6 +22,7 @@ HTTP_PORT = 5000
 HTTP_THREADS = 32
 LINKS_PREFIX = ""
 RESULTS_LIMIT = 50
+AUTO_OCR = True
 INSTANCE_NAME = ""
 INSTANCE_DESCRIPTION = ""
 ALLOW_REGISTRATION = False
@@ -151,21 +154,31 @@ def serve_module_unpoly(filename:str):
 def serve_media(filename:str):
     return send_from_directory(ITEMS_ROOT, filename)
 
-@app.route("/item/<path:iid>")
+@app.route("/item/<path:iid>", methods=["GET", "POST"])
 def view_item(iid:str):
-    if (dirpath := safe_join(ITEMS_ROOT, iid)) and os.path.isdir(dirpath):
+    has_subitems = (dirpath := safe_join(ITEMS_ROOT, iid)) and os.path.isdir(dirpath)
+    if (item := load_item(iid)) and get_item_permissions(item)["view"]:
+        if request.method == "GET":
+            if safe_str_get(cast(dict, item), "type") != "comment":
+                subitems = walk_items(iid_to_filename(iid))
+                subitems.reverse()
+                return render_template("item.html", item=item, subitems=subitems, get_item_permissions=get_item_permissions)
+            else:
+                [*item_toks, cid] = iid.split("/")
+                return redirect(url_for("view_item", iid="/".join(item_toks)) + f"#{cid}")
+        elif request.method == "POST" and current_user.is_authenticated and (comment := request.form.get("comment")):
+            store_item(f"{iid_to_filename(iid)}/{generate_iid()}", {"text": comment}, comment=True)
+            return redirect(url_for("view_item", iid=iid))
+    elif has_subitems:
         return view_random_items(request, iid)
-    elif (item := load_item(iid)):
-        return render_template("item.html", item=item)
-    else:
-        abort(404)
+    return abort(404)
 
 @app.route("/user/<path:username>")
 def view_user(username:str):
     if (user := load_user(username)):
         return render_template("user.html", user=user, collections=walk_collections(username), load_item=load_item)
     else:
-        abort(404)
+        return abort(404)
 
 @app.route("/user/<path:username>/feed")
 def view_user_feed(username:str):
@@ -175,7 +188,7 @@ def view_user_feed(username:str):
         response.headers["Content-Type"] = "application/atom+xml"
         return response
     else:
-        abort(404)
+        return abort(404)
 
 @app.route("/search")
 def search():
@@ -183,7 +196,7 @@ def search():
     found = False
     results = []
     for item in walk_items():
-        if any([query in (value if type(value) == str else list_to_wsv(value)).lower() for value in item.values()]):
+        if item and any([query in (value if type(value) == str else list_to_wsv(value)).lower() for value in item.values()]):
             results.append(item)
             found = True
     return render_template("search.html", items=(results if found else None), query=query)
@@ -195,11 +208,15 @@ def add_item():
     item = {}
     if request.method == "GET":
         if (iid := request.args.get("item")):
-            if not (item := load_item(iid)):
-                abort(404)
+            if not (item := load_item(iid)) or not get_item_permissions(item)["edit"]:
+                return abort(404)
     elif request.method == "POST":
         iid = request.form.get("id") or generate_iid()
-        if store_item(iid, request.form, request.files):
+        data = {key: request.form[key] for key in request.form}
+        for key in ["langs"]:
+            if key in data and type(data[key]) != list:
+                data[key] = request.form.getlist(key)
+        if store_item(iid, data, request.files, AUTO_OCR):
             return redirect(url_for("view_item", iid=iid))
         else:
             flash("Cannot save item", "danger")
@@ -210,15 +227,17 @@ def add_item():
 @login_required
 def remove_item():
     if request.method == "GET":
-        if (iid := request.args.get("item")):
-            if (item := load_item(iid)):
-                return render_template("delete.html", item=item)
+        iid = request.args.get("item")
     elif request.method == "POST":
-        if (iid := request.form.get("id")):
-            if (item := load_item(iid)):
-                delete_item(item)
-                return redirect(url_for("view_index"))
-    abort(404)
+        iid = request.form.get("id")
+    if iid and (item := load_item(iid)) and get_item_permissions(item)["edit"]:
+        if request.method == "GET":
+            return render_template("delete.html", item=item)
+        elif request.method == "POST":
+            delete_item(item)
+            parent_iid = "/".join(iid.split("/")[:-1])
+            return redirect(url_for("view_item", iid=parent_iid) if parent_iid else url_for("view_index"))
+    return abort(404)
 
 @app.errorhandler(404)
 def error_404(e):
@@ -249,7 +268,7 @@ def view_login():
 @noindex
 def view_register():
     if not app.config["ALLOW_REGISTRATION"]:
-        abort(404)
+        return abort(404)
     if current_user.is_authenticated:
         return redirect(url_for("view_index"))
     form = RegisterForm()
@@ -282,6 +301,24 @@ def link_preview():
 def check_duplicates():
     ...
 
+@app.route("/api/export")
+@noindex
+@login_required
+def export_api():
+    file = BytesIO()
+    with ZipFile(file, "w", ZIP_DEFLATED, compresslevel=9) as zipf:
+        userbase = os.path.join(USERS_ROOT, current_user.username)
+        zipf.write(f"{userbase}.ini")
+        for filename in glob(f"{userbase}/*.ini"):
+            zipf.write(filename)
+        for item in walk_items():
+            if item and safe_str_get(item, "creator") == current_user.username:
+                filename = os.path.join(ITEMS_ROOT, iid_to_filename(item["id"]))
+                for filename in glob(f"{filename}.*"):
+                    zipf.write(filename)
+    file.seek(0)
+    return send_file(file, "application/zip", True, f"{current_user.username}.zip")
+
 @app.route("/api/collections/<path:iid>", methods=["GET", "POST"])
 @noindex
 @login_required
@@ -299,13 +336,13 @@ def collections_api(iid:str):
 @noindex
 @login_required
 def items_api(iid:str):
-    if request.method == "GET":
-        return load_item(iid)
+    if request.method == "GET" and (item := load_item(iid)) and get_item_permissions(item)["view"]:
+        return item
     elif request.method == "POST" or request.method == "PUT":
         iid = iid or generate_iid()
-        status = store_item(iid, request.get_json())
+        status = store_item(iid, request.get_json(), None, AUTO_OCR)
         return {"id": iid if status else None}
-    elif request.method == "DELETE":
+    elif request.method == "DELETE" and get_item_permissions(iid)["edit"]:
         delete_item(iid)
         return {}
 
@@ -350,7 +387,7 @@ def view_random_items(request, root:str|None=None):
     all_items = walk_items(root)
     items = all_items[(RESULTS_LIMIT * (page - 1)):next_count]
     if len(items) == 0 and len(all_items) > 0:
-        abort(404)
+        return abort(404)
     shuffle(items)
     return render_template("index.html", root=root, items=items, next_page=(page + 1 if len(all_items) > next_count else None))
 

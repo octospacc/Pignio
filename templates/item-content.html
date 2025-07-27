@@ -8,5 +8,5 @@
 {% elif item.image %}
   <img class="uk-width-expand" src="{{ image }}" alt="{{ item.description }}" />
 {% elif item.video %}
-  <video src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('serve_media', filename=item.video) }}" {% if full %} controls {% else %} autoplay muted {% endif %} loop></video>
+  <video class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('serve_media', filename=item.video) }}" {% if full %} controls {% else %} autoplay muted {% endif %} loop></video>
 {% endif %}
