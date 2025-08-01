@@ -1,8 +1,8 @@
 import os
+import time
 import urllib.parse
 from io import BytesIO
 from zipfile import ZipFile, ZIP_DEFLATED
-from functools import wraps
 from typing import Any, cast
 from random import shuffle
 from glob import glob
@@ -13,7 +13,9 @@ from flask_wtf import FlaskForm # type: ignore[import-untyped]
 from wtforms import StringField, PasswordField, BooleanField, SubmitField # type: ignore[import-untyped]
 from wtforms.validators import DataRequired # type: ignore[import-untyped]
 from werkzeug.utils import safe_join
+from _app_factory import app
 from _pignio import *
+from _functions import *
 from _util import *
 
 # config #
@@ -26,6 +28,7 @@ AUTO_OCR = True
 INSTANCE_NAME = ""
 INSTANCE_DESCRIPTION = ""
 ALLOW_REGISTRATION = False
+# ALLOW_FEDERATION = False
 SITE_VERIFICATION = {
     "GOOGLE": "",
     "BING": "",
@@ -43,7 +46,7 @@ SECRET_KEY = "{token_urlsafe()}"
 """)
     from _config import *
 
-app = Flask(__name__)
+app.jinja_env.globals["_"] = gettext
 app.config["DEVELOPMENT"] = DEVELOPMENT
 app.config["SECRET_KEY"] = SECRET_KEY
 app.config["BCRYPT_HANDLE_LONG_PASSWORDS"] = True
@@ -62,18 +65,6 @@ login_manager.login_view = "view_login"
 login_manager.init_app(app)
 bcrypt = Bcrypt(app)
 
-class User(UserMixin):
-    def __init__(self, username:str, filepath:str):
-        self.username: str = username
-        self.filepath: str = filepath
-        self.data = cast(UserDict, read_metadata(read_textual(filepath)))
-
-    def get_id(self) -> str:
-        return generate_user_hash(self.username, self.data["password"])
-    
-    def is_admin(self) -> bool:
-        return True # TODO
-
 class LoginForm(FlaskForm):
     username = StringField("Username", validators=[DataRequired()])
     password = PasswordField("Password", validators=[DataRequired()])
@@ -83,14 +74,6 @@ class LoginForm(FlaskForm):
 class RegisterForm(LoginForm):
     password2 = PasswordField("Confirm Password", validators=[DataRequired()])
     submit = SubmitField("Register")
-
-def noindex(view_func):
-    @wraps(view_func)
-    def wrapped_view(*args, **kwargs):
-        response = make_response(view_func(*args, **kwargs))
-        response.headers["X-Robots-Tag"] = "noindex"
-        return response
-    return wrapped_view
 
 @app.route("/")
 def view_index():
@@ -133,6 +116,43 @@ def serve_nodeinfo_21():
         },
     }
 
+@app.route("/.well-known/webfinger")
+@noindex
+@query_params("resource")
+def webfinger(resource:str):
+    prefix = render_template("links-prefix.txt")
+    if not resource.startswith("acct:") or \
+       not resource.endswith("@" + urllib.parse.urlparse(prefix).netloc) or \
+       not (user := load_user(resource.split(":")[1].split("@")[0])):
+        return abort(400)
+    user_url = prefix + url_for("view_user", username=user.username)
+    return {
+        "subject": resource,
+        "aliases": [user_url],
+        "links": [
+            {
+                "rel": "http://webfinger.net/rel/profile-page",
+                "type": "text/html",
+                "href": user_url,
+            },
+            {
+                "rel": "http://schemas.google.com/g/2010#updates-from",
+                "type": "application/atom+xml",
+                "href": prefix + url_for("view_user_feed", username=user.username),
+            },
+            # {
+            #     "rel": "self",
+            #     "type": "application/activity+json",
+            #     "href": user_url,
+            # },
+            # {
+            #     "rel": "http://webfinger.net/rel/avatar",
+            #     "type": "image/jpeg",
+            #     "href": ...,
+            # },
+        ],
+    }
+
 @app.route("/manifest.json")
 @noindex
 def serve_manifest():
@@ -160,9 +180,12 @@ def view_item(iid:str):
     if (item := load_item(iid)) and get_item_permissions(item)["view"]:
         if request.method == "GET":
             if safe_str_get(cast(dict, item), "type") != "comment":
-                subitems = walk_items(iid_to_filename(iid))
-                subitems.reverse()
-                return render_template("item.html", item=item, subitems=subitems, get_item_permissions=get_item_permissions)
+                if request.headers.get("Accept") == "application/activity+json":
+                    return make_activitypub_item(item)
+                else:
+                    comments = walk_items(iid_to_filename(iid))
+                    comments.reverse()
+                    return render_template("item.html", item=item, comments=comments, get_item_permissions=get_item_permissions)
             else:
                 [*item_toks, cid] = iid.split("/")
                 return redirect(url_for("view_item", iid="/".join(item_toks)) + f"#{cid}")
@@ -176,7 +199,10 @@ def view_item(iid:str):
 @app.route("/user/<path:username>")
 def view_user(username:str):
     if (user := load_user(username)):
-        return render_template("user.html", user=user, collections=walk_collections(username), load_item=load_item)
+        if request.headers.get("Accept") == "application/activity+json":
+            return make_activitypub_user(user)
+        else:
+            return render_template("user.html", user=user, collections=walk_collections(user.username), load_item=load_item)
     else:
         return abort(404)
 
@@ -232,16 +258,34 @@ def remove_item():
         iid = request.form.get("id")
     if iid and (item := load_item(iid)) and get_item_permissions(item)["edit"]:
         if request.method == "GET":
-            return render_template("delete.html", item=item)
+            return render_template("delete.html", item=item, mode="Delete")
         elif request.method == "POST":
             delete_item(item)
             parent_iid = "/".join(iid.split("/")[:-1])
             return redirect(url_for("view_item", iid=parent_iid) if parent_iid else url_for("view_index"))
     return abort(404)
 
-@app.errorhandler(404)
-def error_404(e):
-    return render_template("404.html"), 404
+@app.route("/report", methods=["GET", "POST"])
+@noindex
+@login_required
+def report_item():
+    if request.method == "GET":
+        iid = request.args.get("item")
+    elif request.method == "POST":
+        iid = request.form.get("id")
+    if iid and (item := load_item(iid)) and (permissions := get_item_permissions(item)) and permissions["view"] and not permissions["edit"]:
+        if request.method == "GET":
+            return render_template("delete.html", item=item, mode="Report")
+        elif request.method == "POST":
+            moderation_queue.put(f"report@{time.time()}:{iid},{current_user.username}")
+            return redirect(url_for("view_item", iid=iid))
+    return abort(404)
+
+@app.route("/notifications")
+@noindex
+@login_required
+def view_notifications():
+    return pagination("notifications.html", "events", load_events(current_user))
 
 @app.route("/login", methods=["GET", "POST"])
 @noindex
@@ -272,12 +316,11 @@ def view_register():
     if current_user.is_authenticated:
         return redirect(url_for("view_index"))
     form = RegisterForm()
-    if form.validate_on_submit() and not (user := load_user(form.username.data)) and form.password.data == form.password2.data:
-        write_textual(safe_join(USERS_ROOT, (form.username.data + ITEMS_EXT)), write_metadata({
+    if form.validate_on_submit() and (username := form.username.data) and not (user := load_user(username)) and form.password.data == form.password2.data:
+        write_textual(safe_join(USERS_ROOT, (slugify_name(username) + ITEMS_EXT)), write_metadata({
             "password": bcrypt.generate_password_hash(form.password.data).decode("utf-8"),
         }))
-        user = load_user(form.username.data)
-        return init_user_session(user, form.remember.data)
+        return init_user_session(load_user(username), form.remember.data)
     if request.method == "POST":
         flash("Invalid username or password", "danger")
     return render_template("login.html", form=form, mode="Register")
@@ -288,12 +331,6 @@ def logout():
     if current_user.is_authenticated:
         logout_user()
     return redirect(url_for("view_index"))
-
-@app.route("/api/preview")
-@noindex
-@login_required
-def link_preview():
-    return fetch_url_data(request.args.get("url"))
 
 @app.route("/api/duplicates", methods=["POST"])
 @noindex
@@ -346,6 +383,19 @@ def items_api(iid:str):
         delete_item(iid)
         return {}
 
+@app.route("/api/slugify")
+@noindex
+@query_params("text")
+def slugify_api(text:str):
+    return slugify_name(text)
+
+@app.route("/api/preview")
+@noindex
+@login_required
+@query_params("url")
+def preview_api(url:str):
+    return fetch_url_data(url)
+
 @login_manager.user_loader
 def login_user_loader(userhash:str) -> User|None:
     username = userhash.split(":")[0]
@@ -367,29 +417,22 @@ def remove_trailing_slash():
     if request.path != "/" and request.path.endswith("/"):
         return redirect(request.path.rstrip("/"))
 
-def load_user(username:str) -> User|None:
-    filepath = safe_join(USERS_ROOT, (username + ITEMS_EXT))
-    if filepath and os.path.exists(filepath):
-        return User(username, filepath)
-    else:
-        return None
-
-def init_user_session(user:User, remember:bool):
-    session["session_hash"] = generate_user_hash(user.username, user.data["password"])
-    login_user(user, remember=remember)
-    next_data = urllib.parse.urlparse(request.args.get("next", ""))
-    next_url = next_data.path + (f"?{next_data.query}" if next_data.query else "")
-    return redirect(next_url or url_for("view_index"))
+@app.errorhandler(404)
+def error_404(e):
+    return render_template("404.html"), 404
 
 def view_random_items(request, root:str|None=None):
+    return pagination("index.html", "items", walk_items(root), (lambda items: shuffle(items)), root=root)
+
+def pagination(template:str, key:str, all_items:list, modifier=None, **kwargs):
     page = int(request.args.get("page") or 1)
     next_count = (RESULTS_LIMIT * page)
-    all_items = walk_items(root)
     items = all_items[(RESULTS_LIMIT * (page - 1)):next_count]
     if len(items) == 0 and len(all_items) > 0:
         return abort(404)
-    shuffle(items)
-    return render_template("index.html", root=root, items=items, next_page=(page + 1 if len(all_items) > next_count else None))
+    if modifier:
+        modifier(items)
+    return render_template(template, **kwargs, **{key: items}, next_page=(page + 1 if len(all_items) > next_count else None))
 
 mkdirs(ITEMS_ROOT, USERS_ROOT)
 

@@ -1,17 +1,54 @@
 const API_BASE = '//' + document.documentElement.dataset.root.split('://').slice(1).join('://') + '/api';
 
-if ('up' in window) {
-  up.compiler('form.add', addHandler);
-  up.compiler('div.item', itemHandler);
-} else {
-  var add = document.querySelector('form.add');
-  if (add) {
-    addHandler(add);
+registerHandler('form.Register', (form) => addSlugifyNoticeHandler(form.querySelector('input[name="username"]'), form.querySelector('span.notice'), 'username'));
+registerHandler('form.add', addHandler);
+registerHandler('div.item', itemHandler);
+registerHandler('div.item div.clickable', lightboxHandler);
+
+up.compiler('.notifications.placeholder', target => {
+  target.classList.toggle('content');
+  up.request('/notifications').then(response => {
+    up.render({ target: '.notifications.content', response });
+    var count = document.querySelectorAll('nav .notifications > ul.events > li').length;
+    if (count > 0) {
+      var badge = document.querySelector('nav .uk-badge');
+      badge.textContent = count;
+      if (document.querySelector('nav .notifications > .load-wrapper > a')) {
+        badge.textContent += '+';
+      }
+      badge.hidden = false;
+    }
+  });
+});
+
+function registerHandler(query, handler) {
+  if ('up' in window) {
+    up.compiler(query, handler);
+  } else {
+    document.querySelectorAll(query).forEach(el => handler(el));
   }
-  var item = document.querySelector('div.item');
-  if (item) {
-    itemHandler(item);
-  }
+}
+
+function addTextInputHandler(input, handler) {
+  [/* 'change', */ 'input', 'paste'].forEach(event => input.addEventListener(event, handler));
+}
+
+function addSlugifyNoticeHandler(input, notice, subject) {
+  addTextInputHandler(input, function(){
+    if (input.value) {
+      fetch(API_BASE + '/slugify?text=' + encodeURIComponent(input.value))
+      .then(res => res.text())
+      .then(text => {
+        if (text !== input.value) {
+          notice.innerHTML = `The ${subject} will be normalized to <code>${text}</code>.`;
+        } else {
+          notice.textContent = '';
+        }
+      });
+    } else {
+      notice.textContent = '';
+    }
+  });
 }
 
 function addHandler(form) {
@@ -69,9 +106,7 @@ function addHandler(form) {
     }
   });
 
-  [/* 'change', */ 'input', 'paste'].forEach(event => {
-    link.addEventListener(event, linkHandler);
-  });
+  addTextInputHandler(link, linkHandler);
 
   function linkHandler() {
     var url = link.value.trim();
@@ -96,10 +131,12 @@ function addHandler(form) {
 }
 
 function itemHandler(section) {
+  var url = `${API_BASE}/collections/${section.dataset.itemId}`;
   var button = section.querySelector('div.pin button');
   var pins = section.querySelector('div.pin ul');
   var create = document.querySelector('#new-collection');
-  var url = `${API_BASE}/collections/${section.dataset.itemId}`;
+  var notice = create.querySelector('span.notice');
+  var nameEl = create.querySelector('input[type="text"]');
 
   fetch(url)
   .then(res => (res.ok && res.json()))
@@ -123,5 +160,30 @@ function itemHandler(section) {
   });
 
   pins.querySelector('button').addEventListener('click', () => UIkit.dropdown('div.pin div.uk-dropdown').hide());
-  create.querySelector('button.uk-button-primary').addEventListener('click', () => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [create.querySelector('input').value]: true }) }).then(() => location.reload()));
+  create.querySelector('button.uk-button-primary').addEventListener('click', () => {
+    var name = nameEl.value;
+    if (name) {
+      fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [name]: true }) })
+      .then(() => location.reload());
+    }
+  });
+
+  addSlugifyNoticeHandler(nameEl, notice, 'name');
+}
+
+function lightboxHandler(clickable) {
+  style = clickable.parentElement.style;
+  clickable.addEventListener('click', () => {
+    style.width = (style.width ? '' : '100%');
+  });
+  clickable.addEventListener('keypress', ev => {
+    if (ev.key === 'Enter') {
+      clickable.click();
+    }
+  })
+}
+
+function copyToClipboard() {
+  navigator.clipboard.writeText(document.querySelector('link[rel=canonical]').href);
+  UIkit.notification('Link copied to clipboard');
 }

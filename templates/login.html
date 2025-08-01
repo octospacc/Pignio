@@ -1,19 +1,22 @@
 {% extends "base.html" %}
-{% block title %}{{ mode }}{% endblock %}
+{% block title %}{{ _(mode) }}{% endblock %}
 {% block content %}
   {% if config.ALLOW_REGISTRATION %}
     <ul uk-tab="connect: .mode; {% if mode == 'Register' %} active: 1 {% endif %}">
-      <li><a href="{{ url_for('view_login') }}">Login</a></li>
-      <li><a href="{{ url_for('view_register') }}">Register</a></li>
+      <li><a href="{{ url_for('view_login') }}">{{ _('Login') }}</a></li>
+      <li><a href="{{ url_for('view_register') }}">{{ _('Register') }}</a></li>
     </ul>
   {% endif %}
-  <form method="POST">
+  <form method="POST" up-target="main, footer, nav" class="{{ mode }}">
     {{ form.hidden_tag() }}
     <div class="uk-margin">
       <div class="uk-inline uk-width-1-1">
         <span class="uk-form-icon" uk-icon="icon: user"></span>
         {{ form.username(class_="uk-input", placeholder="Username") }}
       </div>
+      {% if mode == "Register" %}
+        <span class="uk-text-meta">{{ _('Note') }}: {{ _('username-note') }} <span class="notice"></span></span>
+      {% endif %}
     </div>
     <div class="uk-margin">
       <div class="uk-inline uk-width-1-1">
@@ -25,19 +28,19 @@
       <div class="uk-margin">
         <div class="uk-inline uk-width-1-1">
           <span class="uk-form-icon" uk-icon="icon: lock"></span>
-          {{ form.password2(class_="uk-input", placeholder="Confirm Password", required=True) }}
+          {{ form.password2(class_="uk-input", placeholder=(_('Confirm') + " Password"), required=True) }}
         </div>
       </div>
     {% endif %}
     <div class="uk-margin">
       <label>
         {{ form.remember(class_="uk-checkbox") }}
-        Remember me
+        {{ _('Remember me') }}
       </label>
     </div>
     <div class="uk-margin">
       <div class="uk-inline uk-width-1-1">
-        {{ form.submit(class_="uk-input uk-button uk-button-default") }}
+        {{ form.submit(class_="uk-input uk-button uk-button-default", value=_(mode)) }}
         <span class="uk-form-icon uk-form-icon-flip" uk-icon="icon: unlock"></span>
       </div>
     </div>

@@ -59,11 +59,11 @@
       <p class="uk-text-break" style="white-space: pre-line;">{{ item.description }}</p>
       <div class="uk-margin uk-grid-small" uk-grid>
         <div>
-          <button class="uk-icon-button" uk-icon="icon: forward" onclick="(function(){ navigator.clipboard.writeText(document.querySelector('link[rel=canonical]').href); UIkit.notification('Link copied to clipboard'); })()"></button>
+          <button class="uk-icon-button" uk-icon="forward" title="Copy to clipboard" onclick="copyToClipboard()"></button>
         </div>
         <div class="pin">
-          <button class="uk-button uk-button-default uk-disabled" type="button" disabled>
-            Pin <span uk-icon="icon: tag"></span>
+          <button class="uk-button uk-button-primary uk-disabled" type="button" disabled>
+            Pin <span uk-icon="tag"></span>
           </button>
           <div uk-dropdown="mode: click; stretch: y;">
             <ul class="uk-list">
@@ -74,31 +74,36 @@
         {% if not current_user.is_authenticated or get_item_permissions(item).edit %}
           <div>
             <a class="uk-button uk-button-default uk-icon-link" href="{{ url_for('add_item') }}?item={{ item.id }}" rel="nofollow">
-              Edit <span uk-icon="icon: file-edit"></span>
+              {{ _('Edit') }} <span uk-icon="file-edit"></span>
             </a>
           </div>
           <div>
-            <a class="uk-button uk-button-danger" href="{{ url_for('remove_item') }}?item={{ item.id }}" rel="nofollow">
-              Delete <span uk-icon="icon: trash"></span>
+            <a class="uk-button uk-button-default" href="{{ url_for('remove_item') }}?item={{ item.id }}" rel="nofollow" up-layer="new">
+              {{ _('Delete') }} <span uk-icon="trash"></span>
+            </a>
+          </div>
+        {% endif %}
+        {% if not current_user.is_authenticated or not get_item_permissions(item).edit %}
+          <div>
+            <a class="uk-button uk-button-default" href="{{ url_for('report_item') }}?item={{ item.id }}" rel="nofollow" up-layer="new">
+              {{ _('Report') }} <span uk-icon="warning"></span>
             </a>
           </div>
         {% endif %}
       </div>
       <div class="uk-padding uk-padding-remove-left uk-padding-remove-right">
-      <!-- { % if subitems | length > 0 % } -->
-        <!-- <hr /> -->
         <form method="POST">
           <div class="uk-margin">
             <div class="uk-inline uk-width-1-1">
-              <input class="uk-input" type="text" name="comment" placeholder="{% if current_user.is_authenticated %} What's on your mind? " {% else %} Please login to comment. " disabled {% endif %} required />
+              <input class="uk-input" type="text" name="comment" placeholder="{% if current_user.is_authenticated %} {{ _('comment-placeholder') }} " {% else %} Please login to comment. " disabled {% endif %} required />
             </div>
             <div class="uk-inline uk-width-1-1">
               <input class="uk-input uk-button uk-button-default {% if not current_user.is_authenticated %} uk-disabled" disabled {% else %} " {% endif %} type="submit" value="Comment" />
-              <span class="uk-form-icon uk-form-icon-flip" uk-icon="icon: comment"></span>
+              <span class="uk-form-icon uk-form-icon-flip" uk-icon="comment"></span>
             </div>
           </div>
         </form>
-        {% for item in subitems %}
+        {% for item in comments %}
           {% set iid %}{{ item.id.split('/')[-1] }}{% endset %}
           <div class="uk-card uk-margin uk-card-default uk-card-small" id="{{ iid }}">
             <div class="uk-card-header">
@@ -115,16 +120,22 @@
                     #{{ iid }}
                   {% endif %}
                 </a>
-                {% if get_item_permissions(item).edit %}
-                  <a href="{{ url_for('remove_item', item=item.id) }}" class="uk-icon-button uk-float-right" uk-icon="icon: trash" title="Delete"></a>
-                {% endif %}
+                <div class="uk-float-right uk-grid-small" uk-grid>
+                  {% if get_item_permissions(item).edit %}
+                    <div>
+                      <a href="{{ url_for('remove_item', item=item.id) }}" rel="nofollow" up-layer="new" class="uk-icon-button uk-float-right" uk-icon="trash" title="{{ _('Delete') }}"></a>
+                    </div>
+                  {% else %}
+                    <div>
+                      <a href="{{ url_for('report_item', item=item.id) }}" rel="nofollow" up-layer="new" class="uk-icon-button uk-float-right" uk-icon="warning" title="{{ _('Report') }}"></a>
+                    </div>
+                  {% endif %}
+                </div>
               </h3>
             </div>
             <div class="uk-card-body">{{ item.text }}</div>
-            <!-- <div class="uk-card-footer"></div> -->
           </div>
         {% endfor %}
-      <!-- { % endif % } -->
       </div>
     </div>
   </div>
@@ -132,8 +143,13 @@
     <div class="uk-modal-dialog uk-modal-body">
       <button class="uk-modal-close-default" uk-close></button>
       <h2 class="uk-modal-title">New Collection</h2>
-      <input class="uk-input" type="text" placeholder="Name" />
-      <button class="uk-button uk-button-primary">Create</button>
+      <div class="uk-margin">
+        <input class="uk-input" type="text" placeholder="Name" />
+        <span class="uk-text-meta"><span class="notice"></span>&nbsp;</span>
+      </div>
+      <div class="uk-margin">
+        <button class="uk-button uk-button-primary">Create</button>
+      </div>
     </div>
   </div>
 {% endblock %}

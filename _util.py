@@ -11,11 +11,14 @@ from bs4 import BeautifulSoup
 from flask_login import current_user # type: ignore[import-untyped]
 from glob import glob
 from pathlib import Path
+from datetime import datetime
 from snowflake import Snowflake # type: ignore[import-untyped]
 from hashlib import sha256
 from pytesseract import image_to_string, TesseractNotFoundError # type: ignore[import-untyped]
 from werkzeug.utils import safe_join
+from slugify import slugify
 from _pignio import *
+from _functions import *
 
 def generate_user_hash(username:str, password:str) -> str:
     return f"{username}:" + urlsafe_b64encode(sha256(password.encode()).digest()).decode()
@@ -192,19 +195,20 @@ def store_item(iid:str, data:dict[str, str], files:dict|None=None, ocr:bool=Fals
     write_textual(filepath + ITEMS_EXT, write_metadata(data))
     return True
 
-def delete_item(item:dict|str) -> int:
+def delete_item(item:dict|str, only_media:bool=False) -> int:
     deleted = 0
     if (filepath := safe_join(ITEMS_ROOT, iid_to_filename(ensure_item_id(item)))):
         files = glob(f"{filepath}.*")
         for file in files:
-            os.remove(file)
-            deleted += 1
+            if not only_media or not file.lower().endswith(ITEMS_EXT):
+                os.remove(file)
+                deleted += 1
     return deleted
 
 def get_item_permissions(item:ItemDict|str) -> dict[str, bool]:
     item = ensure_item_dict(item)
     creator = safe_str_get(cast(dict, item), "creator")
-    return {"view": True, "edit": current_user.is_authenticated and (not creator or creator == current_user.username)}
+    return {"view": True, "edit": current_user.is_authenticated and (creator == current_user.username or current_user.is_admin)}
 
 def is_file_type_allowed(kind:str, ext:str) -> bool:
     return ((kind == "image" and ext in EXTENSIONS["image"]) or (kind == "video" and ext in EXTENSIONS["video"]))
@@ -256,19 +260,22 @@ def write_metadata(data:dict[str, str]|MetaDict) -> str:
     config.write(output)
     return "\n".join(output.getvalue().splitlines()[1:]) # remove section header
 
+def slugify_name(text:str):
+    return slugify(text)[:64]
+
 def fetch_url_data(url:str) -> dict[str, str|None]:
     response = requests.get(url, timeout=5)
     soup = BeautifulSoup(response.text, "html.parser")
 
     description = None
     desc_tag = soup.find("meta", attrs={"name": "description"}) or \
-                soup.find("meta", attrs={"property": "og:description"})
+               soup.find("meta", attrs={"property": "og:description"})
     if desc_tag and "content" in desc_tag.attrs: # type: ignore[attr-defined]
         description = desc_tag["content"] # type: ignore[index]
 
     image = None
     img_tag = soup.find("meta", attrs={"property": "og:image"}) or \
-                soup.find("meta", attrs={"name": "twitter:image"})
+              soup.find("meta", attrs={"name": "twitter:image"})
     if img_tag and "content" in img_tag.attrs: # type: ignore[attr-defined]
         image = img_tag["content"] # type: ignore[index]
     
@@ -339,3 +346,16 @@ def read_textual(filepath:str) -> str:
 def write_textual(filepath:str, content:str) -> None:
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(content)
+
+def parse_event(text:str) -> dict[str,str]:
+    [base, extra] = text.split(":")
+    extra += ","
+    [kind, time] = base.split("@")
+    event = {"kind": kind, "datetime": str(datetime.fromtimestamp(float(time)))}
+    if kind == "pin":
+        [item, user, collection] = extra.split(",")[:3]
+        event = event | {"item": item, "user": user, "collection": collection}
+    else:
+        [item, user] = extra.split(",")[:2]
+        event = event | {"item": item, "user": user}
+    return event

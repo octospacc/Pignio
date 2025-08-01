@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Notifications{% endblock %}
+{% block content %}
+  <div class="notifications content uk-text-break">
+    {% if events | length > 0 %}
+      <ul class="events uk-list uk-list-divider">
+        {% for event in events %}
+          <li>
+            <div class="uk-inline uk-width-1-1">
+              {% if event.kind == 'pin' %}
+                <span uk-icon="tag"></span>
+                <a href="{{ url_for('view_user', username=event.user) }}">{{ event.user }}</a>
+                pinned your item <a href="{{ url_for('view_item', iid=event.item) }}">{{ event.item }}</a>
+                in <a href="{{ url_for('view_user', username=event.user) }}#{{ event.collection }}">{{ event.collection }}</a>.
+              {% elif event.kind == 'comment' %}
+                <span uk-icon="comment"></span>
+                Your item received a comment:
+                <a href="{{ url_for('view_item', iid=event.item) }}">{{ event.item }}</a>.
+              {% elif event.kind == 'report' %}
+                <span uk-icon="warning"></span>
+                <a href="{{ url_for('view_user', username=event.user) }}">{{ event.user }}</a>
+                reported item <a href="{{ url_for('view_item', iid=event.item) }}">{{ event.item }}</a>.
+              {% endif %}
+              <span class="uk-float-right uk-margin-left">{{ event.datetime }}</span>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+      <div class="load-wrapper uk-margin">
+        {% if next_page %}
+          <a href="{{ url_for(request.endpoint, page=next_page) }}" class="uk-button uk-button-secondary uk-width-1-1"
+             up-target=".events:after, .load-wrapper" up-preload
+          >{{ _('Load more') }}</a>
+        {% endif %}
+      </div>
+    {% else %}
+      No notifications!
+    {% endif %}
+  </div>
+{% endblock %}

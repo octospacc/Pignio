@@ -8,3 +8,4 @@ snowflake-id
 waitress
 pillow
 pytesseract
+python-slugify

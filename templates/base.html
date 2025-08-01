@@ -16,6 +16,11 @@
     up.network.config.lateDelay = 0;
   })();"></script>
   <link rel="stylesheet" href="{{ url_for('serve_module_unpoly', filename='unpoly.min.css') }}" />
+  <style>
+    body { overflow-x: auto; }
+    up-modal .back { display: none; }
+    .clickable { cursor: pointer; }
+  </style>
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
   {% if canonical %}
     <link rel="canonical" href="{% include 'links-prefix.txt' %}{{ canonical }}" />
@@ -50,27 +55,40 @@
           {% endif %}
         </a>
         <form class="uk-search uk-search-navbar uk-width-auto uk-flex-1" action="{{ url_for('search') }}">
-          <input class="uk-search-input" type="search" name="query" placeholder="Search..." value="{{ query }}" required>
+          <input class="uk-search-input" type="search" name="query" placeholder="{{ _('Search') }}..." value="{{ query }}" required>
           <button class="uk-search-icon-flip" uk-search-icon></button>
         </form>
       </div>
       <div class="uk-navbar-right uk-margin-left">
         <a class="uk-button uk-button-default uk-icon-link" uk-icon="plus" href="{{ url_for('add_item') }}" rel="nofollow">
-          <span class="uk-visible@s">Create</span>
+          <span class="uk-visible@s">{{ _('Create') }}</span>
         </a>
+        {% if current_user.is_authenticated %}
+          <div class="uk-inline" tabindex="-1">
+            <button class="uk-icon-button" uk-icon="bell"></button>
+            <span class="uk-badge uk-position-top-right" inert hidden></span>
+          </div>
+          <div uk-dropdown="mode: click; stretch: y;">
+            <div class="notifications placeholder">
+              <a href="{{ url_for('view_notifications') }}" rel="nofollow">{{ _('Notifications') }}</a>
+            </div>
+          </div>
+        {% endif %}
       </div>
     </div>
   </nav>
   <div class="uk-margin uk-flex-auto">
     <div class="uk-container">
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          {% for category, message in messages %}
-            <p uk-alert class="uk-alert-{{ category }}">{{ message }}</p>
-          {% endfor %}
-        {% endif %}
-      {% endwith %}
-      {% block content %}{% endblock %}
+      <main>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <p uk-alert class="uk-alert-{{ category }}">{{ message }}</p>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+      </main>
     </div>
   </div>
   <footer class="uk-section uk-section-xsmall uk-background-muted">
@@ -79,8 +97,8 @@
         Powered by <a class="uk-text-primary" target="_blank" href="https://gitlab.com/octospacc/Pignio">{{ config.APP_NAME }}</a>, © 2025 OctoSpacc (AGPLv3)
         <span class="uk-float-right">
           {% if current_user.is_authenticated %}
-            Logged in as <a href="{{ url_for('view_user', username=current_user.username) }}">{{ current_user.username }}</a>
-            — <a class="uk-button uk-button-text uk-text-baseline" href="{{ url_for('logout') }}">Logout</a>
+            {{ _('Logged in as') }} <a href="{{ url_for('view_user', username=current_user.username) }}">{{ current_user.username }}</a>
+            — <a class="uk-button uk-button-text uk-text-baseline" href="{{ url_for('logout') }}" up-target="main, footer, nav">Logout</a>
           {% else %}
             <a class="uk-button uk-button-text uk-text-baseline" href="{{ url_for('view_login') }}">Login</a>
           {% endif %}

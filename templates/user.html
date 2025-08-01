@@ -15,15 +15,15 @@
     {% endif %}
     <p>{{ user.data.description }}</p>
     {% if current_user.is_authenticated and current_user.username == user.username %}
-      <a class="uk-button uk-button-default uk-icon-link" href="{{ url_for('export_api') }}" target="_blank">
-        Export Data <span uk-icon="icon: download"></span>
+      <a class="uk-button uk-button-default uk-icon-link" href="{{ url_for('export_api') }}" target="_blank" rel="nofollow">
+        {{ _('Export data') }} <span uk-icon="download"></span>
       </a>
     {% endif %}
   </div>
   <hr />
   {% for folder, collection in collections.items() %}
     {% if collection | length > 0 %}
-      <h3 class="uk-text-center">{{ folder }}</h3>
+      <h3 class="uk-text-center" id="{{ folder }}">{{ folder }}</h3>
       {% include "results.html" %}
     {% endif %}
   {% endfor %}

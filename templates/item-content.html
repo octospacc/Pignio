@@ -1,12 +1,16 @@
 {% if item.image %}
   {% set image %}{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('serve_media', filename=item.image) }}{% endset %}
 {% endif %}
-{% if item.text %}
-  <div class="uk-background-cover uk-height-small uk-flex uk-flex-center uk-flex-middle uk-text-center uk-text-middle uk-overflow-hidden" style="background-image: url('{{ image }}');">
-    <p class="uk-text-stroke uk-text-primary">{{ item.text }}</p>
-  </div>
-{% elif item.image %}
-  <img class="uk-width-expand" src="{{ image }}" alt="{{ item.description }}" />
-{% elif item.video %}
-  <video class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('serve_media', filename=item.video) }}" {% if full %} controls {% else %} autoplay muted {% endif %} loop></video>
-{% endif %}
+{% set alttext %}{% if item.alttext %}{{ item.alttext }}{% else %}{{ item.description }}{% endif %}{% endset %}
+<div {% if full %} class="clickable" tabindex="0" {% endif %}>
+  {% if item.text %}
+    <div class="uk-background-cover uk-height-small uk-flex uk-flex-center uk-flex-middle uk-text-center uk-text-middle uk-overflow-hidden" style="background-image: url('{{ image }}');">
+      <p class="uk-text-stroke uk-text-primary">{{ item.text }}</p>
+    </div>
+  {% elif item.image %}
+    <img class="uk-width-expand" src="{{ image }}" alt="{{ alttext }}" />
+  {% elif item.video %}
+    <video class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('serve_media', filename=item.video) }}"
+          aria-label="{{ alttext }}" {% if full %} controls {% else %} autoplay muted {% endif %} loop></video>
+  {% endif %}
+</div>
