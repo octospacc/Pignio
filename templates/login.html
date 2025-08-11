@@ -2,7 +2,7 @@
 {% block title %}{{ _(mode) }}{% endblock %}
 {% block content %}
   {% if config.ALLOW_REGISTRATION %}
-    <ul uk-tab="connect: .mode; {% if mode == 'Register' %} active: 1 {% endif %}">
+    <ul class="uk-tab" uk-tab="connect: .mode; {% if mode == 'Register' %} active: 1 {% endif %}">
       <li><a href="{{ url_for('view_login') }}">{{ _('Login') }}</a></li>
       <li><a href="{{ url_for('view_register') }}">{{ _('Register') }}</a></li>
     </ul>

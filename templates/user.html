@@ -1,11 +1,17 @@
 {% extends "base.html" %}
 {% block title %}User {{ user.username }}{% endblock %}
+{% block canonical %}{{ url_for('view_user', username=user.username) }}{% endblock %}
+{% block external %}{{ user.url or "" }}{% endblock %}
 {% block metadata %}
   <link rel="alternate" type="application/atom+xml" href="{{ url_for('view_user_feed', username=user.username) }}" title="@{{ user.username }} Feed" />
 {% endblock %}
 {% block content %}
   <div class="uk-text-center">
-    <h2>{{ user.username }}</h2>
+    <h2>
+      {% if user.url %}<a target="_blank" href="{{ user.url }}">{% endif %}
+      {{ user.username }}
+      {% if user.url %}</a>{% endif %}
+    </h2>
     {% if user.data.propic %}
       {% with item=load_item(user.data.propic) %}
         <div class="uk-width-medium uk-align-center">

@@ -1,4 +1,5 @@
 import os
+import json
 import requests
 import urllib.parse
 from bs4 import BeautifulSoup
@@ -12,16 +13,36 @@ from _pignio import *
 from _util import *
 
 class User(UserMixin):
-    def __init__(self, username:str, filepath:str):
-        self.username: str = username
-        self.filepath: str = filepath
-        self.data = cast(UserDict, read_metadata(read_textual(filepath)))
+    data: UserDict = {}
+
+    def __init__(self, username:str, filepath:str|None=None, url:str|None=None):
+        self.username = username
+        self.filepath = filepath
+        self.url = self.json_url = url
+        if filepath:
+            try:
+                self.data = cast(UserDict, read_metadata(read_textual(filepath)))
+            except FileNotFoundError:
+                pass
 
     def get_id(self) -> str:
         return generate_user_hash(self.username, self.data["password"])
     
     def is_admin(self) -> bool:
         return True # TODO
+    
+    def save(self) -> None:
+        if self.filepath:
+            write_textual(self.filepath, write_metadata(self.data))
+        else:
+            raise Exception
+
+class RemoteUser(User):
+    url: str
+    json_url: str
+
+    def __init__(self, username:str, url:str):
+        super().__init__(username, url=url)
 
 def load_user(username:str) -> User|None:
     username = slugify_name(username)
@@ -70,6 +91,11 @@ def query_params(*param_names):
         return wrapper
     return decorator
 
+def response_with_type(content, mime):
+    response = make_response(content)
+    response.headers["Content-Type"] = mime
+    return response
+
 def gettext(key:str) -> str:
     data = STRINGS.get(key) or {}
     lang = request.headers.get("Accept-Language", "en").split(",")[0].split("-")[0]
@@ -99,3 +125,18 @@ def make_activitypub_item(item:ItemDict) -> dict:
 
 def make_activitypub_user(user:User) -> dict:
     return make_activitypub(url_for("view_user", username=user.username), "Person", user.username)
+
+def activitypub_fetch(url):
+    return requests.get(url, headers={"Accept": ACTIVITYPUB_TYPES[0]}).json()
+
+# def load_remote_item(path:str, host:str):
+#     return activitypub_fetch()
+
+def load_remote_user(username:str, host:str) -> RemoteUser|None:
+    try:
+        username = f"{username}@{host}"
+        url = requests.get(f"{host_to_absolute(host)}/.well-known/webfinger?resource=acct:{username}").json()["aliases"][0]
+        source = activitypub_fetch(url)
+        return RemoteUser(username, url)
+    except (json.JSONDecodeError, requests.ConnectionError):
+        return None

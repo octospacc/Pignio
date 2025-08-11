@@ -16,6 +16,7 @@ class ItemDict(MetaDict, total=False):
     link: str
     image: str
     video: str
+    model: str
     langs: list[str]
     text: str
     alttext: str
@@ -26,21 +27,24 @@ class CollectionDict(MetaDict, total=False):
     items: list[str]
 
 class UserDict(CollectionDict, total=False):
-    password: Required[str]
+    password: str
 
 DATA_ROOT = "data"
 ITEMS_ROOT = f"{DATA_ROOT}/items"
+CACHE_ROOT = f"{DATA_ROOT}/cache"
 USERS_ROOT = f"{DATA_ROOT}/users"
 EVENTS_ROOT = f"{DATA_ROOT}/events"
 EXTENSIONS = {
     "image": ("jpg", "jpeg", "jfif", "bmp", "png", "apng", "gif", "webp", "avif"),
     "video": ("mp4", "mov", "mpeg", "ogv", "webm", "mkv"),
     "audio": ("mp3", "m4a", "flac", "opus", "ogg", "wav"),
+    "model": ("glb", ),
 }
 ITEMS_EXT = ".ini"
 LISTS_EXT = ".wsv"
 # EVENTS_EXT = f".events{LISTS_EXT}"
 MODERATION_LIST = f"{DATA_ROOT}/moderation{LISTS_EXT}"
+ACTIVITYPUB_TYPES = ['application/ld+json; profile="https://www.w3.org/ns/activitystreams"', "application/activity+json"]
 
 snowflake_epoch = int(datetime(2025, 1, 1, 0, 0, 0).timestamp() * 1000)
 snowflake = SnowflakeGenerator(1, epoch=snowflake_epoch)

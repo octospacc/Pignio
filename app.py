@@ -1,6 +1,7 @@
 import os
 import time
 import urllib.parse
+import subprocess
 from io import BytesIO
 from zipfile import ZipFile, ZIP_DEFLATED
 from typing import Any, cast
@@ -29,6 +30,7 @@ INSTANCE_NAME = ""
 INSTANCE_DESCRIPTION = ""
 ALLOW_REGISTRATION = False
 # ALLOW_FEDERATION = False
+RENDER_CACHE = True
 SITE_VERIFICATION = {
     "GOOGLE": "",
     "BING": "",
@@ -77,7 +79,7 @@ class RegisterForm(LoginForm):
 
 @app.route("/")
 def view_index():
-    return view_random_items(request)
+    return view_random_items()
 
 @app.route("/.well-known/nodeinfo")
 @noindex
@@ -156,9 +158,7 @@ def webfinger(resource:str):
 @app.route("/manifest.json")
 @noindex
 def serve_manifest():
-    response = make_response(render_template("manifest.json"))
-    response.headers["Content-Type"] = "application/json"
-    return response
+    return response_with_type(render_template("manifest.json"), "application/json")
 
 @app.route("/static/module/dist/uikit/<path:filename>")
 @noindex
@@ -174,13 +174,42 @@ def serve_module_unpoly(filename:str):
 def serve_media(filename:str):
     return send_from_directory(ITEMS_ROOT, filename)
 
+@app.route("/render/<path:iid>")
+def render_media(iid:str):
+    if (item := load_item(iid)):
+        if (text := item.get("text")):
+            filename = item["id"] + ".png"
+            filepath = os.path.join(CACHE_ROOT, filename)
+            if RENDER_CACHE and os.path.exists(filepath):
+                return send_from_directory(CACHE_ROOT, filename)
+            else:
+                args = ['node', 'render.js']
+                if (image := item.get("image")):
+                    args.append(os.path.join(ITEMS_ROOT, image))
+                png, err = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate(input=text.encode("utf-8"))
+                if RENDER_CACHE:
+                    with open(filepath, "wb") as f:
+                        f.write(png) # TODO handle creation of parent directories when necessary
+                return response_with_type(png, "image/png")
+        else:
+            return redirect(url_for("serve_media", filename=(item.get("image") or item.get("video"))))
+    else:
+        return abort(404)
+
+@app.route("/model-viewer/<path:iid>")
+def model_viewer(iid:str):
+    if (item := load_item(iid)) and (model := item.get("model")):
+        return render_template("model-viewer.html", model=model, poster=item.get("image"))
+    else:
+        return abort(404)
+
 @app.route("/item/<path:iid>", methods=["GET", "POST"])
 def view_item(iid:str):
     has_subitems = (dirpath := safe_join(ITEMS_ROOT, iid)) and os.path.isdir(dirpath)
     if (item := load_item(iid)) and get_item_permissions(item)["view"]:
         if request.method == "GET":
             if safe_str_get(cast(dict, item), "type") != "comment":
-                if request.headers.get("Accept") == "application/activity+json":
+                if is_for_activitypub():
                     return make_activitypub_item(item)
                 else:
                     comments = walk_items(iid_to_filename(iid))
@@ -193,39 +222,44 @@ def view_item(iid:str):
             store_item(f"{iid_to_filename(iid)}/{generate_iid()}", {"text": comment}, comment=True)
             return redirect(url_for("view_item", iid=iid))
     elif has_subitems:
-        return view_random_items(request, iid)
+        return view_random_items(iid)
     return abort(404)
 
 @app.route("/user/<path:username>")
 def view_user(username:str):
-    if (user := load_user(username)):
-        if request.headers.get("Accept") == "application/activity+json":
+    userparts = username.lstrip("@").split("@")
+    if len(userparts) > 1:
+        if (user := load_remote_user(*userparts)):
+            if is_for_activitypub():
+                return redirect(user.json_url)
+            elif current_user.is_authenticated:
+                return render_template("user.html", user=user, collections={})
+            else:
+                return redirect(user.url)
+    elif (user := load_user(userparts[0])):
+        if is_for_activitypub():
             return make_activitypub_user(user)
         else:
             return render_template("user.html", user=user, collections=walk_collections(user.username), load_item=load_item)
-    else:
-        return abort(404)
+    return abort(404)
 
+# TODO: change this to /feed/... ?
 @app.route("/user/<path:username>/feed")
 def view_user_feed(username:str):
     if (user := load_user(username)):
         limit = int(request.args.get("limit") or 100)
-        response = make_response(render_template("user-feed.xml", user=user, collections=walk_collections(username), limit=limit, load_item=load_item))
-        response.headers["Content-Type"] = "application/atom+xml"
-        return response
+        return response_with_type(render_template("user-feed.xml", user=user, collections=walk_collections(username), limit=limit, load_item=load_item), "application/atom+xml")
     else:
         return abort(404)
 
 @app.route("/search")
 def search():
     query = request.args.get("query", "").lower()
-    found = False
     results = []
     for item in walk_items():
         if item and any([query in (value if type(value) == str else list_to_wsv(value)).lower() for value in item.values()]):
             results.append(item)
-            found = True
-    return render_template("search.html", items=(results if found else None), query=query)
+    return pagination("search.html", "items", results, query=query)
 
 @app.route("/add", methods=["GET", "POST"])
 @noindex
@@ -302,7 +336,7 @@ def view_login():
         if pass_equals or hash_equals:
             if pass_equals:
                 user.data["password"] = bcrypt.generate_password_hash(user.data["password"]).decode("utf-8")
-                write_textual(user.filepath, write_metadata(user.data))
+                user.save()
             return init_user_session(user, form.remember.data)
     if request.method == "POST":
         flash("Invalid username or password", "danger")
@@ -317,10 +351,10 @@ def view_register():
         return redirect(url_for("view_index"))
     form = RegisterForm()
     if form.validate_on_submit() and (username := form.username.data) and not (user := load_user(username)) and form.password.data == form.password2.data:
-        write_textual(safe_join(USERS_ROOT, (slugify_name(username) + ITEMS_EXT)), write_metadata({
-            "password": bcrypt.generate_password_hash(form.password.data).decode("utf-8"),
-        }))
-        return init_user_session(load_user(username), form.remember.data)
+        user = User(username := slugify_name(username), safe_join(USERS_ROOT, (username + ITEMS_EXT)))
+        user.data["password"] = bcrypt.generate_password_hash(form.password.data).decode("utf-8")
+        user.save()
+        return init_user_session(user, form.remember.data)
     if request.method == "POST":
         flash("Invalid username or password", "danger")
     return render_template("login.html", form=form, mode="Register")
@@ -421,7 +455,10 @@ def remove_trailing_slash():
 def error_404(e):
     return render_template("404.html"), 404
 
-def view_random_items(request, root:str|None=None):
+def is_for_activitypub():
+    return (request.headers.get("Accept") in ACTIVITYPUB_TYPES)
+
+def view_random_items(root:str|None=None):
     return pagination("index.html", "items", walk_items(root), (lambda items: shuffle(items)), root=root)
 
 def pagination(template:str, key:str, all_items:list, modifier=None, **kwargs):
@@ -434,7 +471,7 @@ def pagination(template:str, key:str, all_items:list, modifier=None, **kwargs):
         modifier(items)
     return render_template(template, **kwargs, **{key: items}, next_page=(page + 1 if len(all_items) > next_count else None))
 
-mkdirs(ITEMS_ROOT, USERS_ROOT)
+mkdirs(ITEMS_ROOT, CACHE_ROOT, USERS_ROOT)
 
 if __name__ == "__main__":
     if DEVELOPMENT:

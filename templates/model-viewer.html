@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>&lt;model-viewer&gt; template</title>
+    <meta charset="utf-8">
+    <meta name="description" content="&lt;model-viewer&gt; template">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link type="text/css" href="{{ url_for('static', filename='model-viewer/styles.css') }}" rel="stylesheet"/>
+  </head>
+  <body>
+    <model-viewer src="{{ url_for('serve_media', filename=model) }}" ar ar-modes="webxr scene-viewer quick-look" camera-controls tone-mapping="neutral" {% if poster %} poster="{{ url_for('serve_media', filename=poster) }}" {% endif %} shadow-intensity="1">
+      <div class="progress-bar hide" slot="progress-bar">
+          <div class="update-bar"></div>
+      </div>
+      <button slot="ar-button" id="ar-button">
+          View in your space
+      </button>
+      <div id="ar-prompt">
+          <img src="ar_hand_prompt.png">
+      </div>
+    </model-viewer>  
+    <script src="{{ url_for('static', filename='model-viewer/script.js') }}"></script>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
+  </body>
+</html>

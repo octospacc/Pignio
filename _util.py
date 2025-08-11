@@ -114,6 +114,8 @@ def load_item(iid:str) -> ItemDict|None:
                 data["image"] = file.replace(os.sep, "/").removeprefix(f"{ITEMS_ROOT}/")
             elif file.lower().endswith(tuple([f".{ext}" for ext in EXTENSIONS["video"]])):
                 data["video"] = file.replace(os.sep, "/").removeprefix(f"{ITEMS_ROOT}/")
+            elif file.lower().endswith(tuple([f".{ext}" for ext in EXTENSIONS["model"]])):
+                data["model"] = file.replace(os.sep, "/").removeprefix(f"{ITEMS_ROOT}/")
 
         if safe_str_get(cast(dict, data), "type") == "comment":
             data["datetime"] = str(datetime_from_snowflake(iid.split("/")[-1])).split(".")[0]
@@ -121,6 +123,7 @@ def load_item(iid:str) -> ItemDict|None:
         return data
     return None
 
+# TODO: when updating existing item, and providing new media in the request, first delete old ones to account for different extensions; also clean cache every time
 def store_item(iid:str, data:dict[str, str], files:dict|None=None, ocr:bool=False, *, comment:bool=False) -> bool:
     iid = filename_to_iid(iid)
     existing = load_item(iid)
@@ -195,6 +198,7 @@ def store_item(iid:str, data:dict[str, str], files:dict|None=None, ocr:bool=Fals
     write_textual(filepath + ITEMS_EXT, write_metadata(data))
     return True
 
+# TODO: also delete from cache
 def delete_item(item:dict|str, only_media:bool=False) -> int:
     deleted = 0
     if (filepath := safe_join(ITEMS_ROOT, iid_to_filename(ensure_item_id(item)))):
@@ -251,7 +255,7 @@ def write_metadata(data:dict[str, str]|MetaDict) -> str:
     config = ConfigParser(interpolation=None)
     new_data: dict[str, str] = {}
     for key in data:
-        if (value := data.get(key)) and key not in ("image", "video", "datetime"):
+        if (value := data.get(key)) and key not in ("image", "video", "audio", "model", "datetime"):
             if type(value) == str:
                 new_data[key] = value
             elif type(value) == list:
@@ -359,3 +363,9 @@ def parse_event(text:str) -> dict[str,str]:
         [item, user] = extra.split(",")[:2]
         event = event | {"item": item, "user": user}
     return event
+
+def host_to_absolute(host:str) -> str:
+    scheme = urllib.parse.urlsplit(host).scheme
+    if not scheme:
+        host = f"https://{host}"
+    return host

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}🆕 Add item{% endblock %}
 {% block content %}
-  <ul uk-tab="connect: .item-type; {% if item.text %} active: 1 {% endif %}">
+  <ul class="uk-tab" uk-tab="connect: .item-type; {% if item.text %} active: 1 {% endif %}">
     <li><a href="#">
       Media <span uk-icon="icon: image"></span>
     </a></li>

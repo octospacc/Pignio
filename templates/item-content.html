@@ -2,15 +2,18 @@
   {% set image %}{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('serve_media', filename=item.image) }}{% endset %}
 {% endif %}
 {% set alttext %}{% if item.alttext %}{{ item.alttext }}{% else %}{{ item.description }}{% endif %}{% endset %}
-<div {% if full %} class="clickable" tabindex="0" {% endif %}>
+<div {% if full and item.model %} class="uk-height-1-1" {% elif full and item.image %} class="clickable" tabindex="0" {% endif %}>
   {% if item.text %}
-    <div class="uk-background-cover uk-height-small uk-flex uk-flex-center uk-flex-middle uk-text-center uk-text-middle uk-overflow-hidden" style="background-image: url('{{ image }}');">
+    <!-- <div class="uk-background-cover uk-height-small uk-flex uk-flex-center uk-flex-middle uk-text-center uk-text-middle uk-overflow-hidden" style="background-image: url('{{ image }}');">
       <p class="uk-text-stroke uk-text-primary">{{ item.text }}</p>
-    </div>
+    </div> -->
+    <img class="uk-width-expand" src="{{ url_for('render_media', iid=item.id) }}" alt="{{ text }}" />
+  {% elif item.model and full %}
+    <iframe class="uk-width-expand uk-height-1-1" src="{{ url_for('model_viewer', iid=item.id) }}"></iframe>
   {% elif item.image %}
     <img class="uk-width-expand" src="{{ image }}" alt="{{ alttext }}" />
   {% elif item.video %}
     <video class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('serve_media', filename=item.video) }}"
-          aria-label="{{ alttext }}" {% if full %} controls {% else %} autoplay muted {% endif %} loop></video>
+           aria-label="{{ alttext }}" {% if full %} controls {% else %} autoplay muted {% endif %} loop></video>
   {% endif %}
 </div>

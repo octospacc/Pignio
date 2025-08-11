@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 {% set title %}{% block title %}{% endblock %}{% endset %}
 {% set canonical %}{% block canonical %}{% endblock %}{% endset %}
+{% set external %}{% block external %}{% endblock %}{% endset %}
 <html data-root="{% include 'links-prefix.txt' %}">
 <head>
   <meta charset="utf-8" />
@@ -20,16 +21,21 @@
     body { overflow-x: auto; }
     up-modal .back { display: none; }
     .clickable { cursor: pointer; }
+    /* workaround for old or no-js browsers not loading icons and buttons size not being set */
+    /* [uk-icon] > [class="uk-visible@s"] { display: initial !important; }
+    [uk-icon].uk-icon > [class="uk-visible@s"] { display: none !important; } */
   </style>
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
-  {% if canonical %}
+  {% if external %}
+    <link rel="canonical" href="{{ external }}" />
+    <meta property="og:url" content="{{ external }}" />
+  {% elif canonical %}
     <link rel="canonical" href="{% include 'links-prefix.txt' %}{{ canonical }}" />
-    <meta name="og:url" content="{% include 'links-prefix.txt' %}{{ canonical }}" />
+    <meta property="og:url" content="{% include 'links-prefix.txt' %}{{ canonical }}" />
   {% endif %}
-  <meta name="og:site_name" content="{{ config.INSTANCE_NAME }}" />
+  <meta property="og:site_name" content="{{ config.INSTANCE_NAME }}" />
   {% block metadata %}
-    <meta name="og:description" content="{{ config.INSTANCE_DESCRIPTION }}" />
-    <meta name="description" content="{{ config.INSTANCE_DESCRIPTION }}" />
+    <meta name="description" property="og:description" content="{{ config.INSTANCE_DESCRIPTION }}" />
   {% endblock %}
   <link rel="manifest" href="{{ url_for('serve_manifest') }}" />
   <link rel="shortcut icon" href="{{ url_for('static', filename='icon.png') }}" type="image/png" />
@@ -43,7 +49,7 @@
 </head>
 <body class="uk-height-viewport uk-flex uk-flex-column">
   <nav class="uk-navbar-container" uk-sticky="sel-target: .uk-navbar-container; cls-active: uk-navbar-sticky">
-    <div class="uk-container uk-container-expand" uk-navbar>
+    <div class="uk-navbar uk-container uk-container-expand" uk-navbar>
       <div class="uk-navbar-left uk-width-expand">
         <a class="uk-link-reset" href="{{ url_for('view_index') }}">
           <span class="uk-logo">
