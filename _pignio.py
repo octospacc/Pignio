@@ -1,5 +1,5 @@
 import os
-from typing import TypedDict, Required
+from typing import TypedDict, Required, Literal
 from datetime import datetime
 from snowflake import SnowflakeGenerator # type: ignore[import-untyped]
 from queue import Queue
@@ -17,10 +17,12 @@ class ItemDict(MetaDict, total=False):
     image: str
     video: str
     model: str
+    doc: str
     langs: list[str]
     text: str
     alttext: str
     systags: list[str]
+    status: Literal["public", "silent"]
     type: str
 
 class CollectionDict(MetaDict, total=False):
@@ -39,10 +41,13 @@ EXTENSIONS = {
     "video": ("mp4", "mov", "mpeg", "ogv", "webm", "mkv"),
     "audio": ("mp3", "m4a", "flac", "opus", "ogg", "wav"),
     "model": ("glb", ),
+    "doc": ("pdf", ),
 }
 ITEMS_EXT = ".ini"
 LISTS_EXT = ".wsv"
 # EVENTS_EXT = f".events{LISTS_EXT}"
+# THUMB_TYPE = "jpeg"
+RENDER_TYPE = "png"
 MODERATION_LIST = f"{DATA_ROOT}/moderation{LISTS_EXT}"
 ACTIVITYPUB_TYPES = ['application/ld+json; profile="https://www.w3.org/ns/activitystreams"', "application/activity+json"]
 
@@ -71,6 +76,12 @@ STRINGS = {
     },
     "Create": {
         "it": "Crea",
+    },
+    "Public": {
+        "it": "Pubblico",
+    },
+    "Silent": {
+        "it": "Silenzioso",
     },
     "Title": {
         "it": "Titolo",
@@ -121,5 +132,32 @@ STRINGS = {
     "comment-placeholder": {
         "en": "What's on your mind?",
         "it": "A cosa stai pensando?",
+    },
+    "login-to-access": {
+        "en": "Please log in to access this page.",
+        "it": "Accedi per visualizzare questa pagina.",
+    },
+    "systag-ai": {
+        "en": "This media is marked as being generated, in whole or substantial part, by artificial intelligence models.",
+        # "it": "",
+    },
+    "systag-oc": {
+        "en": "The user who uploaded this media has marked it as being their own original content.",
+        # "it": "",
+    },
+    "French": {
+        "fr": "Français",
+    },
+    "German": {
+        "de": "Deutsch",
+    },
+    "Italian": {
+        "it": "Italiano",
+    },
+    "Japanese": {
+        "ja": "日本語",
+    },
+    "Russian": {
+        "ru": "Русский",
     },
 }

@@ -1,9 +1,10 @@
 {% extends "base.html" %}
+{% set feed_url %}{{ url_for('view_user_feed', username=user.username) }}{% endset %}
 {% block title %}User {{ user.username }}{% endblock %}
 {% block canonical %}{{ url_for('view_user', username=user.username) }}{% endblock %}
 {% block external %}{{ user.url or "" }}{% endblock %}
 {% block metadata %}
-  <link rel="alternate" type="application/atom+xml" href="{{ url_for('view_user_feed', username=user.username) }}" title="@{{ user.username }} Feed" />
+  <link rel="alternate" type="application/atom+xml" href="{{ feed_url }}" title="@{{ user.username }} Feed" />
 {% endblock %}
 {% block content %}
   <div class="uk-text-center">
@@ -21,9 +22,18 @@
     {% endif %}
     <p>{{ user.data.description }}</p>
     {% if current_user.is_authenticated and current_user.username == user.username %}
-      <a class="uk-button uk-button-default uk-icon-link" href="{{ url_for('export_api') }}" target="_blank" rel="nofollow">
-        {{ _('Export data') }} <span uk-icon="download"></span>
-      </a>
+      <div class="uk-margin uk-flex-center uk-grid-small uk-grid" uk-grid>
+        <div>
+          <a class="uk-button uk-button-default uk-icon-link" href="{{ feed_url }}" target="_blank" rel="nofollow">
+            Feed (Atom) <span uk-icon="rss"></span>
+          </a>
+        </div>
+        <div>
+          <a class="uk-button uk-button-default uk-icon-link" href="{{ url_for('export_api') }}" target="_blank" rel="nofollow">
+            {{ _('Export data') }} <span uk-icon="download"></span>
+          </a>
+        </div>
+      </div>
     {% endif %}
   </div>
   <hr />

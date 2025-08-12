@@ -1,0 +1,5 @@
+{%- if item.text -%}
+  {{- url_for('render_media', iid=item.id) -}}
+{%- elif item.image -%}
+  {{- url_for('serve_media', filename=item.image) -}}
+{%- endif -%}

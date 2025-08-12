@@ -1,9 +1,15 @@
-const API_BASE = '//' + document.documentElement.dataset.root.split('://').slice(1).join('://') + '/api';
+const HTTP_BASE = '//' + document.documentElement.dataset.root.split('://').slice(1).join('://');
+const API_BASE = HTTP_BASE + '/api';
 
 registerHandler('form.Register', (form) => addSlugifyNoticeHandler(form.querySelector('input[name="username"]'), form.querySelector('span.notice'), 'username'));
 registerHandler('form.add', addHandler);
 registerHandler('div.item', itemHandler);
 registerHandler('div.item div.clickable', lightboxHandler);
+registerHandler('select.lang', select => select.addEventListener('change', () => {
+  const form = document.querySelector('form.lang');
+  form.action += '?next=' + encodeURIComponent(location.href);
+  form.submit();
+}));
 
 up.compiler('.notifications.placeholder', target => {
   target.classList.toggle('content');

@@ -110,12 +110,10 @@ def load_item(iid:str) -> ItemDict|None:
         for file in files:
             if file.lower().endswith(ITEMS_EXT):
                 data = data | read_metadata(read_textual(file))
-            elif file.lower().endswith(tuple([f".{ext}" for ext in EXTENSIONS["image"]])):
-                data["image"] = file.replace(os.sep, "/").removeprefix(f"{ITEMS_ROOT}/")
-            elif file.lower().endswith(tuple([f".{ext}" for ext in EXTENSIONS["video"]])):
-                data["video"] = file.replace(os.sep, "/").removeprefix(f"{ITEMS_ROOT}/")
-            elif file.lower().endswith(tuple([f".{ext}" for ext in EXTENSIONS["model"]])):
-                data["model"] = file.replace(os.sep, "/").removeprefix(f"{ITEMS_ROOT}/")
+            else:
+                for kind in ["image", "video", "audio", "model", "doc"]:
+                    if file.lower().endswith(tuple([f".{ext}" for ext in EXTENSIONS[kind]])):
+                        cast(dict, data)[kind] = file.replace(os.sep, "/").removeprefix(f"{ITEMS_ROOT}/")
 
         if safe_str_get(cast(dict, data), "type") == "comment":
             data["datetime"] = str(datetime_from_snowflake(iid.split("/")[-1])).split(".")[0]
@@ -145,7 +143,7 @@ def store_item(iid:str, data:dict[str, str], files:dict|None=None, ocr:bool=Fals
     existing_media: str|None = None
 
     extra = {key: data[key] for key in ["provenance"] if key in data}
-    data = {key: data[key] for key in ["link", "title", "description", "image", "video", "alttext", "langs", "text"] if key in data}
+    data = {key: data[key] for key in ["link", "title", "description", "image", "video", "audio", "text", "alttext", "langs", "status"] if key in data}
     if comment:
         data["type"] = "comment"
 
@@ -167,7 +165,7 @@ def store_item(iid:str, data:dict[str, str], files:dict|None=None, ocr:bool=Fals
                     f.write(b64decode(media.split(",")[1]))
                     has_media = kind
         else:
-            response = requests.get(media, timeout=5)
+            response = requests.get(media, timeout=15)
             mime = response.headers["Content-Type"].split("/")
             if is_file_type_allowed(mime[0], (ext := mime[1])):
                 with open(media_path := f"{filepath}.{ext}", "wb") as f:
@@ -196,9 +194,9 @@ def store_item(iid:str, data:dict[str, str], files:dict|None=None, ocr:bool=Fals
         data["systags"] = provenance
 
     write_textual(filepath + ITEMS_EXT, write_metadata(data))
+    delete_item_cache(iid)
     return True
 
-# TODO: also delete from cache
 def delete_item(item:dict|str, only_media:bool=False) -> int:
     deleted = 0
     if (filepath := safe_join(ITEMS_ROOT, iid_to_filename(ensure_item_id(item)))):
@@ -207,6 +205,15 @@ def delete_item(item:dict|str, only_media:bool=False) -> int:
             if not only_media or not file.lower().endswith(ITEMS_EXT):
                 os.remove(file)
                 deleted += 1
+    return deleted + delete_item_cache(item)
+
+def delete_item_cache(item:dict|str) -> int:
+    deleted = 0
+    if (filepath := safe_join(CACHE_ROOT, ensure_item_id(item))):
+        files = glob(f"{filepath}.*")
+        for file in files:
+            os.remove(file)
+            deleted += 1
     return deleted
 
 def get_item_permissions(item:ItemDict|str) -> dict[str, bool]:
@@ -255,7 +262,7 @@ def write_metadata(data:dict[str, str]|MetaDict) -> str:
     config = ConfigParser(interpolation=None)
     new_data: dict[str, str] = {}
     for key in data:
-        if (value := data.get(key)) and key not in ("image", "video", "audio", "model", "datetime"):
+        if (value := data.get(key)) and key not in ("image", "video", "audio", "model", "doc", "datetime"):
             if type(value) == str:
                 new_data[key] = value
             elif type(value) == list:
@@ -269,37 +276,54 @@ def slugify_name(text:str):
 
 def fetch_url_data(url:str) -> dict[str, str|None]:
     response = requests.get(url, timeout=5)
-    soup = BeautifulSoup(response.text, "html.parser")
+    mime = response.headers["Content-Type"].split("/")[0]
+    if mime in ["image", "video", "audio"]:
+        return {
+            mime: url,
+            "link": response.url,
+        }
+    else:
+        soup = BeautifulSoup(response.text, "html.parser")
+        media = {"image": None, "video": None}
 
-    description = None
-    desc_tag = soup.find("meta", attrs={"name": "description"}) or \
-               soup.find("meta", attrs={"property": "og:description"})
-    if desc_tag and "content" in desc_tag.attrs: # type: ignore[attr-defined]
-        description = desc_tag["content"] # type: ignore[index]
+        description = None
+        desc_tag = soup.find("meta", attrs={"name": "description"}) or \
+                soup.find("meta", attrs={"property": "og:description"})
+        if desc_tag and "content" in desc_tag.attrs: # type: ignore[attr-defined]
+            description = desc_tag["content"] # type: ignore[index]
 
-    image = None
-    img_tag = soup.find("meta", attrs={"property": "og:image"}) or \
-              soup.find("meta", attrs={"name": "twitter:image"})
-    if img_tag and "content" in img_tag.attrs: # type: ignore[attr-defined]
-        image = img_tag["content"] # type: ignore[index]
-    
-    if image:
-        parsed = urlparse(image)
-        if not parsed.scheme and not parsed.netloc:
-            parsed = urlparse(url)
-            image = f"{parsed.scheme}://{parsed.netloc}" + image
+        #image = None
+        img_tag = soup.find("meta", attrs={"property": "og:image"}) or \
+                soup.find("meta", attrs={"name": "twitter:image"})
+        if img_tag and "content" in img_tag.attrs: # type: ignore[attr-defined]
+            media["image"] = img_tag["content"] # type: ignore[index]
+        
+        # if image:
+        #     parsed = urlparse(image)
+        #     if not parsed.scheme and not parsed.netloc:
+        #         parsed = urlparse(url)
+        #         image = f"{parsed.scheme}://{parsed.netloc}" + image
 
-    # video = None
-    # video_tag = soup.find("meta", attrs={"property": "og:video"})
-    # if video_tag and "content" in video_tag.attrs:
-    #     video = video_tag["content"]
+        #video = None
+        video_tag = soup.find("meta", attrs={"property": "og:video"})
+        if video_tag and "content" in video_tag.attrs: # type: ignore[attr-defined]
+            media["video"] = video_tag["content"] # type: ignore[index]
 
-    return {
-        "title": soup_or_default(soup, "meta", {"property": "og:title"}, "content", (soup.title.string if soup.title else None)),
-        "description": description,
-        "image": image,
-        "link": soup_or_default(soup, "link", {"rel": "canonical"}, "href", url),
-    }
+        for kind in media.keys():
+            if (source := media[kind]):
+                parsed = urlparse(source)
+                if not parsed.scheme and not parsed.netloc:
+                    parsed = urlparse(url)
+                    media[kind] = f"{parsed.scheme}://{parsed.netloc}" + source
+
+        return {
+            "title": soup_or_default(soup, "meta", {"property": "og:title"}, "content", (soup.title.string if soup.title else None)),
+            "description": description,
+            # "image": image,
+            # "video": video,
+            **media,
+            "link": soup_or_default(soup, "link", {"rel": "canonical"}, "href", response.url),
+        }
 
 def soup_or_default(soup:BeautifulSoup, tag:str, attrs:dict, prop:str, default:Any) -> Any:
     elem = soup.find(tag, attrs=attrs)

@@ -69,6 +69,9 @@ def load_events(user:User) -> list[dict[str,str]]:
 def init_user_session(user:User, remember:bool):
     session["session_hash"] = generate_user_hash(user.username, user.data["password"])
     login_user(user, remember=remember)
+    return redirect_next()
+
+def redirect_next():
     next_data = urllib.parse.urlparse(request.args.get("next", ""))
     next_url = next_data.path + (f"?{next_data.query}" if next_data.query else "")
     return redirect(next_url or url_for("view_index"))
@@ -96,10 +99,12 @@ def response_with_type(content, mime):
     response.headers["Content-Type"] = mime
     return response
 
-def gettext(key:str) -> str:
+def getlang() -> str:
+    return session.get("lang") or request.headers.get("Accept-Language", "en").split(",")[0].split("-")[0]
+
+def gettext(key:str, lang:str|None=None) -> str:
     data = STRINGS.get(key) or {}
-    lang = request.headers.get("Accept-Language", "en").split(",")[0].split("-")[0]
-    return data.get(lang) or data.get("en") or key
+    return data.get(lang or getlang()) or data.get("en") or key
 
 def make_activitypub(id:str, kind:str, name:str, **kwargs) -> dict:
     return {

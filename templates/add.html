@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}🆕 Add item{% endblock %}
+{% block title %}{{ _('Edit' if item else 'Add') }} item{% endblock %}
 {% block content %}
   <ul class="uk-tab" uk-tab="connect: .item-type; {% if item.text %} active: 1 {% endif %}">
     <li><a href="#">
@@ -28,10 +28,22 @@
       </div>
       <div>
         <label>
+          Visibility
+          <select class="uk-select" name="status">
+            <option value="public" {% if item.status == 'public' %} selected {% endif %}>🌐 {{ _('Public') }}</option>
+            <option value="silent" {% if item.status == 'silent' %} selected {% endif %}>🔇 {{ _('Silent') }}</option>
+            <!-- <option value="unlisted">🔗 Unlisted</option> -->
+            <!-- <option value="private">🔒 {{ _('Private') }}</option> -->
+          </select>
+        </label>
+      </div>
+      <div>
+        <label>
+          Provenance
           <select class="uk-select" name="provenance">
-            <option value="">No provenance</option>
-            <option value="oc" {% if 'oc' in item.systags %} selected {% endif %}>Original content</option>
-            <option value="ai" {% if 'ai' in item.systags %} selected {% endif %}>AI-generated</option>
+            <option value="">❓ No provenance</option>
+            <option value="oc" {% if 'oc' in item.systags %} selected {% endif %}>🎨 Original content</option>
+            <option value="ai" {% if 'ai' in item.systags %} selected {% endif %}>👾 AI-generated</option>
           </select>
         </label>
       </div>
@@ -40,12 +52,12 @@
           Content Languages
           <button class="langs-reset uk-button uk-button-default uk-button-small" type="button">Reset</button>
           <select class="uk-select" name="langs" multiple>
-            <option value="deu" {% if 'deu' in item.langs %} selected {% endif %}>🇩🇪 {{ _('German') }}</option>
-            <option value="eng" {% if 'eng' in item.langs %} selected {% endif %}>🇬🇧 {{ _('English') }}</option>
-            <option value="fra" {% if 'fra' in item.langs %} selected {% endif %}>🇫🇷 {{ _('French') }}</option>
-            <option value="ita" {% if 'ita' in item.langs %} selected {% endif %}>🇮🇹 {{ _('Italian') }}</option>
-            <option value="jpn" {% if 'jpn' in item.langs %} selected {% endif %}>🇯🇵 {{ _('Japanese') }}</option>
-            <option value="rus" {% if 'rus' in item.langs %} selected {% endif %}>🇷🇺 {{ _('Russian') }}</option>
+            <option value="deu" {% if 'deu' in item.langs %} selected {% endif %}>🇩🇪 {{ _('German', 'de') }}</option>
+            <option value="eng" {% if 'eng' in item.langs %} selected {% endif %}>🇬🇧 {{ _('English', 'en') }}</option>
+            <option value="fra" {% if 'fra' in item.langs %} selected {% endif %}>🇫🇷 {{ _('French', 'fr') }}</option>
+            <option value="ita" {% if 'ita' in item.langs %} selected {% endif %}>🇮🇹 {{ _('Italian', 'it') }}</option>
+            <option value="jpn" {% if 'jpn' in item.langs %} selected {% endif %}>🇯🇵 {{ _('Japanese', 'ja') }}</option>
+            <option value="rus" {% if 'rus' in item.langs %} selected {% endif %}>🇷🇺 {{ _('Russian', 'ru') }}</option>
           </select>
         </label>
       </div>

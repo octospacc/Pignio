@@ -8,7 +8,7 @@
     {% for iid in collection %}
       {% if ns.count < limit %}
         {% with item=load_item(iid) %}
-          {% if item %}
+          {% if item and (not item.status or item.status == "public") %}
             <entry>
               <id>{{ item.id }}</id>
               <link href="{% include 'links-prefix.txt' %}{{ url_for('view_item', iid=item.id) }}" />
@@ -30,7 +30,7 @@
                       {%- endfor -%}
                     </p>
                   {% endif %}
-                  <p>{{ item.link }}</p>
+                  <p><a href="{{ item.link }}" target="_blank">{{ item.link }}</a></p>
                 ]]>
               </content>
             </entry>

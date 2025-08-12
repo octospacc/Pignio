@@ -30,7 +30,10 @@ INSTANCE_NAME = ""
 INSTANCE_DESCRIPTION = ""
 ALLOW_REGISTRATION = False
 # ALLOW_FEDERATION = False
+# USE_THUMBNAILS = True
+# THUMBNAIL_CACHE = True
 RENDER_CACHE = True
+# PANSTORAGE_URL = ""
 SITE_VERIFICATION = {
     "GOOGLE": "",
     "BING": "",
@@ -49,6 +52,7 @@ SECRET_KEY = "{token_urlsafe()}"
     from _config import *
 
 app.jinja_env.globals["_"] = gettext
+app.jinja_env.globals["getlang"] = getlang
 app.config["DEVELOPMENT"] = DEVELOPMENT
 app.config["SECRET_KEY"] = SECRET_KEY
 app.config["BCRYPT_HANDLE_LONG_PASSWORDS"] = True
@@ -102,6 +106,7 @@ def serve_nodeinfo_21():
             "name": app.config["APP_NAME"],
             "repository": "https://gitlab.com/octospacc/Pignio",
         },
+        # "protocols": ["activitypub"],
         "services": {
             "outbound": ["atom1.0"],
         },
@@ -174,23 +179,27 @@ def serve_module_unpoly(filename:str):
 def serve_media(filename:str):
     return send_from_directory(ITEMS_ROOT, filename)
 
+@app.route("/thumb/<path:iid>")
+def serve_thumb(iid:str):
+    ...
+
 @app.route("/render/<path:iid>")
 def render_media(iid:str):
     if (item := load_item(iid)):
         if (text := item.get("text")):
-            filename = item["id"] + ".png"
+            filename = f'{item["id"]}.{RENDER_TYPE}'
             filepath = os.path.join(CACHE_ROOT, filename)
             if RENDER_CACHE and os.path.exists(filepath):
                 return send_from_directory(CACHE_ROOT, filename)
             else:
-                args = ['node', 'render.js']
-                if (image := item.get("image")):
-                    args.append(os.path.join(ITEMS_ROOT, image))
-                png, err = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate(input=text.encode("utf-8"))
+                args = ["node", "render.js"]
+                if (background := item.get("image")):
+                    args.append(os.path.join(ITEMS_ROOT, background))
+                image, err = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate(input=text.encode("utf-8"))
                 if RENDER_CACHE:
                     with open(filepath, "wb") as f:
-                        f.write(png) # TODO handle creation of parent directories when necessary
-                return response_with_type(png, "image/png")
+                        f.write(image) # TODO handle creation of parent directories when necessary
+                return response_with_type(image, f"image/{RENDER_TYPE}")
         else:
             return redirect(url_for("serve_media", filename=(item.get("image") or item.get("video"))))
     else:
@@ -226,7 +235,8 @@ def view_item(iid:str):
     return abort(404)
 
 @app.route("/user/<path:username>")
-def view_user(username:str):
+@app.route("/user/<path:username>/<path:cid>")
+def view_user(username:str, cid:str|None=None):
     userparts = username.lstrip("@").split("@")
     if len(userparts) > 1:
         if (user := load_remote_user(*userparts)):
@@ -240,17 +250,29 @@ def view_user(username:str):
         if is_for_activitypub():
             return make_activitypub_user(user)
         else:
-            return render_template("user.html", user=user, collections=walk_collections(user.username), load_item=load_item)
+            collections = walk_collections(user.username)
+            if cid:
+                if (items := collections.get(cid)):
+                    collections = {cid: items}
+                else:
+                    return abort(404)
+            return render_template("user.html", user=user, collections=collections, load_item=load_item)
     return abort(404)
 
 # TODO: change this to /feed/... ?
 @app.route("/user/<path:username>/feed")
+@noindex
 def view_user_feed(username:str):
     if (user := load_user(username)):
-        limit = int(request.args.get("limit") or 100)
+        limit = int(request.args.get("limit") or RESULTS_LIMIT)
         return response_with_type(render_template("user-feed.xml", user=user, collections=walk_collections(username), limit=limit, load_item=load_item), "application/atom+xml")
     else:
         return abort(404)
+
+@app.route("/embed/<path:path>")
+@noindex
+def view_embed(path:str):
+    ...
 
 @app.route("/search")
 def search():
@@ -366,6 +388,12 @@ def logout():
         logout_user()
     return redirect(url_for("view_index"))
 
+@app.route("/setlang", methods=["POST"])
+@noindex
+def setlang():
+    session["lang"] = request.form.get("lang")[:2]
+    return redirect_next()
+
 @app.route("/api/duplicates", methods=["POST"])
 @noindex
 @login_required
@@ -402,7 +430,7 @@ def collections_api(iid:str):
         results[folder] = iid in collection
     return results
 
-@app.route("/api/items", defaults={'iid': None}, methods=["POST"])
+@app.route("/api/items", defaults={"iid": None}, methods=["POST"])
 @app.route("/api/items/<path:iid>", methods=["GET", "PUT", "DELETE"])
 @noindex
 @login_required
@@ -443,13 +471,19 @@ def unauthorized():
     if request.path.startswith("/api/"):
         return {"error": "Unauthorized"}, 401
     else:
-        flash("Please log in to access this page.")
+        flash(gettext("login-to-access"))
         return redirect(login_url("view_login", request.url))
 
 @app.before_request
 def remove_trailing_slash():
     if request.path != "/" and request.path.endswith("/"):
         return redirect(request.path.rstrip("/"))
+
+@app.after_request
+def request_headers(response):
+    if request.endpoint != "view_embed":
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    return response
 
 @app.errorhandler(404)
 def error_404(e):
