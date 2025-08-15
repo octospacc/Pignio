@@ -57,9 +57,11 @@ app.config["DEVELOPMENT"] = DEVELOPMENT
 app.config["SECRET_KEY"] = SECRET_KEY
 app.config["BCRYPT_HANDLE_LONG_PASSWORDS"] = True
 
+app.config["FREEZING"] = False
 app.config["LINKS_PREFIX"] = LINKS_PREFIX
 app.config["APP_NAME"] = "Pignio"
 app.config["APP_ICON"] = "📌"
+app.config["APP_REPO"] = "https://gitlab.com/octospacc/Pignio"
 app.config["APP_DESCRIPTION"] = "Pignio is your personal self-hosted media pinboard, built on top of flat-file storage."
 app.config["INSTANCE_NAME"] = INSTANCE_NAME or app.config["APP_NAME"]
 app.config["INSTANCE_DESCRIPTION"] = INSTANCE_DESCRIPTION or app.config["APP_DESCRIPTION"]
@@ -104,7 +106,7 @@ def serve_nodeinfo_21():
         "version": "2.1",
         "software": {
             "name": app.config["APP_NAME"],
-            "repository": "https://gitlab.com/octospacc/Pignio",
+            "repository": app.config["APP_REPO"],
         },
         # "protocols": ["activitypub"],
         "services": {
@@ -113,7 +115,7 @@ def serve_nodeinfo_21():
         "openRegistrations": app.config["ALLOW_REGISTRATION"],
         "usage": {
             "users": {
-                "total": len(glob(f"{USERS_ROOT}/*.ini")),
+                "total": count_users(),
             },
             "localPosts": count_items(),
         },
@@ -128,7 +130,8 @@ def serve_nodeinfo_21():
 @query_params("resource")
 def webfinger(resource:str):
     prefix = render_template("links-prefix.txt")
-    if not resource.startswith("acct:") or \
+    if not resource or \
+       not resource.startswith("acct:") or \
        not resource.endswith("@" + urllib.parse.urlparse(prefix).netloc) or \
        not (user := load_user(resource.split(":")[1].split("@")[0])):
         return abort(400)
@@ -165,7 +168,7 @@ def webfinger(resource:str):
 def serve_manifest():
     return response_with_type(render_template("manifest.json"), "application/json")
 
-@app.route("/static/module/dist/uikit/<path:filename>")
+@app.route("/static/module/uikit/<path:filename>")
 @noindex
 def serve_module_uikit(filename:str):
     return send_from_directory(os.path.join("node_modules", "uikit", "dist"), filename)
@@ -200,10 +203,9 @@ def render_media(iid:str):
                     with open(filepath, "wb") as f:
                         f.write(image) # TODO handle creation of parent directories when necessary
                 return response_with_type(image, f"image/{RENDER_TYPE}")
-        else:
-            return redirect(url_for("serve_media", filename=(item.get("image") or item.get("video"))))
-    else:
-        return abort(404)
+        #else:
+        #    return redirect(url_for("serve_media", filename=(item.get("image") or item.get("video"))))
+    return abort(404)
 
 @app.route("/model-viewer/<path:iid>")
 def model_viewer(iid:str):
@@ -212,8 +214,15 @@ def model_viewer(iid:str):
     else:
         return abort(404)
 
+@app.route("/flash-viewer/<path:iid>")
+def flash_viewer(iid:str):
+    if (item := load_item(iid)) and (swf := item.get("swf")):
+        return render_template("ruffle.html", swf=swf)
+    else:
+        return abort(404)
+
 @app.route("/item/<path:iid>", methods=["GET", "POST"])
-def view_item(iid:str):
+def view_item(iid:str, embed:bool=False):
     has_subitems = (dirpath := safe_join(ITEMS_ROOT, iid)) and os.path.isdir(dirpath)
     if (item := load_item(iid)) and get_item_permissions(item)["view"]:
         if request.method == "GET":
@@ -223,7 +232,7 @@ def view_item(iid:str):
                 else:
                     comments = walk_items(iid_to_filename(iid))
                     comments.reverse()
-                    return render_template("item.html", item=item, comments=comments, get_item_permissions=get_item_permissions)
+                    return render_template("item.html", embed=embed, item=item, comments=comments, get_item_permissions=get_item_permissions)
             else:
                 [*item_toks, cid] = iid.split("/")
                 return redirect(url_for("view_item", iid="/".join(item_toks)) + f"#{cid}")
@@ -234,6 +243,7 @@ def view_item(iid:str):
         return view_random_items(iid)
     return abort(404)
 
+# TODO: also add @app.route("/@<path:username>"), redirecting to main url of user ?
 @app.route("/user/<path:username>")
 @app.route("/user/<path:username>/<path:cid>")
 def view_user(username:str, cid:str|None=None):
@@ -259,8 +269,8 @@ def view_user(username:str, cid:str|None=None):
             return render_template("user.html", user=user, collections=collections, load_item=load_item)
     return abort(404)
 
-# TODO: change this to /feed/... ?
-@app.route("/user/<path:username>/feed")
+@app.route("/user/<path:username>/feed") # TODO deprecate this which could conflict with collections
+@app.route("/feed/user/<path:username>")
 @noindex
 def view_user_feed(username:str):
     if (user := load_user(username)):
@@ -269,12 +279,17 @@ def view_user_feed(username:str):
     else:
         return abort(404)
 
-@app.route("/embed/<path:path>")
+@app.route("/embed/<path:kind>/<path:path>")
 @noindex
-def view_embed(path:str):
-    ...
+def view_embed(kind:str, path:str):
+    if kind == "item":
+        return view_item(path, True)
+    # elif kind == "user": ...
+    else:
+        return abort(404)
 
 @app.route("/search")
+@noindex
 def search():
     query = request.args.get("query", "").lower()
     results = []
@@ -342,6 +357,11 @@ def report_item():
 @login_required
 def view_notifications():
     return pagination("notifications.html", "events", load_events(current_user))
+
+@app.route("/stats")
+@noindex
+def view_stats():
+    return render_template("stats.html", items=count_items(), users=count_users())
 
 @app.route("/login", methods=["GET", "POST"])
 @noindex
@@ -485,9 +505,13 @@ def request_headers(response):
         response.headers["X-Frame-Options"] = "SAMEORIGIN"
     return response
 
+@app.errorhandler(400)
+def error_400(e):
+    return render_template("error.html", code=400, name="Bad Request", description="The browser (or proxy) sent a request that this server could not understand."), 400
+
 @app.errorhandler(404)
 def error_404(e):
-    return render_template("404.html"), 404
+    return render_template("error.html", code=404, name="Not Found", description="The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again."), 404
 
 def is_for_activitypub():
     return (request.headers.get("Accept") in ACTIVITYPUB_TYPES)

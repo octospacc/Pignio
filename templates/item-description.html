@@ -1,0 +1,14 @@
+{% if item.description %}
+  <p class="uk-text-break">
+    {% for line in item.description.splitlines() %}
+      {% for word in line.split(' ') %}
+        {% if word.startswith(("http://", "https://")) %}
+          <a href="{{ word }}" rel="nofollow" target="_blank">{{ word }}</a>
+        {% else %}
+          {{ word }}
+        {% endif %}
+      {% endfor %}
+      <br />
+    {% endfor %}
+  </p>
+{% endif %}

@@ -4,19 +4,21 @@
   <div class="uk-overflow-hidden">
     <span class="uk-heading-large">
       {%- if item.doc -%} 📄
+      {%- elif item.swf -%} 📀
       {%- elif item.model -%} 📦
       {%- elif item.audio -%} 🎶
       {%- endif -%}
     </span>
   </div>
 {% endset %}
-<div {% if full and (item.model or item.doc) %} class="uk-height-1-1 uk-height-viewport" {% elif full and (item.image or item.text) %} class="clickable" tabindex="0" {% else %} class="uk-text-center" {% endif %}>
+<div {% if full and (item.model or item.doc or item.swf) %} class="uk-height-1-1 uk-height-viewport" {% elif full and (item.image or item.text) %} class="clickable" tabindex="0" {% else %} class="uk-text-center" {% endif %}>
   {% if item.text %}
     <img class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ image }}" alt="{{ item.text }}" title="{{ item.text }}" />
-  {% elif item.model or item.doc %}
+  {% elif item.model or item.doc or item.swf %}
     {% if full %}
-      {% if item.model %}
-        <iframe class="uk-width-expand uk-height-1-1" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('model_viewer', iid=item.id) }}"></iframe>
+      {% set iframe %}{% if item.model %}model_viewer{% elif item.swf %}flash_viewer{% endif %}{% endset %}
+      {% if iframe %}
+        <iframe class="uk-width-expand uk-height-1-1" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for(iframe, iid=item.id) }}"></iframe>
       {% elif item.doc %}
         <object class="uk-width-expand uk-height-1-1" data="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('serve_media', filename=item.doc) }}"></object>
       {% endif %}

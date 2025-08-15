@@ -2,7 +2,7 @@ import os
 import requests
 import urllib.parse
 from PIL import Image
-from typing import Any, cast
+from typing import Any, Literal, cast
 from base64 import b64decode, urlsafe_b64encode
 from urllib.parse import urlparse
 from io import StringIO
@@ -59,6 +59,9 @@ def count_items() -> int:
             results[iid] = None
     return len(results)
 
+def count_users() -> int:
+    return len(glob(f"{USERS_ROOT}/*.ini"))
+
 def walk_collections(username:str) -> dict:
     results: dict[str, list[str]] = {"": []}
     filepath = USERS_ROOT
@@ -111,7 +114,7 @@ def load_item(iid:str) -> ItemDict|None:
             if file.lower().endswith(ITEMS_EXT):
                 data = data | read_metadata(read_textual(file))
             else:
-                for kind in ["image", "video", "audio", "model", "doc"]:
+                for kind in MEDIA_TYPES:
                     if file.lower().endswith(tuple([f".{ext}" for ext in EXTENSIONS[kind]])):
                         cast(dict, data)[kind] = file.replace(os.sep, "/").removeprefix(f"{ITEMS_ROOT}/")
 
@@ -151,26 +154,14 @@ def store_item(iid:str, data:dict[str, str], files:dict|None=None, ocr:bool=Fals
         file = files["file"]
         if file.seek(0, os.SEEK_END):
             file.seek(0, os.SEEK_SET)
-            mime = file.content_type.split("/")
-            if is_file_type_allowed(mime[0], (ext := mime[1])):
-                file.save(media_path := f"{filepath}.{ext}")
-                has_media = mime[0]
+            [kind, ext] = file.content_type.split("/")
+            if (newext := get_allowed_filetype(kind, ext)):
+                file.save(media_path := f"{filepath}.{newext}")
+                has_media = kind
 
-    if not has_media and (media := safe_str_get(data, "video") or safe_str_get(data, "image")):
-        if media.lower().startswith("data:"):
-            kind = media.split("/")[0].split(":")[1].lower()
-            ext = media.split(";")[0].split("/")[1].lower()
-            if is_file_type_allowed(kind, ext):
-                with open(media_path := f"{filepath}.{ext}", "wb") as f:
-                    f.write(b64decode(media.split(",")[1]))
-                    has_media = kind
-        else:
-            response = requests.get(media, timeout=15)
-            mime = response.headers["Content-Type"].split("/")
-            if is_file_type_allowed(mime[0], (ext := mime[1])):
-                with open(media_path := f"{filepath}.{ext}", "wb") as f:
-                    f.write(response.content)
-                    has_media = mime[0]
+    if not has_media and (media := (data.get("video") or data.get("audio") or data.get("image"))):
+        if (stored := store_url_file(media, filepath)):
+            has_media, media_path = stored
 
     if not (existing or has_media or safe_str_get(data, "text")):
         return False
@@ -221,8 +212,28 @@ def get_item_permissions(item:ItemDict|str) -> dict[str, bool]:
     creator = safe_str_get(cast(dict, item), "creator")
     return {"view": True, "edit": current_user.is_authenticated and (creator == current_user.username or current_user.is_admin)}
 
-def is_file_type_allowed(kind:str, ext:str) -> bool:
-    return ((kind == "image" and ext in EXTENSIONS["image"]) or (kind == "video" and ext in EXTENSIONS["video"]))
+def store_url_file(url:str, filepath:str) -> tuple[str, str]|None:
+    if (urllow := url.lower()).startswith("data:"):
+        [kind, ext] = urllow.split(",")[0].split(";")[0].split(":")[1].split("/")
+        if (newext := get_allowed_filetype(kind, ext)):
+            with open(media_path := f"{filepath}.{newext}", "wb") as f:
+                f.write(b64decode(url.split(",")[1]))
+                return (kind, media_path)
+    else:
+        response = requests.get(url, timeout=15)
+        [kind, ext] = response.headers["Content-Type"].lower().split(";")[0].split("/")
+        if (newext := get_allowed_filetype(kind, ext)):
+            with open(media_path := f"{filepath}.{newext}", "wb") as f:
+                f.write(response.content)
+                return (kind, media_path)
+    return None
+
+def get_allowed_filetype(kind:str, ext:str) -> str|Literal[False]:
+    for testkind in MEDIA_TYPES:
+        if ext in EXTENSIONS[testkind]:
+            return ext
+    extra = EXTENSIONS.get(f"{kind}.extra")
+    return extra and cast(dict, extra).get(ext) or False
 
 def ensure_item_id(data:dict|str) -> str:
     return cast(str, data["id"] if type(data) == dict else data)
@@ -262,7 +273,7 @@ def write_metadata(data:dict[str, str]|MetaDict) -> str:
     config = ConfigParser(interpolation=None)
     new_data: dict[str, str] = {}
     for key in data:
-        if (value := data.get(key)) and key not in ("image", "video", "audio", "model", "doc", "datetime"):
+        if (value := data.get(key)) and key not in (*MEDIA_TYPES, "datetime"):
             if type(value) == str:
                 new_data[key] = value
             elif type(value) == list:
@@ -292,19 +303,11 @@ def fetch_url_data(url:str) -> dict[str, str|None]:
         if desc_tag and "content" in desc_tag.attrs: # type: ignore[attr-defined]
             description = desc_tag["content"] # type: ignore[index]
 
-        #image = None
         img_tag = soup.find("meta", attrs={"property": "og:image"}) or \
                 soup.find("meta", attrs={"name": "twitter:image"})
         if img_tag and "content" in img_tag.attrs: # type: ignore[attr-defined]
             media["image"] = img_tag["content"] # type: ignore[index]
-        
-        # if image:
-        #     parsed = urlparse(image)
-        #     if not parsed.scheme and not parsed.netloc:
-        #         parsed = urlparse(url)
-        #         image = f"{parsed.scheme}://{parsed.netloc}" + image
 
-        #video = None
         video_tag = soup.find("meta", attrs={"property": "og:video"})
         if video_tag and "content" in video_tag.attrs: # type: ignore[attr-defined]
             media["video"] = video_tag["content"] # type: ignore[index]
@@ -319,8 +322,6 @@ def fetch_url_data(url:str) -> dict[str, str|None]:
         return {
             "title": soup_or_default(soup, "meta", {"property": "og:title"}, "content", (soup.title.string if soup.title else None)),
             "description": description,
-            # "image": image,
-            # "video": video,
             **media,
             "link": soup_or_default(soup, "link", {"rel": "canonical"}, "href", response.url),
         }

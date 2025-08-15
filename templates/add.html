@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ _('Edit' if item else 'Add') }} item{% endblock %}
+{% block title %}{{ _('Edit' if item else 'Add') }} {{ _('Item') }}{% endblock %}
 {% block content %}
   <ul class="uk-tab" uk-tab="connect: .item-type; {% if item.text %} active: 1 {% endif %}">
     <li><a href="#">
@@ -13,22 +13,29 @@
     <input type="hidden" name="id" value="{{ item.id }}" />
     <input type="hidden" name="image" />
     <input type="hidden" name="video" />
+    <input type="hidden" name="audio" />
     <div class="uk-margin" {% if not item.image %} hidden {% endif %}>
       <img src="{{ url_for('serve_media', filename=item.image) }}" class="image" />
     </div>
     <div class="uk-margin" {% if not item.video %} hidden {% endif %}>
       <video src="{{ url_for('serve_media', filename=item.video) }}" class="video" controls></video>
     </div>
+    <div class="uk-margin" {% if not item.audio %} hidden {% endif %}>
+      <audio src="{{ url_for('serve_media', filename=item.audio) }}" class="audio" controls></audio>
+    </div>
+    <div class="uk-margin" {% if not item.doc %} hidden {% endif %}>
+      <object data="{{ url_for('serve_media', filename=item.doc) }}" class="doc"></object>
+    </div>
     <div class="uk-margin" uk-grid>
       <div>
         <label>
           <input type="checkbox" class="from-link uk-checkbox" {% if not item.id %} checked {% endif %} />
-          Fill data from link
+          {{ _('link-fill') }}
         </label>
       </div>
       <div>
         <label>
-          Visibility
+          {{ _('Visibility') }}
           <select class="uk-select" name="status">
             <option value="public" {% if item.status == 'public' %} selected {% endif %}>🌐 {{ _('Public') }}</option>
             <option value="silent" {% if item.status == 'silent' %} selected {% endif %}>🔇 {{ _('Silent') }}</option>
@@ -39,7 +46,7 @@
       </div>
       <div>
         <label>
-          Provenance
+          {{ _('Provenance') }}
           <select class="uk-select" name="provenance">
             <option value="">❓ No provenance</option>
             <option value="oc" {% if 'oc' in item.systags %} selected {% endif %}>🎨 Original content</option>
@@ -49,7 +56,7 @@
       </div>
       <div>
         <label>
-          Content Languages
+          {{ _('Content Languages') }}
           <button class="langs-reset uk-button uk-button-default uk-button-small" type="button">Reset</button>
           <select class="uk-select" name="langs" multiple>
             <option value="deu" {% if 'deu' in item.langs %} selected {% endif %}>🇩🇪 {{ _('German', 'de') }}</option>
@@ -71,7 +78,7 @@
         <div uk-form-custom class="uk-width-1-1">
           <input class="uk-input" type="file" name="file" />
           <button class="uk-button uk-width-1-1 uk-button-default" type="button" tabindex="-1">
-            Select or drop a media file <span uk-icon="icon: upload"></span>
+            {{ _('upload-tip') }} <span uk-icon="icon: upload"></span>
           </button>
         </div>
       </div>
@@ -106,7 +113,7 @@
     <div class="uk-margin uk-grid-small" uk-grid>
       {% if item %}
         <div class="uk-width-auto">
-          <a class="uk-button uk-button-default" href="{{ url_for('view_item', iid=item.id) }}">Back</a>
+          <a class="uk-button uk-button-default" href="{{ url_for('view_item', iid=item.id) }}">{{ _('Back') }}</a>
         </div>
       {% endif %}
       <div class="uk-width-expand">

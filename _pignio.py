@@ -38,16 +38,19 @@ USERS_ROOT = f"{DATA_ROOT}/users"
 EVENTS_ROOT = f"{DATA_ROOT}/events"
 EXTENSIONS = {
     "image": ("jpg", "jpeg", "jfif", "bmp", "png", "apng", "gif", "webp", "avif"),
-    "video": ("mp4", "mov", "mpeg", "ogv", "webm", "mkv"),
+    "video": ("mp4", "mov", "mpg", "ogv", "webm", "mkv"),
     "audio": ("mp3", "m4a", "flac", "opus", "ogg", "wav"),
+    "audio.extra": {"mpeg": "mp3"},
     "model": ("glb", ),
     "doc": ("pdf", ),
+    "swf": ("swf", ),
 }
 ITEMS_EXT = ".ini"
 LISTS_EXT = ".wsv"
 # EVENTS_EXT = f".events{LISTS_EXT}"
 # THUMB_TYPE = "jpeg"
 RENDER_TYPE = "png"
+MEDIA_TYPES = [kind for kind in EXTENSIONS.keys() if "." not in kind]
 MODERATION_LIST = f"{DATA_ROOT}/moderation{LISTS_EXT}"
 ACTIVITYPUB_TYPES = ['application/ld+json; profile="https://www.w3.org/ns/activitystreams"', "application/activity+json"]
 
@@ -71,6 +74,18 @@ def moderation_writer():
 Thread(target=moderation_writer, daemon=True).start()
 
 STRINGS = {
+    "Item": {
+        "it": "Elemento",
+    },
+    "Items": {
+        "it": "Elementi",
+    },
+    "Users": {
+        "it": "Utenti",
+    },
+    "Statistics": {
+        "it": "Statistiche",
+    },
     "Search": {
         "it": "Cerca",
     },
@@ -119,8 +134,20 @@ STRINGS = {
     "Report": {
         "it": "Segnala",
     },
+    "Back": {
+        "it": "Indietro",
+    },
     "Note": {
         "it": "Nota",
+    },
+    "Content Languages": {
+        "it": "Lingue del Contenuto",
+    },
+    "Visibility": {
+        "it": "Visibilità",
+    },
+    "Provenance": {
+        "it": "Provenienza",
     },
     "Export data": {
         "it": "Esporta dati",
@@ -136,6 +163,18 @@ STRINGS = {
     "login-to-access": {
         "en": "Please log in to access this page.",
         "it": "Accedi per visualizzare questa pagina.",
+    },
+    "report-tip": {
+        "en": "The report will be sent to admins for review.",
+        "it": "La segnalazione verrà inviata agli amministratori.",
+    },
+    "upload-tip": {
+        "en": "Select or drop a media file",
+        "it": "Seleziona o trascina un file media",
+    },
+    "link-fill": {
+        "en": "Fill data from link",
+        "it": "Inserisci dati da link",
     },
     "systag-ai": {
         "en": "This media is marked as being generated, in whole or substantial part, by artificial intelligence models.",

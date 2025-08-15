@@ -1,10 +1,22 @@
 const HTTP_BASE = '//' + document.documentElement.dataset.root.split('://').slice(1).join('://');
 const API_BASE = HTTP_BASE + '/api';
 
+const STRINGS = {
+  copiedLink: {
+    en: "Link copied to clipboard",
+    it: "Link copiato negli appunti",
+  }
+};
+STRINGS.get = (key) => {
+  const lang = document.documentElement.lang;
+  const data = STRINGS[key];
+  return data[lang] || Object.values(data)[0];
+};
+
 registerHandler('form.Register', (form) => addSlugifyNoticeHandler(form.querySelector('input[name="username"]'), form.querySelector('span.notice'), 'username'));
 registerHandler('form.add', addHandler);
-registerHandler('div.item', itemHandler);
-registerHandler('div.item div.clickable', lightboxHandler);
+registerHandler('article.item', itemHandler);
+registerHandler('article.item div.clickable', lightboxHandler);
 registerHandler('select.lang', select => select.addEventListener('change', () => {
   const form = document.querySelector('form.lang');
   form.action += '?next=' + encodeURIComponent(location.href);
@@ -65,6 +77,8 @@ function addHandler(form) {
   var langs = form.querySelector('select[name="langs"]');
   var image = form.querySelector('img.image');
   var video = form.querySelector('video.video');
+  var audio = form.querySelector('audio.audio');
+  var doc = form.querySelector('object.doc');
   var upload = form.querySelector('input[name="file"]');
 
   form.querySelector('button.langs-reset').addEventListener('click', () => (langs.selectedIndex = -1));
@@ -79,14 +93,21 @@ function addHandler(form) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = function(e) {
-      var uri = e.target.result;
-      image.parentElement.hidden = video.parentElement.hidden = true;
-      if (uri.startsWith('data:image/')) {
-        image.src = e.target.result;
+      const uri = e.target.result;
+      const [mime, ext] = uri.split(',')[0].split(';')[0].split(':')[1].toLowerCase().split('/')
+      image.parentElement.hidden = video.parentElement.hidden = audio.parentElement.hidden = doc.parentElement.hidden = true;
+      if (mime === 'image') {
+        image.src = uri;
         image.parentElement.hidden = false;
-      } else if (uri.startsWith('data:video/')) {
-        video.src = e.target.result;
+      } else if (mime === 'video') {
+        video.src = uri;
         video.parentElement.hidden = false;
+      } else if (mime === 'audio') {
+        audio.src = uri;
+        audio.parentElement.hidden = false;
+      } else if (ext === 'pdf') {
+        doc.data = uri;
+        doc.parentElement.hidden = false;
       }
     };
     reader.readAsDataURL(file);
@@ -191,5 +212,5 @@ function lightboxHandler(clickable) {
 
 function copyToClipboard() {
   navigator.clipboard.writeText(document.querySelector('link[rel=canonical]').href);
-  UIkit.notification('Link copied to clipboard');
+  UIkit.notification(STRINGS.get('copiedLink'));
 }

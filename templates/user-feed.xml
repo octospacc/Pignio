@@ -22,14 +22,7 @@
                       {% include "item-content.html" %}
                     {% endwith %}
                   </p>
-                  {% if item.description %}
-                    <p>
-                      {%- for line in item.description.splitlines() -%}
-                        {{- line -}}
-                        <br />
-                      {%- endfor -%}
-                    </p>
-                  {% endif %}
+                  {% include 'item-description.html' %}
                   <p><a href="{{ item.link }}" target="_blank">{{ item.link }}</a></p>
                 ]]>
               </content>

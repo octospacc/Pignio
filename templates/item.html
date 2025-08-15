@@ -23,7 +23,7 @@
   {% with path=item.id, always=false %}
     {% include "breadcrumbs.html" %}
   {% endwith %}
-  <div class="uk-flex uk-flex-wrap item" data-item-id="{{ item.id }}">
+  <article class="uk-flex uk-flex-wrap item" data-item-id="{{ item.id }}">
     <div class="uk-width-1-1 uk-width-1-2@s uk-padding-small">
       {% with full=true %}
         {% include "item-content.html" %}
@@ -32,7 +32,7 @@
     <div class="uk-width-1-1 uk-width-1-2@s uk-padding-small">
       <h3 class="uk-text-break">{% include "item-title.txt" %}</h3>
       {% if item.creator %}
-        by <a href="{{ url_for('view_user', username=item.creator) }}">{{ item.creator }}</a>
+        by <a href="{{ url_for('view_user', username=item.creator) }}" {% if embed %} target="_blank" {% endif %}>{{ item.creator }}</a>
       {% endif %}
       {% if item.datetime %}
         at <span>{{ item.datetime }}</span>
@@ -60,22 +60,30 @@
         </div>
         {% endfor %}
       </div>
-      <p class="uk-text-break" style="white-space: pre-line;">{{ item.description }}</p>
+      {% include 'item-description.html' %}
       <div class="uk-margin uk-grid-small uk-grid" uk-grid>
         <div>
           <button class="uk-icon-button" uk-icon="forward" title="Copy to clipboard" onclick="copyToClipboard()"></button>
         </div>
-        <div class="pin">
-          <button class="uk-button uk-button-primary uk-disabled" type="button" disabled>
-            Pin <span uk-icon="tag"></span>
-          </button>
-          <div uk-dropdown="mode: click; stretch: y;">
-            <ul class="uk-list">
-              <li><button class="uk-button uk-button-default uk-button-small" uk-toggle="target: #new-collection">New Collection</button></li>
-            </ul>
+        {% if not config.FREEZING %}
+          <div class="pin">
+            {% if embed %}
+              <a class="uk-button uk-button-primary" href="{{ url_for('view_item', iid=item.id) }}" target="_blank">
+                View on {{ config.APP_NAME }} <span uk-icon="tag"></span>
+              </a>
+            {% else %}
+              <button class="uk-button uk-button-primary uk-disabled" disabled>
+                Pin <span uk-icon="tag"></span>
+              </button>
+              <div uk-dropdown="mode: click; stretch: y;">
+                <ul class="uk-list">
+                  <li><button class="uk-button uk-button-default uk-button-small" uk-toggle="target: #new-collection">New Collection</button></li>
+                </ul>
+              </div>
+            {% endif %}
           </div>
-        </div>
-        {% if not current_user.is_authenticated or get_item_permissions(item).edit %}
+        {% endif %}
+        {% if not (embed or config.FREEZING) and (not current_user.is_authenticated or get_item_permissions(item).edit) %}
           <div>
             <a class="uk-button uk-button-default uk-icon-link" href="{{ url_for('add_item') }}?item={{ item.id }}" rel="nofollow">
               {{ _('Edit') }} <span uk-icon="file-edit"></span>
@@ -87,7 +95,7 @@
             </a>
           </div>
         {% endif %}
-        {% if not current_user.is_authenticated or not get_item_permissions(item).edit %}
+        {% if not (embed or config.FREEZING) and (not current_user.is_authenticated or not get_item_permissions(item).edit) %}
           <div>
             <a class="uk-button uk-button-default" href="{{ url_for('report_item') }}?item={{ item.id }}" rel="nofollow" up-layer="new">
               {{ _('Report') }} <span uk-icon="warning"></span>
@@ -96,17 +104,19 @@
         {% endif %}
       </div>
       <div class="uk-padding uk-padding-remove-left uk-padding-remove-right">
-        <form method="POST">
-          <div class="uk-margin">
-            <div class="uk-inline uk-width-1-1">
-              <input class="uk-input" type="text" name="comment" placeholder="{% if current_user.is_authenticated %} {{ _('comment-placeholder') }} " {% else %} Please login to comment. " disabled {% endif %} required />
+        {% if not (embed or config.FREEZING) %}
+          <form method="POST">
+            <div class="uk-margin">
+              <div class="uk-inline uk-width-1-1">
+                <input class="uk-input" type="text" name="comment" placeholder="{% if current_user.is_authenticated %} {{ _('comment-placeholder') }} " {% else %} Please login to comment. " disabled {% endif %} required />
+              </div>
+              <div class="uk-inline uk-width-1-1">
+                <input class="uk-input uk-button uk-button-default {% if not current_user.is_authenticated %} uk-disabled" disabled {% else %} " {% endif %} type="submit" value="Comment" />
+                <span class="uk-form-icon uk-form-icon-flip" uk-icon="comment"></span>
+              </div>
             </div>
-            <div class="uk-inline uk-width-1-1">
-              <input class="uk-input uk-button uk-button-default {% if not current_user.is_authenticated %} uk-disabled" disabled {% else %} " {% endif %} type="submit" value="Comment" />
-              <span class="uk-form-icon uk-form-icon-flip" uk-icon="comment"></span>
-            </div>
-          </div>
-        </form>
+          </form>
+        {% endif %}
         {% for item in comments %}
           {% set iid %}{{ item.id.split('/')[-1] }}{% endset %}
           <div class="uk-card uk-margin uk-card-default uk-card-small" id="{{ iid }}">
@@ -124,17 +134,19 @@
                     #{{ iid }}
                   {% endif %}
                 </a>
-                <div class="uk-float-right uk-grid-small" uk-grid>
-                  {% if get_item_permissions(item).edit %}
-                    <div>
-                      <a href="{{ url_for('remove_item', item=item.id) }}" rel="nofollow" up-layer="new" class="uk-icon-button uk-float-right" uk-icon="trash" title="{{ _('Delete') }}"></a>
-                    </div>
-                  {% else %}
-                    <div>
-                      <a href="{{ url_for('report_item', item=item.id) }}" rel="nofollow" up-layer="new" class="uk-icon-button uk-float-right" uk-icon="warning" title="{{ _('Report') }}"></a>
-                    </div>
-                  {% endif %}
-                </div>
+                {% if not (embed or config.FREEZING) %}
+                  <div class="uk-float-right uk-grid-small" uk-grid>
+                    {% if get_item_permissions(item).edit %}
+                      <div>
+                        <a href="{{ url_for('remove_item', item=item.id) }}" rel="nofollow" up-layer="new" class="uk-icon-button uk-float-right" uk-icon="trash" title="{{ _('Delete') }}"></a>
+                      </div>
+                    {% else %}
+                      <div>
+                        <a href="{{ url_for('report_item', item=item.id) }}" rel="nofollow" up-layer="new" class="uk-icon-button uk-float-right" uk-icon="warning" title="{{ _('Report') }}"></a>
+                      </div>
+                    {% endif %}
+                  </div>
+                {% endif %}
               </h3>
             </div>
             <div class="uk-card-body">{{ item.text }}</div>
@@ -142,7 +154,7 @@
         {% endfor %}
       </div>
     </div>
-  </div>
+  </article>
   <div id="new-collection" uk-modal>
     <div class="uk-modal-dialog uk-modal-body">
       <button class="uk-modal-close-default" uk-close></button>

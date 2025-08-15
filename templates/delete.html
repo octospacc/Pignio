@@ -1,18 +1,18 @@
 {% extends "base.html" %}
-{% block title %}{{ mode }} item{% endblock %}
+{% block title %}{{ _(mode) }} {{ _('Item') }}{% endblock %}
 {% block content %}
-  <h3>{{ mode }} item <var>{{ item.id }}</var>?</h3>
+  <h3>{{ _(mode) }} {{ _('Item') }} <var>{{ item.id }}</var>?</h3>
   {% if mode == "Report" %}
-    <p>The report will be sent to admins for review.</p>
+    <p>{{ _('report-tip') }}</p>
   {% endif %}
   <form method="POST" up-layer="root">
     <input type="hidden" name="id" value="{{ item.id }}" />
     <div class="uk-margin uk-grid-small" uk-grid>
       <div class="back">
-        <a class="uk-button uk-button-default" href="{{ url_for('view_item', iid=item.id) }}">Back</a>
+        <a class="uk-button uk-button-default" href="{{ url_for('view_item', iid=item.id) }}">{{ _('Back') }}</a>
       </div>
       <div>
-        <button class="uk-button uk-button-danger" type="submit">{{ mode }} {{ item.id }}</button>
+        <button class="uk-button uk-button-danger" type="submit">{{ _(mode) }} {{ item.id }}</button>
       </div>
     </div>
   </form>

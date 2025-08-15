@@ -2,7 +2,7 @@
 {% set title %}{% block title %}{% endblock %}{% endset %}
 {% set canonical %}{% block canonical %}{% endblock %}{% endset %}
 {% set external %}{% block external %}{% endblock %}{% endset %}
-<html data-root="{% include 'links-prefix.txt' %}">
+<html lang="{{ getlang() }}" data-root="{% include 'links-prefix.txt' %}">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -51,7 +51,7 @@
   <nav class="uk-navbar-container" uk-sticky="sel-target: .uk-navbar-container; cls-active: uk-navbar-sticky">
     <div class="uk-navbar uk-container uk-container-expand" uk-navbar>
       <div class="uk-navbar-left uk-width-expand">
-        <a class="uk-link-reset" href="{{ url_for('view_index') }}">
+        <a class="uk-link-reset" href="{{ url_for('view_index') }}" {% if embed %} target="_blank" {% endif %}>
           <span class="uk-logo">
             <span uk-icon="icon: home"></span>
             {{ config.INSTANCE_NAME }}
@@ -60,27 +60,31 @@
             <span class="uk-text-small">DEV</span>
           {% endif %}
         </a>
-        <form class="uk-search uk-search-navbar uk-width-auto uk-flex-1" action="{{ url_for('search') }}">
-          <input class="uk-search-input" type="search" name="query" placeholder="{{ _('Search') }}..." value="{{ query }}" required>
-          <button class="uk-search-icon-flip" uk-search-icon></button>
-        </form>
-      </div>
-      <div class="uk-navbar-right uk-margin-left">
-        <a class="uk-button uk-button-default uk-icon-link" title="Create" uk-icon="plus" href="{{ url_for('add_item') }}" rel="nofollow">
-          <span class="uk-visible@s">{{ _('Create') }}</span>
-        </a>
-        {% if current_user.is_authenticated %}
-          <div class="uk-inline" tabindex="-1">
-            <button class="uk-icon-button" uk-icon="bell" title="Notifications"></button>
-            <span class="uk-badge uk-position-top-right" inert hidden></span>
-          </div>
-          <div uk-dropdown="mode: click; stretch: y;">
-            <div class="notifications placeholder">
-              <a href="{{ url_for('view_notifications') }}" rel="nofollow">{{ _('Notifications') }}</a>
-            </div>
-          </div>
+        {% if not (embed or config.FREEZING) %}
+          <form class="uk-search uk-search-navbar uk-width-auto uk-flex-1" action="{{ url_for('search') }}">
+            <input class="uk-search-input" type="search" name="query" placeholder="{{ _('Search') }}..." value="{{ query }}" required>
+            <button class="uk-search-icon-flip" uk-search-icon></button>
+          </form>
         {% endif %}
       </div>
+      {% if not (embed or config.FREEZING) %}
+        <div class="uk-navbar-right uk-margin-left">
+          <a class="uk-button uk-button-default uk-icon-link" title="Create" uk-icon="plus" href="{{ url_for('add_item') }}" rel="nofollow">
+            <span class="uk-visible@s">{{ _('Create') }}</span>
+          </a>
+          {% if current_user.is_authenticated %}
+            <div class="uk-inline" tabindex="-1">
+              <button class="uk-icon-button" uk-icon="bell" title="Notifications"></button>
+              <span class="uk-badge uk-position-top-right" inert hidden></span>
+            </div>
+            <div uk-dropdown="mode: click; stretch: y;">
+              <div class="notifications placeholder">
+                <a href="{{ url_for('view_notifications') }}" rel="nofollow">{{ _('Notifications') }}</a>
+              </div>
+            </div>
+          {% endif %}
+        </div>
+      {% endif %}
     </div>
   </nav>
   <div class="uk-margin uk-flex-auto">
@@ -97,26 +101,30 @@
       </main>
     </div>
   </div>
-  <footer class="uk-section uk-section-xsmall uk-background-muted">
-    <form class="lang" method="POST" action="{{ url_for('setlang') }}">
-      <div class="uk-container">
-        <p class="uk-text-meta">
-          Powered by <a class="uk-text-primary" target="_blank" href="https://gitlab.com/octospacc/Pignio">{{ config.APP_NAME }}</a>, © 2025 OctoSpacc (AGPLv3)
-          <select class="lang uk-select uk-inline uk-float-right uk-width-auto uk-form-small uk-margin-left" name="lang">
-            <option value="en" {% if getlang() == 'en' %} selected {% endif %}>🇬🇧 {{ _('English', 'en') }} &nbsp;</option>
-            <option value="it" {% if getlang() == 'it' %} selected {% endif %}>🇮🇹 {{ _('Italian', 'it') }} &nbsp;</option>
-          </select>
-          <span class="uk-float-right">
-            {% if current_user.is_authenticated %}
-              {{ _('Logged in as') }} <a href="{{ url_for('view_user', username=current_user.username) }}">{{ current_user.username }}</a>
-              — <a class="uk-button uk-button-text uk-text-baseline" href="{{ url_for('logout') }}" up-target="main, footer, nav">Logout</a>
-            {% else %}
-              <a class="uk-button uk-button-text uk-text-baseline" href="{{ url_for('view_login') }}">Login</a>
+  {% if not embed %}
+    <footer class="uk-section uk-section-xsmall uk-background-muted">
+      <form class="lang" method="POST" action="{{ url_for('setlang') }}">
+        <div class="uk-container">
+          <p class="uk-text-meta">
+            Powered by <a class="uk-text-primary" target="_blank" href="{{ config.APP_REPO }}">{{ config.APP_NAME }}</a>, © 2025 OctoSpacc (AGPLv3)
+            {% if not config.FREEZING %}
+              <select class="lang uk-select uk-inline uk-float-right uk-width-auto uk-form-small uk-margin-left" name="lang">
+                <option value="en" {% if getlang() == 'en' %} selected {% endif %}>🇬🇧 {{ _('English', 'en') }} &nbsp;</option>
+                <option value="it" {% if getlang() == 'it' %} selected {% endif %}>🇮🇹 {{ _('Italian', 'it') }} &nbsp;</option>
+              </select>
+              <span class="uk-float-right">
+                {% if current_user.is_authenticated %}
+                  {{ _('Logged in as') }} <a href="{{ url_for('view_user', username=current_user.username) }}">{{ current_user.username }}</a>
+                  — <a class="uk-button uk-button-text uk-text-baseline" href="{{ url_for('logout') }}" rel="nofollow" up-target="main, footer, nav">Logout</a>
+                {% else %}
+                  <a class="uk-button uk-button-text uk-text-baseline" href="{{ url_for('view_login') }}" rel="nofollow">Login</a>
+                {% endif %}
+              </span>
             {% endif %}
-          </span>
-        </p>
-      </div>
-    </form>
-  </footer>
+          </p>
+        </div>
+      </form>
+    </footer>
+  {% endif %}
 </body>
 </html>

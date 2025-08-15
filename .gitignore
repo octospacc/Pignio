@@ -1,5 +1,6 @@
 /_config.py
 /data/
+/build/
 /node_modules/
 .mypy_cache/
 *.pyc
