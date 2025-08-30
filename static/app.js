@@ -1,3 +1,4 @@
+(function(){
 const HTTP_BASE = '//' + document.documentElement.dataset.root.split('://').slice(1).join('://');
 const API_BASE = HTTP_BASE + '/api';
 
@@ -17,6 +18,7 @@ registerHandler('form.Register', (form) => addSlugifyNoticeHandler(form.querySel
 registerHandler('form.add', addHandler);
 registerHandler('article.item', itemHandler);
 registerHandler('article.item div.clickable', lightboxHandler);
+registerHandler('select[name="ordering"]', select => select.addEventListener('change', () => select.parentElement.submit()));
 registerHandler('select.lang', select => select.addEventListener('change', () => {
   const form = document.querySelector('form.lang');
   form.action += '?next=' + encodeURIComponent(location.href);
@@ -54,7 +56,7 @@ function addTextInputHandler(input, handler) {
 function addSlugifyNoticeHandler(input, notice, subject) {
   addTextInputHandler(input, function(){
     if (input.value) {
-      fetch(API_BASE + '/slugify?text=' + encodeURIComponent(input.value))
+      fetch(API_BASE + '/v0/slugify?text=' + encodeURIComponent(input.value))
       .then(res => res.text())
       .then(text => {
         if (text !== input.value) {
@@ -138,7 +140,7 @@ function addHandler(form) {
   function linkHandler() {
     var url = link.value.trim();
     if (checkLink.checked && url) {
-      fetch(API_BASE + '/preview?url=' + encodeURIComponent(url))
+      fetch(API_BASE + '/v0/preview?url=' + encodeURIComponent(url))
       .then(res => res.json())
       .then(data => {
         for (var key in data) {
@@ -158,7 +160,7 @@ function addHandler(form) {
 }
 
 function itemHandler(section) {
-  var url = `${API_BASE}/collections/${section.dataset.itemId}`;
+  var url = `${API_BASE}/v0/collections/${section.dataset.itemId}`;
   var button = section.querySelector('div.pin button');
   var pins = section.querySelector('div.pin ul');
   var create = document.querySelector('#new-collection');
@@ -199,10 +201,7 @@ function itemHandler(section) {
 }
 
 function lightboxHandler(clickable) {
-  style = clickable.parentElement.style;
-  clickable.addEventListener('click', () => {
-    style.width = (style.width ? '' : '100%');
-  });
+  clickable.addEventListener('click', expandShrinkContent);
   clickable.addEventListener('keypress', ev => {
     if (ev.key === 'Enter') {
       clickable.click();
@@ -214,3 +213,14 @@ function copyToClipboard() {
   navigator.clipboard.writeText(document.querySelector('link[rel=canonical]').href);
   UIkit.notification(STRINGS.get('copiedLink'));
 }
+
+function expandShrinkContent() {
+  const style = document.querySelector('article.item > div').style;
+  style.width = (style.width ? '' : '100%');
+  const title = style.width ? 'Shrink' : 'Expand';
+  const toggle = Object.assign(document.querySelector('button.uk-icon.expand-shrink'), {title});
+  toggle.setAttribute('uk-icon', title.toLowerCase());
+}
+
+window.Pignio = {copyToClipboard, expandShrinkContent};
+})();

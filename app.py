@@ -2,8 +2,7 @@ import os
 import time
 import urllib.parse
 import subprocess
-from io import BytesIO
-from zipfile import ZipFile, ZIP_DEFLATED
+from shutil import rmtree
 from typing import Any, cast
 from random import shuffle
 from glob import glob
@@ -53,6 +52,7 @@ SECRET_KEY = "{token_urlsafe()}"
 
 app.jinja_env.globals["_"] = gettext
 app.jinja_env.globals["getlang"] = getlang
+app.jinja_env.globals["clean_url_for"] = clean_url_for
 app.config["DEVELOPMENT"] = DEVELOPMENT
 app.config["SECRET_KEY"] = SECRET_KEY
 app.config["BCRYPT_HANDLE_LONG_PASSWORDS"] = True
@@ -200,6 +200,7 @@ def render_media(iid:str):
                     args.append(os.path.join(ITEMS_ROOT, background))
                 image, err = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate(input=text.encode("utf-8"))
                 if RENDER_CACHE:
+                    mkdirs(CACHE_ROOT)
                     with open(filepath, "wb") as f:
                         f.write(image) # TODO handle creation of parent directories when necessary
                 return response_with_type(image, f"image/{RENDER_TYPE}")
@@ -209,21 +210,22 @@ def render_media(iid:str):
 
 @app.route("/model-viewer/<path:iid>")
 def model_viewer(iid:str):
-    if (item := load_item(iid)) and (model := item.get("model")):
-        return render_template("model-viewer.html", model=model, poster=item.get("image"))
-    else:
-        return abort(404)
+    return view_embedded(iid, "model-viewer", "model", lambda item: {"poster": item.get("image")})
 
-@app.route("/flash-viewer/<path:iid>")
-def flash_viewer(iid:str):
-    if (item := load_item(iid)) and (swf := item.get("swf")):
-        return render_template("ruffle.html", swf=swf)
-    else:
-        return abort(404)
+@app.route("/font-viewer/<path:iid>")
+def font_viewer(iid:str):
+    return view_embedded(iid, "font-viewer", "font")
+
+@app.route("/flash-player/<path:iid>")
+def flash_player(iid:str):
+    return view_embedded(iid, "ruffle", "swf")
+
+@app.route("/emulator-player/<path:iid>")
+def emulator_player(iid:str):
+    return view_embedded(iid, "emulatorjs", "rom")
 
 @app.route("/item/<path:iid>", methods=["GET", "POST"])
 def view_item(iid:str, embed:bool=False):
-    has_subitems = (dirpath := safe_join(ITEMS_ROOT, iid)) and os.path.isdir(dirpath)
     if (item := load_item(iid)) and get_item_permissions(item)["view"]:
         if request.method == "GET":
             if safe_str_get(cast(dict, item), "type") != "comment":
@@ -239,8 +241,11 @@ def view_item(iid:str, embed:bool=False):
         elif request.method == "POST" and current_user.is_authenticated and (comment := request.form.get("comment")):
             store_item(f"{iid_to_filename(iid)}/{generate_iid()}", {"text": comment}, comment=True)
             return redirect(url_for("view_item", iid=iid))
-    elif has_subitems:
-        return view_random_items(iid)
+    elif has_subitems_directory(iid):
+        if (ordering := request.args.get("ordering")) == "natural" or app.config["FREEZING"]:
+            return pagination("index.html", "items", walk_items(iid), root=iid, folders=list_folders(iid), ordering=ordering)
+        else:
+            return view_random_items(iid)
     return abort(404)
 
 # TODO: also add @app.route("/@<path:username>"), redirecting to main url of user ?
@@ -260,13 +265,17 @@ def view_user(username:str, cid:str|None=None):
         if is_for_activitypub():
             return make_activitypub_user(user)
         else:
+            description = None
             collections = walk_collections(user.username)
+            pinned = collections.pop("")
+            folders = make_folders(collections)
             if cid:
-                if (items := collections.get(cid)):
-                    collections = {cid: items}
+                if (pinned := collections.get(cid)):
+                    description = pinned["description"]
+                    folders = []
                 else:
                     return abort(404)
-            return render_template("user.html", user=user, collections=collections, load_item=load_item)
+            return render_template("user.html", user=user, name=cid, description=description, items=pinned["items"], folders=folders, load_item=load_item)
     return abort(404)
 
 @app.route("/user/<path:username>/feed") # TODO deprecate this which could conflict with collections
@@ -274,8 +283,15 @@ def view_user(username:str, cid:str|None=None):
 @noindex
 def view_user_feed(username:str):
     if (user := load_user(username)):
-        limit = int(request.args.get("limit") or RESULTS_LIMIT)
-        return response_with_type(render_template("user-feed.xml", user=user, collections=walk_collections(username), limit=limit, load_item=load_item), "application/atom+xml")
+        return feed_response("user-feed", user=user, collections=walk_collections(username), load_item=load_item)
+    else:
+        return abort(404)
+
+@app.route("/feed/item/<path:fid>")
+@noindex
+def view_folder_feed(fid:str):
+    if is_items_folder(fid):
+        return feed_response("folder-feed", folder=fid, items=walk_items(fid))
     else:
         return abort(404)
 
@@ -363,6 +379,20 @@ def view_notifications():
 def view_stats():
     return render_template("stats.html", items=count_items(), users=count_users())
 
+@app.route("/admin", methods=["GET", "POST"])
+@noindex
+@login_required
+def view_admin():
+    if current_user.is_admin():
+        if request.method == "POST":
+            if request.form.get("action") == "clear-cache":
+                if os.path.exists(CACHE_ROOT):
+                    rmtree(CACHE_ROOT)
+                flash(f"{gettext('Cache cleared')}!")
+        return render_template("admin.html")
+    else:
+        abort(404)
+
 @app.route("/login", methods=["GET", "POST"])
 @noindex
 def view_login():
@@ -411,47 +441,57 @@ def logout():
 @app.route("/setlang", methods=["POST"])
 @noindex
 def setlang():
-    session["lang"] = request.form.get("lang")[:2]
-    return redirect_next()
+    return setprefs(lang=request.form.get("lang"))
 
-@app.route("/api/duplicates", methods=["POST"])
+@app.route("/api/v0/duplicates", methods=["POST"])
 @noindex
 @login_required
 def check_duplicates():
     ...
 
-@app.route("/api/export")
+@app.route("/api/v0/export")
 @noindex
 @login_required
 def export_api():
-    file = BytesIO()
-    with ZipFile(file, "w", ZIP_DEFLATED, compresslevel=9) as zipf:
-        userbase = os.path.join(USERS_ROOT, current_user.username)
-        zipf.write(f"{userbase}.ini")
-        for filename in glob(f"{userbase}/*.ini"):
-            zipf.write(filename)
-        for item in walk_items():
-            if item and safe_str_get(item, "creator") == current_user.username:
-                filename = os.path.join(ITEMS_ROOT, iid_to_filename(item["id"]))
-                for filename in glob(f"{filename}.*"):
-                    zipf.write(filename)
-    file.seek(0)
-    return send_file(file, "application/zip", True, f"{current_user.username}.zip")
+    userbase = os.path.join(USERS_ROOT, current_user.username)
+    files = [[f"{userbase}.ini"], *[[filename] for filename in glob(f"{userbase}/*.ini")]]
+    for item in walk_items():
+        if item and safe_str_get(item, "creator") == current_user.username:
+            filename = os.path.join(ITEMS_ROOT, iid_to_filename(item["id"]))
+            for filename in glob(f"{filename}.*"):
+                files.append([filename])
+    return send_zip_archive(current_user.username, files)
 
-@app.route("/api/collections/<path:iid>", methods=["GET", "POST"])
+@app.route("/api/v0/download/<path:fid>")
+@noindex
+@login_required
+def download_api(fid:str):
+    # if ((dirpath := safe_join(ITEMS_ROOT, fid)) and os.path.isdir(dirpath)):
+    if (dirpath := is_items_folder(fid)):
+        results = []
+        for root, dirs, files in os.walk(dirpath):
+            for file in files:
+                if check_file_supported(file):
+                    filepath = os.path.join(root, file)
+                    results.append([filepath, os.path.relpath(filepath, dirpath)])
+        return send_zip_archive(dirpath, results)
+    else:
+        return abort(404)
+
+@app.route("/api/v0/collections/<path:iid>", methods=["GET", "POST"])
 @noindex
 @login_required
 def collections_api(iid:str):
     if request.method == "POST":
         for collection, status in request.get_json().items():
-            toggle_in_collection(current_user.username, collection, iid, status)
+            toggle_in_collection(current_user.username, slugify_name(collection), iid, status)
     results: dict[str, bool] = {}
-    for folder, collection in walk_collections(current_user.username).items():
-        results[folder] = iid in collection
+    for cid, collection in walk_collections(current_user.username).items():
+        results[cid] = iid in collection["items"]
     return results
 
-@app.route("/api/items", defaults={"iid": None}, methods=["POST"])
-@app.route("/api/items/<path:iid>", methods=["GET", "PUT", "DELETE"])
+@app.route("/api/v1/items", defaults={"iid": None}, methods=["POST"])
+@app.route("/api/v1/items/<path:iid>", methods=["GET", "PUT", "DELETE"])
 @noindex
 @login_required
 def items_api(iid:str):
@@ -465,13 +505,13 @@ def items_api(iid:str):
         delete_item(iid)
         return {}
 
-@app.route("/api/slugify")
+@app.route("/api/v0/slugify")
 @noindex
 @query_params("text")
 def slugify_api(text:str):
     return slugify_name(text)
 
-@app.route("/api/preview")
+@app.route("/api/v0/preview")
 @noindex
 @login_required
 @query_params("url")
@@ -511,25 +551,26 @@ def error_400(e):
 
 @app.errorhandler(404)
 def error_404(e):
-    return render_template("error.html", code=404, name="Not Found", description="The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again."), 404
+    return render_template("error.html", code=404, name=gettext("Not Found"), description="The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again."), 404
 
-def is_for_activitypub():
-    return (request.headers.get("Accept") in ACTIVITYPUB_TYPES)
+def feed_response(template:str, **kwargs:Any):
+    return response_with_type(render_template(f"{template}.xml", limit=int(request.args.get("limit") or RESULTS_LIMIT), **kwargs), "application/atom+xml")
 
 def view_random_items(root:str|None=None):
-    return pagination("index.html", "items", walk_items(root), (lambda items: shuffle(items)), root=root)
+    return pagination("index.html", "items", walk_items(root), (lambda items: shuffle(items)), root=root, folders=(list_folders(root) if root else []))
 
 def pagination(template:str, key:str, all_items:list, modifier=None, **kwargs):
     page = int(request.args.get("page") or 1)
-    next_count = (RESULTS_LIMIT * page)
-    items = all_items[(RESULTS_LIMIT * (page - 1)):next_count]
+    limit = int(request.args.get("limit") or RESULTS_LIMIT)
+    next_count = (limit * page)
+    items = all_items[(limit * (page - 1)):next_count]
     if len(items) == 0 and len(all_items) > 0:
         return abort(404)
     if modifier:
         modifier(items)
-    return render_template(template, **kwargs, **{key: items}, next_page=(page + 1 if len(all_items) > next_count else None))
+    return render_template(template, **kwargs, **{key: items}, limit=limit, next_page=(page + 1 if len(all_items) > next_count else None))
 
-mkdirs(ITEMS_ROOT, CACHE_ROOT, USERS_ROOT)
+mkdirs(ITEMS_ROOT, USERS_ROOT)
 
 if __name__ == "__main__":
     if DEVELOPMENT:

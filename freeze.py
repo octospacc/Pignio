@@ -13,42 +13,49 @@ def freeze_page(path:str) -> None:
     if check_link(path) and check_freezable(response := client.get(path)):
         page = get_page_index(path)
         path = path.split("?")[0]
+        is_html = str(response.headers.get("Content-Type")).split(";")[0] == "text/html"
         to_freeze: set[str] = set()
-        soup = BeautifulSoup(response.data, "html.parser")
 
-        for link in soup.find_all("a", href=True):
-            if "nofollow" not in link.get("rel", []): # type: ignore[operator, union-attr, arg-type]
-                to_freeze.add(url := cast(str, link["href"])) # type: ignore[index]
-                ppath = url.split("?")[0]
-                if (ppage := get_page_index(url)):
-                    link["href"] = format_link(ppath, ppage) # type: ignore[index, operator]
-                else:
-                    link["href"] += format_link(ppath, ppage, False) # type: ignore[index, operator]
+        if is_html:
+            soup = BeautifulSoup(response.data, "html.parser")
 
-        for link in soup.find_all("iframe", src=True):
-            to_freeze.add(url := cast(str, link["src"])) # type: ignore[index]
-            link["src"] += ".html" # type: ignore[index, operator]
+            for link in soup.find_all("a", href=True):
+                if "nofollow" not in link.get("rel", []): # type: ignore[operator, union-attr, arg-type]
+                    to_freeze.add(url := cast(str, link["href"])) # type: ignore[index]
+                    ppath = url.split("?")[0]
+                    if (ppage := get_page_index(url)):
+                        link["href"] = format_link(ppath, ppage) # type: ignore[index, operator]
+                    else:
+                        link["href"] += format_link(ppath, ppage, False) # type: ignore[index, operator]
 
-        save_file(BUILD_DIR + format_link(path, page), str(soup).encode("utf8"))
+            for link in soup.find_all("iframe", src=True):
+                to_freeze.add(url := cast(str, link["src"])) # type: ignore[index]
+                link["src"] += ".html" # type: ignore[index, operator]
+
+            save_file(BUILD_DIR + format_link(path, page), str(soup).encode("utf8"))
+        else:
+            save_file(BUILD_DIR + path, response.data)
+
         done.add(path)
         print(f"* {path} / {page}")
 
-        for media in soup.find_all(["img", "video", "audio"], src=True):
-            src = cast(str, media["src"]) # type: ignore[index]
-            if check_link(src) and check_freezable(response := client.get(src)):
-                save_file(BUILD_DIR + src, response.data)
-                done.add(path)
-                print(f"  + {src}")
+        if is_html:
+            for media in soup.find_all(["img", "video", "audio"], src=True):
+                src = cast(str, media["src"]) # type: ignore[index]
+                if check_link(src) and check_freezable(response := client.get(src)):
+                    save_file(BUILD_DIR + src, response.data)
+                    done.add(path)
+                    print(f"  + {src}")
 
-        for media in soup.find_all("object", data=True):
-            src = cast(str, media["data"]) # type: ignore[index]
-            if check_link(src) and check_freezable(response := client.get(src)):
-                save_file(BUILD_DIR + src, response.data)
-                done.add(path)
-                print(f"  + {src}")
+            for media in soup.find_all("object", data=True):
+                src = cast(str, media["data"]) # type: ignore[index]
+                if check_link(src) and check_freezable(response := client.get(src)):
+                    save_file(BUILD_DIR + src, response.data)
+                    done.add(path)
+                    print(f"  + {src}")
 
-        for url in to_freeze:
-            freeze_page(url)
+            for url in to_freeze:
+                freeze_page(url)
 
 def save_file(path:str, data:bytes) -> None:
     path = unquote(path)
@@ -79,4 +86,4 @@ if __name__ == "__main__":
     copytree("static", os.path.join(BUILD_DIR, "static"))
     copytree("node_modules/uikit/dist", f"{BUILD_DIR}/static/module/uikit")
     copytree("node_modules/unpoly", f"{BUILD_DIR}/static/module/unpoly")
-    print("Done!")
+    print(f"Done! ({len(done)} links)")

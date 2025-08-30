@@ -23,7 +23,19 @@ from _functions import *
 def generate_user_hash(username:str, password:str) -> str:
     return f"{username}:" + urlsafe_b64encode(sha256(password.encode()).digest()).decode()
 
-def walk_items(walk_path:str|None=None) -> list:
+def check_file_supported(filename:str) -> bool:
+    return check_file_is_meta(filename) or bool(check_file_is_content(filename))
+
+def check_file_is_meta(filename:str) -> bool:
+    return filename.lower().endswith(ITEMS_EXT)
+
+def check_file_is_content(filename:str) -> str|Literal[False]:
+    for kind in MEDIA_TYPES:
+        if filename.lower().endswith(tuple([f".{ext}" for ext in EXTENSIONS[kind]])):
+            return kind
+    return False
+
+def walk_items(walk_path:str|None=None, only_ids:bool=False) -> list:
     results: dict[str, dict[str, ItemDict|None]] = {}
 
     walk_root = ITEMS_ROOT
@@ -38,39 +50,32 @@ def walk_items(walk_path:str|None=None) -> list:
         results[rel_path] = {}
 
         for file in files:
-            #if file.lower().endswith(ITEMS_EXT) or file.lower().endswith(tuple([f".{ext}" for ext in EXTENSIONS["images"]])):
-            iid = strip_ext(os.path.join(rel_path, file).replace(os.sep, "/"))
-            iid = filename_to_iid(iid)
-            results[rel_path][iid] = None
+            if check_file_supported(file):
+                iid = strip_ext(os.path.join(rel_path, file).replace(os.sep, "/"))
+                iid = filename_to_iid(iid)
+                results[rel_path][iid] = None
 
-        for iid in results[rel_path]:
-            if not (rel_rel_path := "/".join(rel_path.split("/")[:-1])) or (rel_rel_path not in results) or (filename_to_iid(rel_path) not in results[rel_rel_path]):
-                results[rel_path][iid] = load_item(iid)
+        if not only_ids:
+            for iid in results[rel_path]:
+                if not (rel_rel_path := "/".join(rel_path.split("/")[:-1])) or (rel_rel_path not in results) or (filename_to_iid(rel_path) not in results[rel_rel_path]):
+                    results[rel_path][iid] = load_item(iid)
 
     return [value for inner in results.values() for value in inner.values()]
 
 def count_items() -> int:
-    results: dict[str, None] = {}
-    for root, dirs, files in os.walk(ITEMS_ROOT):
-        rel_path = os.path.relpath(root, ITEMS_ROOT).replace(os.sep, "/")
-        for file in files:
-            iid = strip_ext(os.path.join(rel_path, file).replace(os.sep, "/"))
-            iid = filename_to_iid(iid)
-            results[iid] = None
-    return len(results)
+    return len(walk_items(only_ids=True))
 
 def count_users() -> int:
     return len(glob(f"{USERS_ROOT}/*.ini"))
 
 def walk_collections(username:str) -> dict:
-    results: dict[str, list[str]] = {"": []}
+    results: dict[str, CollectionDict] = {}
     filepath = USERS_ROOT
 
     # if username:
     filepath = os.path.join(filepath, username)
     data = cast(UserDict, read_metadata(read_textual(filepath + ITEMS_EXT)))
-    results[""] = data["items"] if "items" in data else []
-    results[""].reverse()
+    results[""] = load_collection(data)
 
     for root, dirs, files in os.walk(filepath):
         rel_path = os.path.relpath(root, filepath).replace(os.sep, "/")
@@ -79,10 +84,36 @@ def walk_collections(username:str) -> dict:
         for file in files:
             cid = rel_path + strip_ext(file)
             data = cast(UserDict, read_metadata(read_textual(os.path.join(filepath, file))))
-            results[cid] = data["items"] if "items" in data else []
-            results[cid].reverse()
+            results[cid] = load_collection(data)
 
     return results
+
+def list_folders(path:str):
+    folders = []
+    if path and (base := safe_join(ITEMS_ROOT, path)):
+        for folder in [name for name in os.listdir(base) if os.path.isdir(os.path.join(base, name))]:
+            # if len(list(filter(lambda item: item.get("type") != "comment", list(filter(None, walk_items(safe_join(path, folder))))))) > 0:
+            # if len([item for item in [x for x in walk_items(safe_join(path, folder)) if x] if item.get("type") != "comment"]) > 0:
+            if is_items_folder(f"{path}/{folder}"):
+                folders.append(folder)
+    return folders
+
+def make_folders(collections):
+    folders = []
+    for cid in collections:
+        items = list(filter(None, [load_item(iid) for iid in collections[cid]["items"]]))
+        if len(items) > 0:
+            folders.append({"id": cid, "items": items[:2] + items[-2:]})
+    return folders
+
+def has_subitems_directory(iid:str) -> str|Literal[False]:
+    return dirpath if ((dirpath := safe_join(ITEMS_ROOT, iid)) and os.path.isdir(dirpath)) else False # TODO also check if folder is not empty?
+
+def is_items_folder(path:str) -> str|Literal[False]:
+    if (dirpath := has_subitems_directory(path)):
+        if len([item for item in [x for x in walk_items(path) if x] if item.get("type") != "comment"]) > 0:
+            return dirpath
+    return False
 
 def datetime_from_snowflake(iid:str) -> datetime:
     return Snowflake.parse(int(iid), snowflake_epoch).datetime
@@ -111,12 +142,10 @@ def load_item(iid:str) -> ItemDict|None:
             data["datetime"] = str(datetime_from_snowflake(iid)).split(".")[0]
 
         for file in files:
-            if file.lower().endswith(ITEMS_EXT):
+            if check_file_is_meta(file):
                 data = data | read_metadata(read_textual(file))
-            else:
-                for kind in MEDIA_TYPES:
-                    if file.lower().endswith(tuple([f".{ext}" for ext in EXTENSIONS[kind]])):
-                        cast(dict, data)[kind] = file.replace(os.sep, "/").removeprefix(f"{ITEMS_ROOT}/")
+            elif (kind := check_file_is_content(file)):
+                cast(dict, data)[kind] = file.replace(os.sep, "/").removeprefix(f"{ITEMS_ROOT}/")
 
         if safe_str_get(cast(dict, data), "type") == "comment":
             data["datetime"] = str(datetime_from_snowflake(iid.split("/")[-1])).split(".")[0]
@@ -241,8 +270,8 @@ def ensure_item_id(data:dict|str) -> str:
 def ensure_item_dict(data:ItemDict|str) -> ItemDict:
     return cast(ItemDict, data if type(data) == dict else load_item(cast(str, data)))
 
-def toggle_in_collection(username:str, collection:str, iid:str, status:bool) -> None:
-    filepath = get_collection_filepath(username, collection)
+def toggle_in_collection(username:str, cid:str, iid:str, status:bool) -> None:
+    filepath = get_collection_filepath(username, cid)
     try:
         data = cast(CollectionDict, read_metadata(read_textual(filepath)))
     except FileNotFoundError:
@@ -256,8 +285,13 @@ def toggle_in_collection(username:str, collection:str, iid:str, status:bool) -> 
     mkdirs("/".join(filepath.split("/")[:-1]))
     write_textual(filepath, write_metadata(data))
 
-def get_collection_filepath(username:str, collection:str) -> str:
-    return f"{USERS_ROOT}/{username}" + (f"/{collection}" if collection else "") + ITEMS_EXT
+def get_collection_filepath(username:str, cid:str) -> str:
+    return f"{USERS_ROOT}/{username}" + (f"/{cid}" if cid else "") + ITEMS_EXT
+
+def load_collection(data:UserDict) -> CollectionDict:
+    items = data.get("items", [])
+    items.reverse()
+    return cast(CollectionDict, {"items": items, "description": data.get("description")})
 
 def read_metadata(text:str) -> MetaDict:
     config = ConfigParser(interpolation=None)

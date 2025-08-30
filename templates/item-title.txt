@@ -1,1 +1,1 @@
-{{ item.title or (item.doc or item.model or item.image or item.video or item.audio or item.id).split("/")[-1] }}
+{{ item.title or (item.rom or item.swf or item.model or item.font or item.doc or item.image or item.video or item.audio or item.id).split("/")[-1] }}

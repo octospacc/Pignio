@@ -34,3 +34,13 @@ from app import app as application
 ## Static site generation (Experimental)
 
 You can freeze your entire Pignio instance into a static site, which makes it possible to host it on any basic web server without Python. On a build machine or CI environment, make sure all requirements to normally run the software are satisfied, and that the app works, but then run the `freeze.py` script. It will generate a `build/` folder, with all the HTML pages prerendered and all media copied over, that you can then serve as-is or even package to share.
+
+You can view a production demo of the static site generation feature at <https://pignioctt-9b535e.gitlab.io/index.html>.
+
+## Thanks & Third-Party Libraries
+
+* [UIkit](https://getuikit.com/) for the frontend framework
+* [Unpoly](https://unpoly.com/) for smooth SPA-like navigation
+* [model-viewer](https://modelviewer.dev/) for displaying of 3D models
+* [Ruffle](https://ruffle.rs/) for Shockwave Flash emulation
+* [EmulatorJS](https://emulatorjs.org/) for emulation of various game consoles

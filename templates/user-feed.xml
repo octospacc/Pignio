@@ -1,32 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 {% set ns = namespace(count=0) %}
+{% set url %}{% include 'links-prefix.txt' %}{{ url_for('view_user', username=user.username) }}{% endset %}
 <feed xmlns="http://www.w3.org/2005/Atom">
   <title>@{{ user.username }} Feed | {% include 'app-title.txt' %}</title>
-  <id>{% include 'links-prefix.txt' %}{{ url_for('view_user', username=user.username) }}</id>
-  <link href="{% include 'links-prefix.txt' %}{{ url_for('view_user', username=user.username) }}" />
+  <id>{{ url }}</id>
+  <link href="{{ url }}" />
   {% for folder, collection in collections.items() %}
-    {% for iid in collection %}
+    {% for iid in collection['items'] %}
       {% if ns.count < limit %}
         {% with item=load_item(iid) %}
           {% if item and (not item.status or item.status == "public") %}
-            <entry>
-              <id>{{ item.id }}</id>
-              <link href="{% include 'links-prefix.txt' %}{{ url_for('view_item', iid=item.id) }}" />
-              <title>{% include 'item-title.txt' %}</title>
-              <published>{{ item.datetime }}</published>
-              <summary>{{ item.description }}</summary>
-              <content type="html">
-                <![CDATA[
-                  <p>
-                    {% with full=true, external=true %}
-                      {% include "item-content.html" %}
-                    {% endwith %}
-                  </p>
-                  {% include 'item-description.html' %}
-                  <p><a href="{{ item.link }}" target="_blank">{{ item.link }}</a></p>
-                ]]>
-              </content>
-            </entry>
+            {% include 'feed-entry.xml' %}
             {% set ns.count = ns.count + 1 %}
           {% endif %}
         {% endwith %}

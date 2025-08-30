@@ -1,5 +1,16 @@
 {% extends "base.html" %}
 {% set image %}{% include 'item-image.txt' %}{% endset %}
+{% set kindname %}
+  {%- if item.doc -%} Document
+  {%- elif item.swf -%} Shockwave Flash
+  {%- elif item.rom -%} ROM
+  {%- elif item.font -%} Font
+  {%- elif item.model -%} 3D Model
+  {%- elif item.audio -%} Audio
+  {%- elif item.video -%} Video
+  {%- elif item.image and not item.text -%} Image
+  {%- endif -%}
+{% endset %}
 {% block title %}{% include "item-title.txt" %}{% endblock %}
 {% block canonical %}{{ url_for('view_item', iid=item.id) }}{% endblock %}
 {% block metadata %}
@@ -30,7 +41,10 @@
       {% endwith %}
     </div>
     <div class="uk-width-1-1 uk-width-1-2@s uk-padding-small">
-      <h3 class="uk-text-break">{% include "item-title.txt" %}</h3>
+      {% if kindname %}
+        <span class="uk-text-meta">{{ _(kindname) }}</span>
+      {% endif %}
+      <h3 class="uk-text-break uk-margin-small-top">{% include "item-title.txt" %}</h3>
       {% if item.creator %}
         by <a href="{{ url_for('view_user', username=item.creator) }}" {% if embed %} target="_blank" {% endif %}>{{ item.creator }}</a>
       {% endif %}
@@ -62,8 +76,11 @@
       </div>
       {% include 'item-description.html' %}
       <div class="uk-margin uk-grid-small uk-grid" uk-grid>
+        <div class="uk-visible@s">
+          <button class="uk-icon-button expand-shrink" uk-icon="expand" title="Expand" onclick="Pignio.expandShrinkContent();"></button>
+        </div>
         <div>
-          <button class="uk-icon-button" uk-icon="forward" title="Copy to clipboard" onclick="copyToClipboard()"></button>
+          <button class="uk-icon-button" uk-icon="forward" title="{{ _('Copy to clipboard') }}" onclick="Pignio.copyToClipboard();"></button>
         </div>
         {% if not config.FREEZING %}
           <div class="pin">

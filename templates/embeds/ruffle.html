@@ -1,0 +1,9 @@
+<!doctype HTML>
+<meta charset="utf-8" />
+{% set swf_url %}{{ url_for('serve_media', filename=swf) }}{% endset %}
+<object>
+  <embed src="{{ swf_url }}" />
+  <noscript><p>Ruffle requires JavaScript. Alternatively, download the SWF file: <a href="{{ swf_url }}">{{ swf }}</a>.</p></noscript>
+</object>
+<script src="https://unpkg.com/@ruffle-rs/ruffle"></script>
+<style> * { width: 100%; height: 100%; margin: 0; overflow: hidden; } </style>

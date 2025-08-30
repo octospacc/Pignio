@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+{% set ns = namespace(count=0) %}
+{% set url %}{% include 'links-prefix.txt' %}{{ url_for('view_item', iid=folder) }}{% endset %}
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>{{ folder }} Feed | {% include 'app-title.txt' %}</title>
+  <id>{{ url }}</id>
+  <link href="{{ url }}" />
+  {% for item in items %}
+    {% if ns.count < limit %}
+      {% if item and (not item.status or item.status == "public") %}
+        {% include 'feed-entry.xml' %}
+        {% set ns.count = ns.count + 1 %}
+      {% endif %}
+    {% endif %}
+  {% endfor %}
+</feed>

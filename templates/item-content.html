@@ -2,33 +2,47 @@
 {% set alttext %}{% if item.alttext %}{{ item.alttext }}{% else %}{{ item.description }}{% endif %}{% endset %}
 {% set placeholder %}
   <div class="uk-overflow-hidden">
-    <span class="uk-heading-large">
+    <span class="{% if folder %} uk-heading-medium {% else %} uk-heading-large {% endif %}">
       {%- if item.doc -%} 📄
       {%- elif item.swf -%} 📀
+      {%- elif item.rom -%} 🕹️
+      {%- elif item.font -%} 🔣
       {%- elif item.model -%} 📦
       {%- elif item.audio -%} 🎶
       {%- endif -%}
     </span>
   </div>
 {% endset %}
-<div {% if full and (item.model or item.doc or item.swf) %} class="uk-height-1-1 uk-height-viewport" {% elif full and (item.image or item.text) %} class="clickable" tabindex="0" {% else %} class="uk-text-center" {% endif %}>
+<div {% if folder %} style="display: inline-block; width: 50%; object-fit: cover;" {% endif %} {% if full and (item.model or item.font or item.doc or item.swf) %} class="uk-height-1-1 uk-height-viewport" {% elif full and (item.image or item.text) %} class="clickable" tabindex="0" {% else %} class="uk-text-center" {% endif %}>
   {% if item.text %}
-    <img class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ image }}" alt="{{ item.text }}" title="{{ item.text }}" />
-  {% elif item.model or item.doc or item.swf %}
+    <img class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ image }}" alt="{{ item.text }}" title="{{ item.text }}" {% if not full %} loading="lazy" {% endif %} />
+  {% elif item.model or item.font or item.doc or item.swf or item.rom %}
     {% if full %}
-      {% set iframe %}{% if item.model %}model_viewer{% elif item.swf %}flash_viewer{% endif %}{% endset %}
+      {% set iframe %}
+        {%- if item.model -%} model_viewer
+        {%- elif item.font -%} font_viewer
+        {%- elif item.swf -%} flash_player
+        {%- elif item.rom -%} emulator_player
+        {%- endif -%}
+      {% endset %}
       {% if iframe %}
-        <iframe class="uk-width-expand uk-height-1-1" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for(iframe, iid=item.id) }}"></iframe>
+        {% if item.font %}
+          <p>(Includes text from <a href="https://typeheist.co/blog/type-testing-template/" target="_blank"><i>Type Tester</i></a> by <a href="https://typeheist.co" target="_blank">TYPEHEIST.CO</a>)</p>
+        {% endif %}
+        <iframe class="uk-width-expand uk-height-viewport" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for(iframe, iid=item.id) }}"></iframe>
       {% elif item.doc %}
-        <object class="uk-width-expand uk-height-1-1" data="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('serve_media', filename=item.doc) }}"></object>
+        {% set docurl %}{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('serve_media', filename=item.doc) }}{% endset %}
+        <object class="uk-width-expand uk-height-1-1" data="{{ docurl }}">
+          Your browser does not support this file. Download it instead: <a href="{{ docurl }}">{{ item.doc }}</a>.
+        </object>
       {% endif %}
     {% elif item.image %}
-      <img class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ image }}" />
+      <img class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ image }}" {% if not full %} loading="lazy" {% endif %} />
     {% else %}
       {{ placeholder }}
     {% endif %}
   {% elif item.image %}
-    <img class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ image }}" alt="{{ alttext }}" />
+    <img class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ image }}" alt="{{ alttext }}" {% if not full %} loading="lazy" {% endif %} />
   {% elif item.video %}
     <video class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('serve_media', filename=item.video) }}"
            aria-label="{{ alttext }}" {% if full %} controls {% else %} autoplay muted tabindex="-1" {% endif %} loop></video>

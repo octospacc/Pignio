@@ -1,8 +1,35 @@
 {% if always or path.split('/') | length > 1 %}
-  <ul class="uk-breadcrumb">
-    {% for token in path.split('/')[:-1] %}
-      <li><a href="{{ url_for('view_item', iid='/'.join(path.split('/')[:loop.index])) }}">{{ token }}</a></li>
-    {% endfor %}
-    <li><span>{{ path.split('/')[-1] }}</span></li>
-  </ul>
+  <div class="uk-grid uk-margin" uk-grid>
+    <div class="uk-width-expand">
+      <ul class="uk-breadcrumb">
+        {% for token in path.split('/')[:-1] %}
+          <li><a href="{{ url_for('view_item', iid='/'.join(path.split('/')[:loop.index])) }}">{{ token }}</a></li>
+        {% endfor %}
+        <li>
+          {% if items and (folders | length > 0) %}
+            <a>{{ path.split('/')[-1] }} <span uk-drop-parent-icon></span></a>
+            <div uk-dropdown>
+              <ul class="uk-list">
+                {% for folder in folders %}
+                  <li><a class="uk-link-muted" href="{{ url_for('view_item', iid=(path + '/' + folder)) }}">{{ folder }}</a></li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% else %}
+            <span>{{ path.split('/')[-1] }}</span>
+          {% endif %}
+        </li>
+      </ul>
+    </div>
+    {% if items and not config.FREEZING %}
+      <div>
+        <form>
+          <select class="uk-select uk-form-small" name="ordering">
+            <option value="random" {% if ordering == 'random' %} selected {% endif %}>Random order &nbsp;</option>
+            <option value="natural" {% if ordering == 'natural' %} selected {% endif %}>Natural order &nbsp;</option>
+          </select>
+        </form>
+      </div>
+    {% endif %}
+  </div>
 {% endif %}

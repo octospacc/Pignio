@@ -27,6 +27,7 @@ class ItemDict(MetaDict, total=False):
 
 class CollectionDict(MetaDict, total=False):
     items: list[str]
+    description: str
 
 class UserDict(CollectionDict, total=False):
     password: str
@@ -37,13 +38,16 @@ CACHE_ROOT = f"{DATA_ROOT}/cache"
 USERS_ROOT = f"{DATA_ROOT}/users"
 EVENTS_ROOT = f"{DATA_ROOT}/events"
 EXTENSIONS = {
-    "image": ("jpg", "jpeg", "jfif", "bmp", "png", "apng", "gif", "webp", "avif"),
+    "image": ("jpg", "jpeg", "jfif", "bmp", "png", "apng", "gif", "webp", "avif", "svg"),
     "video": ("mp4", "mov", "mpg", "ogv", "webm", "mkv"),
     "audio": ("mp3", "m4a", "flac", "opus", "ogg", "wav"),
     "audio.extra": {"mpeg": "mp3"},
     "model": ("glb", ),
-    "doc": ("pdf", ),
+    "font": ("ttf", "otf", "woff", "woff2"),
+    "doc": ("pdf", "txt"),
+    # "web": ("warc", ),
     "swf": ("swf", ),
+    "rom": ("nes", "sfc", "n64", "z64", "gb", "gbc", "gba", "nds"),
 }
 ITEMS_EXT = ".ini"
 LISTS_EXT = ".wsv"
@@ -83,11 +87,38 @@ STRINGS = {
     "Users": {
         "it": "Utenti",
     },
+    "Image": {
+        "it": "Immagine",
+    },
+    "Document": {
+        "it": "Documento",
+    },
+    "3D Model": {
+        "it": "Modello 3D",
+    },
+    "Administration": {
+        "it": "Amministrazione",
+    },
+    "Clear Cache": {
+        "it": "Pulisci Cache",
+    },
+    "Cache cleared": {
+        "it": "Cache pulita",
+    },
     "Statistics": {
         "it": "Statistiche",
     },
     "Search": {
         "it": "Cerca",
+    },
+    "Search results for": {
+        "it": "Risultati di ricerca per",
+    },
+    "No results found for": {
+        "it": "Nessun risultato trovato per",
+    },
+    "Copy to clipboard": {
+        "it": "Copia negli appunti",
     },
     "Create": {
         "it": "Crea",
@@ -183,6 +214,9 @@ STRINGS = {
     "systag-oc": {
         "en": "The user who uploaded this media has marked it as being their own original content.",
         # "it": "",
+    },
+    "Not Found": {
+        "it": "Non Trovato",
     },
     "French": {
         "fr": "Français",

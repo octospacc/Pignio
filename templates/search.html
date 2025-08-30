@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Search Results for "{{ query }}"{% endblock %}
+{% block title %}{{ _('Search results for') }} "{{ query }}"{% endblock %}
 {% block content %}
   {% if items %}
-    <p>🔍 Results for "{{ query }}"</p>
+    <p>🔍 {{ _('Search results for') }} "<strong>{{ query }}</strong>"</p>
     {% include "results.html" %}
   {% else %}
-    <p>No matches found for "<strong>{{ query }}</strong>".</p>
+    <p>{{ _('No results found for') }} "<strong>{{ query }}</strong>".</p>
   {% endif %}
 {% endblock %}

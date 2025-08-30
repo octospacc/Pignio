@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-{% set title %}{% block title %}{% endblock %}{% endset %}
+{% set section %}{% block section %}{% endblock %}{% endset %}
+{% set title %}{% block title %}{{ section }}{% endblock %}{% endset %}
 {% set canonical %}{% block canonical %}{% endblock %}{% endset %}
 {% set external %}{% block external %}{% endblock %}{% endset %}
 <html lang="{{ getlang() }}" data-root="{% include 'links-prefix.txt' %}">
@@ -90,6 +91,9 @@
   <div class="uk-margin uk-flex-auto">
     <div class="uk-container">
       <main>
+        {% if section %}
+          <h1>{{ section }}</h1>
+        {% endif %}
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
             {% for category, message in messages %}

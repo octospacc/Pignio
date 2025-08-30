@@ -2,10 +2,14 @@ import os
 import json
 import requests
 import urllib.parse
+from io import BytesIO
+from zipfile import ZipFile, ZIP_DEFLATED
 from bs4 import BeautifulSoup
 from functools import wraps
+from typing import Callable, Any
 from slugify import slugify
-from flask import request, session, redirect, url_for, make_response, render_template
+from jinja2 import Undefined
+from flask import request, session, redirect, url_for, make_response, render_template, send_file, abort, Response
 from flask_login import UserMixin, login_required, login_user # type: ignore[import-untyped]
 from werkzeug.utils import safe_join
 from _app_factory import app
@@ -99,12 +103,41 @@ def response_with_type(content, mime):
     response.headers["Content-Type"] = mime
     return response
 
+def view_embedded(iid:str, template:str, key:str, kwarger:Callable|None=None):
+    if (item := load_item(iid)) and (media := item.get(key)):
+        kwargs = kwarger(item) if kwarger else {}
+        return render_template(f"embeds/{template}.html", **{key: media}, **kwargs)
+    else:
+        return abort(404)
+
+def send_zip_archive(name:str, files:list) -> Response:
+    buffer = BytesIO()
+    with ZipFile(buffer, "w", ZIP_DEFLATED, compresslevel=9) as zipf:
+        for file in files:
+            zipf.write(*file)
+    buffer.seek(0)
+    return send_file(buffer, "application/zip", True, f"{name}.zip")
+
 def getlang() -> str:
-    return session.get("lang") or request.headers.get("Accept-Language", "en").split(",")[0].split("-")[0]
+    return getprefs().get("lang") or request.headers.get("Accept-Language", "en").split(",")[0].split("-")[0]
 
 def gettext(key:str, lang:str|None=None) -> str:
     data = STRINGS.get(key) or {}
     return data.get(lang or getlang()) or data.get("en") or key
+
+def getprefs() -> dict[str, str]:
+    return {k: v[0] for k, v in urllib.parse.parse_qs(request.cookies.get("prefs")).items()}
+
+def setprefs(**props:Any) -> Response:
+    response = redirect_next()
+    response.set_cookie("prefs", urllib.parse.urlencode(getprefs() | props), max_age=(60 * 60 * 24 * 365 * 5))
+    return response
+
+def clean_url_for(endpoint:str, **values:Any) -> str:
+    return url_for(endpoint, **{k: v for k, v in values.items() if not isinstance(v, Undefined)})
+
+def is_for_activitypub():
+    return (request.headers.get("Accept") in ACTIVITYPUB_TYPES)
 
 def make_activitypub(id:str, kind:str, name:str, **kwargs) -> dict:
     return {

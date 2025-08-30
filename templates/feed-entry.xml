@@ -1,0 +1,18 @@
+<entry>
+  <id>{{ item.id }}</id>
+  <link href="{% include 'links-prefix.txt' %}{{ url_for('view_item', iid=item.id) }}" />
+  <title>{% include 'item-title.txt' %}</title>
+  <published>{{ item.datetime }}</published>
+  <summary>{{ item.description }}</summary>
+  <content type="html">
+    <![CDATA[
+      <p>
+        {% with full=true, external=true %}
+          {% include "item-content.html" %}
+        {% endwith %}
+      </p>
+      {% include 'item-description.html' %}
+      <p><a href="{{ item.link }}" target="_blank">{{ item.link }}</a></p>
+    ]]>
+  </content>
+</entry>

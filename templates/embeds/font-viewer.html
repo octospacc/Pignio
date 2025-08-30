@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<meta charset="utf-8" />
+<style>
+    @font-face {
+        font-family: 'Pignio-Tester-Font';
+        src: url('{{ url_for("serve_media", filename=font) }}');
+    }
+    span[tabindex="0"][role="button"] {
+        border: 2px dashed;
+        cursor: pointer;
+    }
+    p[contenteditable="true"] {
+        border: 2px dotted;
+    }
+</style>
+<div style="font-family: 'Pignio-Tester-Font';">
+
+<div>
+    <h2>Placeholders <span>Sentence Case</span></h2>
+
+    <p contenteditable="true" spellcheck="false">
+        The quick brown fox jumps over the lazy dog.<br />
+        Pchnąć w tę łódź jeża lub ośm skrzyń fig.<br />
+        Victor jagt zwölf Boxkämpfer quer über den großen Sylter Deich.<br />
+        El veloz murciélago hindú comía feliz cardillo y kiwi.<br />
+        À l’aube, Jérôme quémande un goûter exquis chez le vieux zéphyr.<br />
+        Σὲ γνωρίζω ἀπὸ τὴν κόψη τοῦ σπαθιοῦ τὴν τρομερὴ.<br />
+        Съешь же ещё этих мягких французских булок, да выпей чаю.<br />
+        敏捷的棕色狐狸跳过了懒狗。<br />
+        素早い茶色の狐が怠け者の犬を飛び越える。<br />
+        빠른 갈색 여우가 게으른 개를 뛰어넘는다.<br />
+        صِفْ سريعًا: ثعلبٌ بُنّيٌّ قفز فوق كلبٍ كسولٍ.<br />
+        हिंदी में तेज भूरी लोमड़ी सुस्त कुत्ते के ऊपर कूद गई।</p>
+</div>
+
+<div>
+    <h2>Letter Combinations <span>Lowercase</span></h2>
+
+    <p>aaron abduct accidental adjacent afghan after aint anaheim and anybody although allotted ambidextrous
+    amend announced aqua arrangement ask aspin ate attitude authorised avery award axolotl baby
+    baghdad banana batty beeped bent billow bizarre blood bottle bowwow boyfriend bubbly buzzing
+    byproduct bystander byzantine cappuccino cattle cent cicero coccyx cooked copyright coyote croquet
+    cumbersome cycle cylinder czech dabble daddy day divide don’t dr during dyke each ebb eek elephant
+    emblem ensnare epiphany esquire etching equine farming feared filler fizzy fjord fluid foggy foxxy frontal
+    fungal gaggle geared gnome grubby happened happiness hazy hellish hope hungry hyphen icy i’m
+    impossible intolerant it’s i’ve jazzy jagged jenga jill joint just kangaroo kettle kitchen knack koala kooky
+    laboratory landing left letter likely lilac little loco lolly lover’s luna luxurious lying master matter metres
+    miss moonlight morph mr mrs ms mummy muster nasal neanderthal necessarily nine nonsense noon
+    numb oar obfuscate occult oddly often ogre okay omission ozone parallel pear picnic pneumonic poppy
+    porous pygmy quantum queen quince quota radii rafferty rattle reassure resist retiree rice roommate
+    running sassafras savvy scent scuttle seismic shining shook sieve sister skink slump snide soup spire
+    stay subject sultana svelte swiftly tallied tattooed taxed tension the theatre title totally trekked tsunami
+    tutor tying vacuum variable vent vivid void vulnerable vying waffle wally warranted water weather whale
+    withheld worry wurst wysiwyg wyvern xenon xmas yak yeah yip you’re yuck zac zeal zigzag zing zodiac
+    zoo</p>
+</div>
+
+<div>
+    <h2>Paragraph Copy <span>Sentence Case</span></h2>
+
+    <p>People ask, How did you get in there? What they really want to know is if they are likely to end up in there
+    as well. I can’t answer the real question. All I can tell them is, It’s easy.</p>
+
+    <p>And it is easy to slip into a parallel universe. There are so many of them: worlds of the insane, the
+    criminal, the crippled, the dying, perhaps of the dead as well. These worlds exist alongside this world and
+    resemble it, but are not in it.</p>
+
+    <p>My roommate Georgina came in swiftly and totally, during her junior year at Vassar. She was in a theater
+    watching a movie when a tidal wave of blackness broke over her head. The entire world was obliterated -
+    for a few minutes. She knew she had gone crazy. She looked around the theater to see if it had happened
+    to everyone, but all the other people were engrossed in the movie. She rushed out, because the darkness
+    in the theater was too much when combined with the darkness in her head.</p>
+
+    <p>And after that? I asked her. A lot of darkness, she said.</p>
+
+    <p>But most people pass over incrementally, making a series of perforations in the membrane between here
+    and there until an opening exists. And who can resist an opening? In the parallel universe the laws of
+    physics are suspended. What goes up does not necessarily come down. A body at rest does not tend to
+    stay at rest, and not every action can be counted on to provoke an equal and opposite reaction. Time, too,
+    is different. It may run in circles, flow backward, skip about from now to then. The very arrangement of
+    molecules is fluid: Tables can be clocks; faces, flowers.</p>
+
+    <p>These are facts you find out later, though.</p>
+
+    <p>Another odd feature of the parallel universe is that although it is invisible from this side, once you are in it
+    you can easily see the world you came from. Sometimes the world you came from looks huge and
+    menacing, quivering like a vast pile of jelly; at other times it is miniaturized and alluring, aspin and shining
+    in its orbit. Either way, it can’t be discounted.</p>
+
+    <p>Every window on Alcatraz has a view of San Francisco.</p>
+</div>
+
+<div>
+    <h2>Numbers, Fractions, Currency and Symbols</h2>
+
+    <p>$1 $2 $3 $4 $5 $6 $7 $8 $9 $0
+    <br />£1 £2 £3 £4 £5 £6 £7 £8 £9 £0
+    <br />€1 €2 €3 €4 €5 €6 €7 €8 €9 €0
+    <br />¥1 ¥2 ¥3 ¥4 ¥5 ¥6 ¥7 ¥8 ¥9 ¥0
+    <br />1¢ 2¢ 3¢ 4¢ 5¢ 6¢ 7¢ 8¢ 9¢ 0¢</p>
+
+    <p>111 222 333 444 555 666 777 888 999 000
+    <br />1¹ 1² 1³ 2¹ 2² 2³ 3¹ 3² 3³ 4¹ 4² 4³ 5¹ 5² 5³ 6¹ 6² 6³ 7¹ 7² 7³ 8¹ 8² 8³ 9¹ 9² 9³
+    <br />1/2 2/3 4/5 6/7 8/9 1\2 2\3 4\5 6\7 8\9</p>
+
+    <p>1% 2% 3% 4% 5% 6% 7% 8% 9% 10%</p>
+
+    <p>1¼ 1⅓ 1½ 1⅔ 1¾ 2¼ 2⅓ 2½ 2⅔ 2¾ 3¼ 3⅓ 3½ 3⅔ 3¾ 4¼ 4⅓ 4½ 4⅔ 4¾ 5¼ 5⅓ 5½ 5⅔ 5¾
+    <br />6¼ 6⅓ 6½ 6⅔ 6¾ 7¼ 7⅓ 7½ 7⅔ 7¾ 8¼ 8⅓ 8½ 8⅔ 8¾ 9¼ 9⅓ 9½ 9⅔ 9¾ 0¼ 0⅓ 0½ 0⅔ 0¾
+    <br />= × ÷ + − ≠ ± – —</p>
+</div>
+
+<div>
+    <h2>Numbers and Fractions <span>Lowercase</span></h2>
+
+    <p>123g butter, softened
+    <br />456g (1½ cups) icing sugar
+    <br />78ml (¼ cup) gin
+    <br />9 tbsp tonic water
+    <br />10 tsp finely grated lemon rind
+    <br />1¾ × 987g madeira cakes
+    <br />1⅓ × 654g packets white chocolate melts
+    <br />1⅔ cup desiccated coconut
+    <br />1¼ cup milk</p>
+</div>
+
+<div>
+    <h2>Multi-lingual <span>Lowercase</span></h2>
+
+    <p>à á â ã ä å ą ā æ č ć ç ð è é ê ë ė ẽ ē ę ì í î ï ī į ł ñ ò
+    ó ô õ ö ő ø œ þ š ś ù ú û ǔ ü ű ū ũ ų ỳ ý ŷ ÿ ỹ ž ź ß</p>
+
+    <p>¡wow! ¿por qué? pájaro aún más acción viòla caído
+    diré quién mañana decírselo tú cuán cañón børn
+    œthel bœuf françoise zürich bokmål liège rhône
+    créme fraïche æsh tête-à-tête räka ösa søt kisbetűi
+    jelenből tzû waiū tükröződése šaursliežu sędzia
+    žagaru ząb zęby et cætera sądzić lâmina łacinka
+    handanović kvačica savõ ðæt þoddn samhljóðendur
+    māori où śawt conceição cê-cedilha à l’attaque
+    l'haÿ-les-roses įkelkite maître maïs víola déjà vu
+    château août</p>
+</div>
+
+<div>
+    <h2>Kerning Pairs <span>Sentence Case</span></h2>
+
+    <p>Av Aw Ay Az Fa Fe Fi Fj Fo Fu Ja Je Ji Jo Ju Kg Kv Kw Ky Pa Pe Pi
+    Po Pu Ta Te Ti To Tr Ts Tu Ty Va Ve Vi Vo Vu Vy Wa We Wi Wo Wu
+    Wr Wv Wy</p>
+
+    <p>Ra Re Ri Ro Rs Rt Ru</p>
+</div>
+
+<div>
+    <h2>Bullet Points <span>Sentence Case</span></h2>
+
+    <p>This is a bulleted list:
+    <br />•bullet point
+    <br />- hyphen point
+    <br />◦disc list
+    <br />•parent list
+    <br />&nbsp;•indented
+    <br />&nbsp;•another point</p>
+
+    <p>1.This is a bulleted list:
+    <br />&nbsp;A. Level 1 nested item
+    <br />&nbsp;&nbsp;I. Level 2 nested item
+    <br />2.Point two
+    <br />3.Point three</p>
+</div>
+
+<div>
+    <h2>Symbols <span>Lowercase</span></h2>
+
+    <p>{% raw %}{{curly}}{% endraw %} (parenthesis) [square] #hash asterix* colon:
+    semicolon; tilde~ exclamation! question? interrobang‽
+    caret^ degrees° {{ '<great&less>' }} pipe|pipe
+    ‘singlequote’ 'straightquotes' “doublequotes”
+    "doublestraight"</p>
+
+    <p>person_name@email.com
+    ©copyright registered® trademarked™</p>
+</div>
+
+<div>
+    <h2>Punctuation <span>Lowercase</span></h2>
+
+    <p>a… a. a: a, a; a! a?
+    <br />b… b. b: b, b; b! b?
+    <br />c… c. c: c, c; c! c?
+    <br />d… d. d: d, d; d! d?
+    <br />e… e. e: e, e; e! e?
+    <br />f… f. f: f, f; f! f?
+    <br />g… g. g: g, g; g! g?
+    <br />h… h. h: h, h; h! h?
+    <br />i… i. i: i, i; i! i?
+    <br />j… j. j: j, j; j! j?
+    <br />k… k. k: k, k; k! k?
+    <br />l… l. l: l, l; l! l?
+    <br />m… m. m: m, m; m! m?
+    <br />n… n. n: n, n; n! n?
+    <br />o… o. o: o, o; o! o?
+    <br />p… p. p: p, p; p! p?
+    <br />q… q. q: q, q; q! q?
+    <br />r… r. r: r, r; r! r?
+    <br />s… s. s: s, s; s! s?
+    <br />t… t. t: t, t; t! t?
+    <br />u… u. u: u, u; u! u?
+    <br />v… v. v: v, v; v! v?
+    <br />w… w. w: w, w; w! w?
+    <br />x… x. x: x, x; x! x?
+    <br />y… y. y: y, y; y! y?
+    <br />z… z. z: z, z; z! z?</p>
+</div>
+
+</div>
+<script src="{{ url_for('static', filename='font-viewer.js') }}"></script>
