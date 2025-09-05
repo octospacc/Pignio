@@ -20,6 +20,7 @@ from _util import *
 
 # config #
 DEVELOPMENT = False
+HTTP_HOST = "0.0.0.0"
 HTTP_PORT = 5000
 HTTP_THREADS = 32
 LINKS_PREFIX = ""
@@ -574,7 +575,8 @@ mkdirs(ITEMS_ROOT, USERS_ROOT)
 
 if __name__ == "__main__":
     if DEVELOPMENT:
-        app.run(port=HTTP_PORT, debug=True)
+        app.run(host=HTTP_HOST, port=HTTP_PORT, debug=True)
     else:
         import waitress
-        waitress.serve(app, port=HTTP_PORT, threads=HTTP_THREADS)
+
+        waitress.serve(app, host=HTTP_HOST, port=HTTP_PORT, threads=HTTP_THREADS)
