@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block section %}{{ _('Settings') }}{% endblock %}
+{% block content %}
+  <h2>{{ _('API Tokens') }}</h2>
+  <form method="POST">
+    <button class="uk-button uk-button-default" name="action" value="create-token" type="submit">{{ _('Create New Token') }}</button>
+  </form>
+  <form method="POST">
+    <input type="hidden" name="action" value="delete-token" />
+    <ul class="uk-list">
+      {% for token in tokens %}
+        <li>
+          {{ token.date }} - {{ token.name }}
+          <button class="uk-icon-button uk-button-danger" uk-icon="trash" title="{{ _('Delete') }}" name="token" value="{{ token.hash }}" type="submit"></button>
+        </li>
+      {% endfor %}
+    </ul>
+  </form>
+{% endblock %}

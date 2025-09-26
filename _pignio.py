@@ -1,9 +1,11 @@
 import os
-from typing import TypedDict, Required, Literal
+from typing import TypedDict, Required, Literal, Any
+from secrets import token_urlsafe
 from datetime import datetime
 from snowflake import SnowflakeGenerator # type: ignore[import-untyped]
 from queue import Queue
 from threading import Thread
+from _util import *
 
 class MetaDict(TypedDict):
     ...
@@ -58,6 +60,46 @@ MEDIA_TYPES = [kind for kind in EXTENSIONS.keys() if "." not in kind]
 MODERATION_LIST = f"{DATA_ROOT}/moderation{LISTS_EXT}"
 ACTIVITYPUB_TYPES = ['application/ld+json; profile="https://www.w3.org/ns/activitystreams"', "application/activity+json"]
 
+mkdirs(ITEMS_ROOT, USERS_ROOT)
+
+class Config:
+    @staticmethod
+    def _makeget():
+        user_path = f"{DATA_ROOT}/config.ini"
+        base_ini = read_textual("config.template.ini")
+        base = read_ini(base_ini)
+
+        if not os.path.isfile(user_path):
+            write_textual(user_path, f"Secret_Key = {token_urlsafe()}\n\n{base_ini}")
+        user = read_ini(read_textual(user_path))
+
+        def _get(key:str) -> Any:
+            return user.get(key, base.get(key))
+        return _get
+    _get = _makeget()
+
+    SECRET_KEY = _get("secret_key")
+    DEVELOPMENT = parse_bool(_get("development"))
+    HTTP_HOST = _get("http_host")
+    HTTP_PORT = int(_get("http_port"))
+    HTTP_THREADS = int(_get("http_threads"))
+    LINKS_PREFIX = _get("links_prefix")
+    RESULTS_LIMIT = int(_get("results_limit"))
+    AUTO_OCR = _get("auto_ocr")
+    INSTANCE_NAME = _get("instance_name")
+    INSTANCE_DESCRIPTION = _get("instance_description")
+    ALLOW_REGISTRATION = _get("allow_registration")
+    # ALLOW_FEDERATION = False
+    # USE_THUMBNAILS = True
+    # THUMBNAIL_CACHE = True
+    RENDER_CACHE = _get("render_cache")
+    USE_BAK_FILES = parse_bool(_get("use_bak_files"))
+    # PANSTORAGE_URL = ""
+    SITE_VERIFICATION = {
+        "GOOGLE": _get("site_verification_google"),
+        "BING": _get("site_verification_bing"),
+    }
+
 snowflake_epoch = int(datetime(2025, 1, 1, 0, 0, 0).timestamp() * 1000)
 snowflake = SnowflakeGenerator(1, epoch=snowflake_epoch)
 
@@ -107,6 +149,9 @@ STRINGS = {
     },
     "Statistics": {
         "it": "Statistiche",
+    },
+    "Settings": {
+        "it": "Impostazioni",
     },
     "Search": {
         "it": "Cerca",
@@ -214,6 +259,24 @@ STRINGS = {
     "systag-oc": {
         "en": "The user who uploaded this media has marked it as being their own original content.",
         # "it": "",
+    },
+    "API Tokens": {
+        "it": "Token API",
+    },
+    "Create New Token": {
+        "it": "Crea Nuovo Token",
+    },
+    "created-token": {
+        "en": "Created a new API token! (Copy it now and store it safely, it will not be visible anymore.)",
+        "en": "Creato un nuovo token API! (Copialo ora e conservalo al sicuro, non sarà più visibile.)",
+    },
+    "deleted-token": {
+        "en": "API token deleted!",
+        "it": "Token API eliminato!",
+    },
+    "login-invalid": {
+        "en": "Invalid username or password",
+        "it": "Username o password errati",
     },
     "Not Found": {
         "it": "Non Trovato",

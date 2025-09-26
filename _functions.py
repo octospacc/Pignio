@@ -10,14 +10,16 @@ from typing import Callable, Any
 from slugify import slugify
 from jinja2 import Undefined
 from flask import request, session, redirect, url_for, make_response, render_template, send_file, abort, Response
-from flask_login import UserMixin, login_required, login_user # type: ignore[import-untyped]
+from flask_login import UserMixin, login_required, login_user, current_user # type: ignore[import-untyped]
 from werkzeug.utils import safe_join
 from _app_factory import app
-from _pignio import *
 from _util import *
+from _pignio import *
+from _features import *
 
 class User(UserMixin):
     data: UserDict = {}
+    is_admin = False
 
     def __init__(self, username:str, filepath:str|None=None, url:str|None=None):
         self.username = username
@@ -26,14 +28,12 @@ class User(UserMixin):
         if filepath:
             try:
                 self.data = cast(UserDict, read_metadata(read_textual(filepath)))
+                self.is_admin = ("admin" in cast(list[str], self.data.get("roles", [])))
             except FileNotFoundError:
                 pass
 
     def get_id(self) -> str:
         return generate_user_hash(self.username, self.data["password"])
-    
-    def is_admin(self) -> bool:
-        return True # TODO
     
     def save(self) -> None:
         if self.filepath:
@@ -62,7 +62,7 @@ def load_events(user:User) -> list[dict[str,str]]:
         sources = wsv_to_list(read_textual(os.path.join(EVENTS_ROOT, user.username + LISTS_EXT)))
     except FileNotFoundError:
         sources = []
-    if user.is_admin():
+    if user.is_admin:
         sources += wsv_to_list(read_textual(MODERATION_LIST))
     for event in sources:
         events.append(parse_event(event))
@@ -88,6 +88,12 @@ def noindex(view_func):
         return response
     return wrapped_view
 
+def auth_required(func):
+    @wraps(func)
+    def wrapped(*args, **kwargs):
+        return func(*args, **kwargs) if (current_user.is_authenticated or verify_token_auth()) else app.login_manager.unauthorized()
+    return wrapped
+
 def query_params(*param_names):
     def decorator(f):
         @wraps(f)
@@ -97,6 +103,23 @@ def query_params(*param_names):
             return f(*args, **kwargs)
         return wrapper
     return decorator
+
+def verify_token_auth() -> bool:
+    #result = (auth := request.headers.get("Authorization", "")).startswith("Bearer ") \
+    #    and (username, token := auth.split(" ")[1].split(":")) \
+    #    and (user := load_user(username)) \
+    #    and check_user_token(user.data.get("tokens", []), hash_api_token(token))
+    #return bool(result)
+    if (auth := request.headers.get("Authorization", "")).startswith("Bearer "):
+        [username, token] = auth.split(" ")[1].split(":")
+        return bool((user := load_user(username)) and check_user_token(cast(list[str], user.data.get("tokens", [])), hash_api_token(token)))
+    return False
+
+def check_user_token(tokens:list[str], hashed:str) -> str|Literal[False]: # bool:
+    for token in tokens:
+        if token.endswith(f":{hashed}"):
+            return token # True
+    return False
 
 def response_with_type(content, mime):
     response = make_response(content)

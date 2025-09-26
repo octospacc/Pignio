@@ -5,6 +5,8 @@ import subprocess
 from shutil import rmtree
 from typing import Any, cast
 from random import shuffle
+from base64 import urlsafe_b64decode
+from datetime import datetime
 from glob import glob
 from flask import Flask, request, redirect, render_template, send_from_directory, send_file, abort, url_for, flash, session, make_response
 from flask_bcrypt import Bcrypt # type: ignore[import-untyped]
@@ -13,61 +15,30 @@ from flask_wtf import FlaskForm # type: ignore[import-untyped]
 from wtforms import StringField, PasswordField, BooleanField, SubmitField # type: ignore[import-untyped]
 from wtforms.validators import DataRequired # type: ignore[import-untyped]
 from werkzeug.utils import safe_join
+from secrets import token_urlsafe
 from _app_factory import app
+from _util import *
 from _pignio import *
 from _functions import *
-from _util import *
-
-# config #
-DEVELOPMENT = False
-HTTP_HOST = "0.0.0.0"
-HTTP_PORT = 5000
-HTTP_THREADS = 32
-LINKS_PREFIX = ""
-RESULTS_LIMIT = 50
-AUTO_OCR = True
-INSTANCE_NAME = ""
-INSTANCE_DESCRIPTION = ""
-ALLOW_REGISTRATION = False
-# ALLOW_FEDERATION = False
-# USE_THUMBNAILS = True
-# THUMBNAIL_CACHE = True
-RENDER_CACHE = True
-# PANSTORAGE_URL = ""
-SITE_VERIFICATION = {
-    "GOOGLE": "",
-    "BING": "",
-}
-# endconfig #
-
-try:
-    from _config import *
-except ModuleNotFoundError:
-    from secrets import token_urlsafe
-    config = read_textual(__file__).split("# config #")[1].split("# endconfig #")[0].strip()
-    write_textual("_config.py", f"""\
-SECRET_KEY = "{token_urlsafe()}"
-{config}
-""")
-    from _config import *
+from _features import *
 
 app.jinja_env.globals["_"] = gettext
 app.jinja_env.globals["getlang"] = getlang
 app.jinja_env.globals["clean_url_for"] = clean_url_for
-app.config["DEVELOPMENT"] = DEVELOPMENT
-app.config["SECRET_KEY"] = SECRET_KEY
+app.config["DEVELOPMENT"] = Config.DEVELOPMENT
+app.config["SECRET_KEY"] = Config.SECRET_KEY
 app.config["BCRYPT_HANDLE_LONG_PASSWORDS"] = True
 
 app.config["FREEZING"] = False
-app.config["LINKS_PREFIX"] = LINKS_PREFIX
+app.config["LINKS_PREFIX"] = Config.LINKS_PREFIX
 app.config["APP_NAME"] = "Pignio"
 app.config["APP_ICON"] = "📌"
 app.config["APP_REPO"] = "https://gitlab.com/octospacc/Pignio"
 app.config["APP_DESCRIPTION"] = "Pignio is your personal self-hosted media pinboard, built on top of flat-file storage."
-app.config["INSTANCE_NAME"] = INSTANCE_NAME or app.config["APP_NAME"]
-app.config["INSTANCE_DESCRIPTION"] = INSTANCE_DESCRIPTION or app.config["APP_DESCRIPTION"]
-app.config["ALLOW_REGISTRATION"] = ALLOW_REGISTRATION
-app.config["SITE_VERIFICATION"] = SITE_VERIFICATION
+app.config["INSTANCE_NAME"] = Config.INSTANCE_NAME or app.config["APP_NAME"]
+app.config["INSTANCE_DESCRIPTION"] = Config.INSTANCE_DESCRIPTION or app.config["APP_DESCRIPTION"]
+app.config["ALLOW_REGISTRATION"] = Config.ALLOW_REGISTRATION
+app.config["SITE_VERIFICATION"] = Config.SITE_VERIFICATION
 
 login_manager = LoginManager()
 login_manager.login_view = "view_login"
@@ -193,14 +164,14 @@ def render_media(iid:str):
         if (text := item.get("text")):
             filename = f'{item["id"]}.{RENDER_TYPE}'
             filepath = os.path.join(CACHE_ROOT, filename)
-            if RENDER_CACHE and os.path.exists(filepath):
+            if Config.RENDER_CACHE and os.path.exists(filepath):
                 return send_from_directory(CACHE_ROOT, filename)
             else:
                 args = ["node", "render.js"]
                 if (background := item.get("image")):
                     args.append(os.path.join(ITEMS_ROOT, background))
                 image, err = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate(input=text.encode("utf-8"))
-                if RENDER_CACHE:
+                if Config.RENDER_CACHE:
                     mkdirs(CACHE_ROOT)
                     with open(filepath, "wb") as f:
                         f.write(image) # TODO handle creation of parent directories when necessary
@@ -242,7 +213,7 @@ def view_item(iid:str, embed:bool=False):
         elif request.method == "POST" and current_user.is_authenticated and (comment := request.form.get("comment")):
             store_item(f"{iid_to_filename(iid)}/{generate_iid()}", {"text": comment}, comment=True)
             return redirect(url_for("view_item", iid=iid))
-    elif has_subitems_directory(iid):
+    elif not embed and has_subitems_directory(iid):
         if (ordering := request.args.get("ordering")) == "natural" or app.config["FREEZING"]:
             return pagination("index.html", "items", walk_items(iid), root=iid, folders=list_folders(iid), ordering=ordering)
         else:
@@ -330,7 +301,7 @@ def add_item():
         for key in ["langs"]:
             if key in data and type(data[key]) != list:
                 data[key] = request.form.getlist(key)
-        if store_item(iid, data, request.files, AUTO_OCR):
+        if store_item(iid, data, request.files, Config.AUTO_OCR):
             return redirect(url_for("view_item", iid=iid))
         else:
             flash("Cannot save item", "danger")
@@ -375,6 +346,38 @@ def report_item():
 def view_notifications():
     return pagination("notifications.html", "events", load_events(current_user))
 
+@app.route("/settings", methods=["GET", "POST"])
+@noindex
+@login_required
+def view_settings():
+    user = load_user(current_user.username)
+    tokens = []
+    tokens_raw = user.data.get("tokens", [])
+    tokens_changed = False
+    if request.method == "POST":
+        if request.form.get("action") == "create-token":
+            token = token_urlsafe()
+            hashed = hash_api_token(token)
+            tokens_raw.append(f"{time.time()}:{hashed}")
+            tokens_changed = True
+            flash(f'{gettext("created-token")}: ({urlsafe_b64decode(hashed).hex()[:16]}) <input class="uk-input" style="width: 100%;" type="text" value="{current_user.username}:{token}" readonly />', "primary")
+        elif request.form.get("action") == "delete-token" and (hashed := request.form.get("token")) and (token := check_user_token(tokens_raw, hashed)):
+            # for token in tokens_raw:
+            #     if token.endswith(f":{hashed}"):
+            #         tokens_raw.remove(token)
+            #if check_user_token(tokens_raw, hashed):
+            tokens_raw.remove(token)
+            tokens_changed = True
+            flash(gettext("deleted-token"))
+    for token in tokens_raw:
+        [timestamp, hashed] = token.split(":")
+        tokens.append({"date": datetime.fromtimestamp(float(timestamp)), "hash": hashed, "name": urlsafe_b64decode(hashed).hex()[:16]})
+    if tokens_changed:
+        user.data["tokens"] = tokens_raw
+        user.save()
+    tokens.reverse()
+    return render_template("settings.html", tokens=tokens)
+
 @app.route("/stats")
 @noindex
 def view_stats():
@@ -384,12 +387,12 @@ def view_stats():
 @noindex
 @login_required
 def view_admin():
-    if current_user.is_admin():
+    if current_user.is_admin:
         if request.method == "POST":
             if request.form.get("action") == "clear-cache":
                 if os.path.exists(CACHE_ROOT):
                     rmtree(CACHE_ROOT)
-                flash(f"{gettext('Cache cleared')}!")
+                flash(f"{gettext("Cache cleared")}!")
         return render_template("admin.html")
     else:
         abort(404)
@@ -412,7 +415,7 @@ def view_login():
                 user.save()
             return init_user_session(user, form.remember.data)
     if request.method == "POST":
-        flash("Invalid username or password", "danger")
+        flash(gettext("login-invalid"), "danger")
     return render_template("login.html", form=form, mode="Login")
 
 @app.route("/register", methods=["GET", "POST"])
@@ -429,7 +432,7 @@ def view_register():
         user.save()
         return init_user_session(user, form.remember.data)
     if request.method == "POST":
-        flash("Invalid username or password", "danger")
+        flash(gettext("login-invalid"), "danger")
     return render_template("login.html", form=form, mode="Register")
 
 @app.route("/logout")
@@ -452,7 +455,7 @@ def check_duplicates():
 
 @app.route("/api/v0/export")
 @noindex
-@login_required
+@auth_required
 def export_api():
     userbase = os.path.join(USERS_ROOT, current_user.username)
     files = [[f"{userbase}.ini"], *[[filename] for filename in glob(f"{userbase}/*.ini")]]
@@ -465,7 +468,7 @@ def export_api():
 
 @app.route("/api/v0/download/<path:fid>")
 @noindex
-@login_required
+@auth_required
 def download_api(fid:str):
     # if ((dirpath := safe_join(ITEMS_ROOT, fid)) and os.path.isdir(dirpath)):
     if (dirpath := is_items_folder(fid)):
@@ -481,7 +484,7 @@ def download_api(fid:str):
 
 @app.route("/api/v0/collections/<path:iid>", methods=["GET", "POST"])
 @noindex
-@login_required
+@auth_required
 def collections_api(iid:str):
     if request.method == "POST":
         for collection, status in request.get_json().items():
@@ -494,17 +497,18 @@ def collections_api(iid:str):
 @app.route("/api/v1/items", defaults={"iid": None}, methods=["POST"])
 @app.route("/api/v1/items/<path:iid>", methods=["GET", "PUT", "DELETE"])
 @noindex
-@login_required
+@auth_required
 def items_api(iid:str):
     if request.method == "GET" and (item := load_item(iid)) and get_item_permissions(item)["view"]:
         return item
     elif request.method == "POST" or request.method == "PUT":
         iid = iid or generate_iid()
-        status = store_item(iid, request.get_json(), None, AUTO_OCR)
+        status = store_item(iid, request.get_json(), None, Config.AUTO_OCR)
         return {"id": iid if status else None}
     elif request.method == "DELETE" and get_item_permissions(iid)["edit"]:
         delete_item(iid)
         return {}
+    return abort(404)
 
 @app.route("/api/v0/slugify")
 @noindex
@@ -555,14 +559,14 @@ def error_404(e):
     return render_template("error.html", code=404, name=gettext("Not Found"), description="The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again."), 404
 
 def feed_response(template:str, **kwargs:Any):
-    return response_with_type(render_template(f"{template}.xml", limit=int(request.args.get("limit") or RESULTS_LIMIT), **kwargs), "application/atom+xml")
+    return response_with_type(render_template(f"{template}.xml", limit=int(request.args.get("limit") or Config.RESULTS_LIMIT), **kwargs), "application/atom+xml")
 
 def view_random_items(root:str|None=None):
     return pagination("index.html", "items", walk_items(root), (lambda items: shuffle(items)), root=root, folders=(list_folders(root) if root else []))
 
 def pagination(template:str, key:str, all_items:list, modifier=None, **kwargs):
     page = int(request.args.get("page") or 1)
-    limit = int(request.args.get("limit") or RESULTS_LIMIT)
+    limit = int(request.args.get("limit") or Config.RESULTS_LIMIT)
     next_count = (limit * page)
     items = all_items[(limit * (page - 1)):next_count]
     if len(items) == 0 and len(all_items) > 0:
@@ -571,12 +575,11 @@ def pagination(template:str, key:str, all_items:list, modifier=None, **kwargs):
         modifier(items)
     return render_template(template, **kwargs, **{key: items}, limit=limit, next_page=(page + 1 if len(all_items) > next_count else None))
 
-mkdirs(ITEMS_ROOT, USERS_ROOT)
-
 if __name__ == "__main__":
-    if DEVELOPMENT:
-        app.run(host=HTTP_HOST, port=HTTP_PORT, debug=True)
+    print(f"Running Pignio on {Config.HTTP_HOST}:{Config.HTTP_PORT}...")
+
+    if Config.DEVELOPMENT:
+        app.run(host=Config.HTTP_HOST, port=Config.HTTP_PORT, debug=True)
     else:
         import waitress
-
-        waitress.serve(app, host=HTTP_HOST, port=HTTP_PORT, threads=HTTP_THREADS)
+        waitress.serve(app, host=Config.HTTP_HOST, port=Config.HTTP_PORT, threads=Config.HTTP_THREADS)

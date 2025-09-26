@@ -97,7 +97,7 @@
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
             {% for category, message in messages %}
-              <p uk-alert class="uk-alert-{{ category }}">{{ message }}</p>
+              <p uk-alert class="uk-alert-{{ category }}">{{ message | safe }}</p>
             {% endfor %}
           {% endif %}
         {% endwith %}

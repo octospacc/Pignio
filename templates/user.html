@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% set feed_url %}{{ url_for('view_user_feed', username=user.username) }}{% endset %}
-{% block title %}User {{ user.username }}{% endblock %}
+{% block title %}{{ _('User') }} {{ user.username }}{% endblock %}
 {% block canonical %}{{ url_for('view_user', username=user.username) }}{% endblock %}
 {% block external %}{{ user.url or "" }}{% endblock %}
 {% block metadata %}
@@ -31,6 +31,11 @@
         <div>
           <a class="uk-button uk-button-default uk-icon-link" href="{{ url_for('export_api') }}" target="_blank" rel="nofollow">
             {{ _('Export data') }} (ZIP) <span uk-icon="download"></span>
+          </a>
+        </div>
+        <div>
+          <a class="uk-button uk-button-default uk-icon-link" href="{{ url_for('view_settings') }}" rel="nofollow">
+            {{ _('Settings') }} <span uk-icon="settings"></span>
           </a>
         </div>
       </div>

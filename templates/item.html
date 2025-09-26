@@ -41,50 +41,50 @@
       {% endwith %}
     </div>
     <div class="uk-width-1-1 uk-width-1-2@s uk-padding-small">
-      {% if kindname %}
-        <span class="uk-text-meta">{{ _(kindname) }}</span>
-      {% endif %}
-      <h3 class="uk-text-break uk-margin-small-top">{% include "item-title.txt" %}</h3>
-      {% if item.creator %}
-        by <a href="{{ url_for('view_user', username=item.creator) }}" {% if embed %} target="_blank" {% endif %}>{{ item.creator }}</a>
-      {% endif %}
-      {% if item.datetime %}
-        at <span>{{ item.datetime }}</span>
-      {% endif %}
-      {% if item.link %}
-      <div class="uk-text-truncate">
-        <a href="{{ item.link }}" target="_blank">{{ item.link }}</a>
-      </div>
-      {% endif %}
-      <div class="uk-margin">
-        {% for tag in item.systags %}
-          <button class="uk-button uk-button-default uk-button-small" uk-toggle="target: #modal-systags-{{ tag }}">{{ tag }}</button>
-          <div id="modal-systags-{{ tag }}" uk-modal>
-            <div class="uk-modal-dialog uk-modal-body">
-              <button class="uk-modal-close-default" type="button" uk-close></button>
-              <h2 class="uk-modal-title">"{{ tag }}" marking</h2>
-              <p>
-                {% if tag == 'ai' %}
-                  {{ _('systag-ai') }}
-                {% elif tag == 'oc' %}
-                  {{ _('systag-oc') }}
-                {% endif %}
-              </p>
-            </div>
+      <div>
+        {% if kindname %}
+          <span class="uk-text-meta">{{ _(kindname) }}</span>
+        {% endif %}
+        <h3 class="uk-text-break uk-margin-small-top">{% include "item-title.txt" %}</h3>
+        {% if item.creator %}
+          by <a href="{{ url_for('view_user', username=item.creator) }}" {% if embed %} target="_blank" {% endif %}>{{ item.creator }}</a>
+        {% endif %}
+        {% if item.datetime %}
+          at <span>{{ item.datetime }}</span>
+        {% endif %}
+        {% if item.link %}
+        <div class="uk-text-truncate">
+          <a href="{{ item.link }}" target="_blank">{{ item.link }}</a>
         </div>
-        {% endfor %}
-      </div>
-      {% include 'item-description.html' %}
-      <div class="uk-margin uk-grid-small uk-grid" uk-grid>
-        <div class="uk-visible@s">
-          <button class="uk-icon-button expand-shrink" uk-icon="expand" title="Expand" onclick="Pignio.expandShrinkContent();"></button>
+        {% endif %}
+        <div class="uk-margin">
+          {% for tag in item.systags %}
+            <button class="uk-button uk-button-default uk-button-small" uk-toggle="target: #modal-systags-{{ tag }}">{{ tag }}</button>
+            <div id="modal-systags-{{ tag }}" uk-modal>
+              <div class="uk-modal-dialog uk-modal-body">
+                <button class="uk-modal-close-default" type="button" uk-close></button>
+                <h2 class="uk-modal-title">"{{ tag }}" marking</h2>
+                <p>
+                  {% if tag == 'ai' %}
+                    {{ _('systag-ai') }}
+                  {% elif tag == 'oc' %}
+                    {{ _('systag-oc') }}
+                  {% endif %}
+                </p>
+              </div>
+          </div>
+          {% endfor %}
         </div>
-        <div>
-          <button class="uk-icon-button" uk-icon="forward" title="{{ _('Copy to clipboard') }}" onclick="Pignio.copyToClipboard();"></button>
-        </div>
-        {% if not config.FREEZING %}
+        {% include 'item-description.html' %}
+        <div class="uk-margin uk-grid-small uk-grid" uk-grid>
+          <div class="uk-visible@s">
+            <button class="uk-icon-button expand-shrink" uk-icon="expand" title="Expand" onclick="Pignio.expandShrinkContent();"></button>
+          </div>
+          <div>
+            <button class="uk-icon-button" uk-icon="forward" title="{{ _('Copy to clipboard') }}" onclick="Pignio.copyToClipboard();"></button>
+          </div>
           <div class="pin">
-            {% if embed %}
+            {% if embed or config.FREEZING %}
               <a class="uk-button uk-button-primary" href="{{ url_for('view_item', iid=item.id) }}" target="_blank">
                 View on {{ config.APP_NAME }} <span uk-icon="tag"></span>
               </a>
@@ -99,26 +99,26 @@
               </div>
             {% endif %}
           </div>
-        {% endif %}
-        {% if not (embed or config.FREEZING) and (not current_user.is_authenticated or get_item_permissions(item).edit) %}
-          <div>
-            <a class="uk-button uk-button-default uk-icon-link" href="{{ url_for('add_item') }}?item={{ item.id }}" rel="nofollow">
-              {{ _('Edit') }} <span uk-icon="file-edit"></span>
-            </a>
-          </div>
-          <div>
-            <a class="uk-button uk-button-default" href="{{ url_for('remove_item') }}?item={{ item.id }}" rel="nofollow" up-layer="new">
-              {{ _('Delete') }} <span uk-icon="trash"></span>
-            </a>
-          </div>
-        {% endif %}
-        {% if not (embed or config.FREEZING) and (not current_user.is_authenticated or not get_item_permissions(item).edit) %}
-          <div>
-            <a class="uk-button uk-button-default" href="{{ url_for('report_item') }}?item={{ item.id }}" rel="nofollow" up-layer="new">
-              {{ _('Report') }} <span uk-icon="warning"></span>
-            </a>
-          </div>
-        {% endif %}
+          {% if not (embed or config.FREEZING) and (not current_user.is_authenticated or get_item_permissions(item).edit) %}
+            <div>
+              <a class="uk-button uk-button-default uk-icon-link" href="{{ url_for('add_item') }}?item={{ item.id }}" rel="nofollow">
+                {{ _('Edit') }} <span uk-icon="file-edit"></span>
+              </a>
+            </div>
+            <div>
+              <a class="uk-button uk-button-default" href="{{ url_for('remove_item') }}?item={{ item.id }}" rel="nofollow" up-layer="new">
+                {{ _('Delete') }} <span uk-icon="trash"></span>
+              </a>
+            </div>
+          {% endif %}
+          {% if not (embed or config.FREEZING) and (not current_user.is_authenticated or not get_item_permissions(item).edit) %}
+            <div>
+              <a class="uk-button uk-button-default" href="{{ url_for('report_item') }}?item={{ item.id }}" rel="nofollow" up-layer="new">
+                {{ _('Report') }} <span uk-icon="warning"></span>
+              </a>
+            </div>
+          {% endif %}
+        </div>
       </div>
       <div class="uk-padding uk-padding-remove-left uk-padding-remove-right">
         {% if not (embed or config.FREEZING) %}
