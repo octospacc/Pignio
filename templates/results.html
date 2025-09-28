@@ -13,7 +13,8 @@
 </div>
 <div class="load-wrapper uk-margin">
   {% if next_page %}
-    <a href="{{ clean_url_for(request.endpoint, iid=path, query=query, page=next_page, limit=limit, ordering=ordering) }}" class="uk-button uk-button-secondary uk-width-1-1"
+    <a href="{{ clean_url_for(request.endpoint, iid=path, cid=cid, username=username, query=query, page=next_page, limit=limit, ordering=ordering) }}"
+       class="uk-button uk-button-secondary uk-width-1-1"
        up-target=".results:after, .load-wrapper" up-preload
     >{{ _('Load more') }}</a>
   {% endif %}

@@ -15,7 +15,7 @@
 {% endset %}
 <div {% if folder %} style="display: inline-block; width: 50%; object-fit: cover;" {% endif %} {% if full and (item.model or item.font or item.doc or item.swf) %} class="uk-height-1-1 uk-height-viewport" {% elif full and (item.image or item.text) %} class="clickable" tabindex="0" {% else %} class="uk-text-center" {% endif %}>
   {% if item.text %}
-    <img class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ image }}" alt="{{ item.text }}" title="{{ item.text }}" {% if not full %} loading="lazy" {% endif %} />
+    <img class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ image }}{% if time %}?v={{ time }}{% endif %}" alt="{{ item.text }}" title="{{ item.text }}" {% if not full %} loading="lazy" {% endif %} />
   {% elif item.model or item.font or item.doc or item.swf or item.rom %}
     {% if full %}
       {% set iframe %}

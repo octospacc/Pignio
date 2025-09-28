@@ -3,6 +3,16 @@
 {% block content %}
   <form method="POST">
     <button class="uk-button uk-button-default" name="action" value="clear-cache" type="submit">{{ _('Clear Cache') }}</button>
+    <button class="uk-button uk-button-danger" name="action" value="clear-bak-files" type="submit">{{ _('Clear BAK Files') }}</button>
     <!-- <button fill-missing-ocr > -->
   </form>
+  <h2>{{ _('Current Configuration') }}</h2>
+  <ul class="uk-list">
+    <li>{{ _('Allow Registration') }}: {{ config.CONFIG.ALLOW_REGISTRATION }}</li>
+    <li>{{ _('Auto OCR') }}: {{ config.CONFIG.AUTO_OCR }}</li>
+    <li>{{ _('Use Thumbnails') }}: {{ config.CONFIG.USE_THUMBNAILS }}</li>
+    <li>{{ _('Thumbnail Cache') }}: {{ config.CONFIG.THUMBNAIL_CACHE }}</li>
+    <li>{{ _('Render Cache') }}: {{ config.CONFIG.RENDER_CACHE }}</li>
+    <li>{{ _('Use BAK Files') }}: {{ config.CONFIG.USE_BAK_FILES }}</li>
+  </ul>
 {% endblock %}

@@ -10,7 +10,9 @@
   <div class="uk-text-center">
     <h2>
       {% if user.url %}<a target="_blank" href="{{ user.url }}">{% endif %}
-      {{ user.username }}
+      {% if name %}<a href="{{ url_for('view_user', username=user.username) }}">{% endif %}
+        {{ user.username }}
+      {% if name %}</a>{% endif %}
       {% if user.url %}</a>{% endif %}
     </h2>
     {% if user.data.propic %}
@@ -43,7 +45,7 @@
   </div>
   {% if folders | length > 0 %}
     <hr />
-    <div uk-grid="masonry: pack" class="results uk-grid uk-grid-small uk-child-width-1-2 uk-child-width-1-3@s uk-child-width-1-4@m uk-child-width-1-5@l uk-child-width-1-6@xl">
+    <div uk-grid="masonry: pack" class="uk-grid uk-grid-small uk-child-width-1-2 uk-child-width-1-3@s uk-child-width-1-4@m uk-child-width-1-5@l uk-child-width-1-6@xl">
       {% for folder in folders %}
         <div>
           <a class="uk-link-text" href="{{ url_for('view_user', username=user.username, cid=folder.id) }}">
@@ -59,5 +61,7 @@
     </div>
   {% endif %}
   <hr />
-  {% include 'collection.html' %}
+  {% with username=user.username, cid=name %}
+    {% include 'collection.html' %}
+  {% endwith %}
 {% endblock %}

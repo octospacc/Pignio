@@ -42,7 +42,7 @@ def freeze_page(path:str) -> None:
         if is_html:
             for kind in ((["img", "video", "audio"], "src"), ("object", "data")):
                 for media in soup.find_all(kind[0], **{kind[1]: True}): # type: ignore[arg-type]
-                    src = cast(str, media[kind[1]]) # type: ignore[index]
+                    src = cast(str, media[kind[1]]).split("?")[0] # type: ignore[index]
                     if check_link(src) and check_freezable(response := client.get(src)):
                         save_file(BUILD_DIR + src, response.data)
                         done.add(src)

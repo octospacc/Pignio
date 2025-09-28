@@ -16,4 +16,20 @@
       {% endfor %}
     </ul>
   </form>
+
+  <!-- <h2>{{ _('Webhooks') }}</h2>
+  <form method="POST">
+    <button class="uk-button uk-button-default" name="action" value="create-webhook" type="submit">{{ _('Create New Webhook') }}</button>
+  </form>
+  <form method="POST">
+    <input type="hidden" name="action" value="delete-webhook" />
+    <ul class="uk-list">
+      {% for webhook in webhooks %}
+        <li>
+          {{ webhook }}
+          <button class="uk-icon-button uk-button-danger" uk-icon="trash" title="{{ _('Delete') }}" name="webhook" value="{{ webhook }}" type="submit"></button>
+        </li>
+      {% endfor %}
+    </ul>
+  </form> -->
 {% endblock %}

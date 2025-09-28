@@ -8,7 +8,6 @@ from urllib.parse import urlparse
 from io import StringIO
 from configparser import ConfigParser
 from bs4 import BeautifulSoup
-from flask_login import current_user # type: ignore[import-untyped]
 from glob import glob
 from datetime import datetime
 from snowflake import Snowflake # type: ignore[import-untyped]
@@ -19,12 +18,6 @@ from werkzeug.utils import safe_join
 from _util import *
 from _pignio import *
 from _functions import *
-
-def generate_user_hash(username:str, password:str) -> str:
-    return f"{username}:" + urlsafe_b64encode(sha256(password.encode()).digest()).decode()
-
-def hash_api_token(token:str) -> str:
-    return urlsafe_b64encode(sha256(token.encode()).digest()).decode()
 
 def check_file_supported(filename:str) -> bool:
     return check_file_is_meta(filename) or bool(check_file_is_content(filename))
@@ -209,9 +202,9 @@ def store_item(iid:str, data:dict[str, str], files:dict|None=None, ocr:bool=Fals
         if (creator := safe_str_get(cast(dict, existing), "creator")):
             data["creator"] = creator
     else:
-        data["creator"] = current_user.username
+        data["creator"] = (username := get_current_user().username)
         if not comment:
-            toggle_in_collection(current_user.username, "", iid, True)
+            toggle_in_collection(username, "", iid, True)
 
     if (provenance := safe_str_get(extra, "provenance")):
         data["systags"] = provenance
@@ -241,7 +234,12 @@ def delete_item_cache(item:dict|str) -> int:
 
 def get_item_permissions(item:ItemDict|str) -> dict[str, bool]:
     item = ensure_item_dict(item)
-    return {"view": True, "edit": current_user.is_authenticated and (item.get("creator") == current_user.username or current_user.is_admin)}
+    return {"view": True, "edit": (user := get_current_user()).is_authenticated and (item.get("creator") == user.username or user.is_admin)}
+
+def get_current_user():
+    if not current_user.is_authenticated and (user := verify_token_auth()):
+        return user
+    return current_user
 
 def store_url_file(url:str, filepath:str) -> tuple[str, str]|None:
     if (urllow := url.lower()).startswith("data:"):
@@ -294,27 +292,6 @@ def load_collection(data:UserDict) -> CollectionDict:
     items = data.get("items", [])
     items.reverse()
     return cast(CollectionDict, {"items": items, "description": data.get("description")})
-
-def read_metadata(text:str) -> MetaDict:
-    data = read_ini(text)
-    for key in ("items", "systags", "langs", "roles", "tokens"):
-        if key in data:
-            data[key] = wsv_to_list(data[key])
-    return data
-
-def write_metadata(data:dict[str, str]|MetaDict) -> str:
-    output = StringIO()
-    config = ConfigParser(interpolation=None)
-    new_data: dict[str, str] = {}
-    for key in data:
-        if (value := data.get(key)) and key not in (*MEDIA_TYPES, "datetime"):
-            if type(value) == str:
-                new_data[key] = value
-            elif type(value) == list:
-                new_data[key] = list_to_wsv(value)
-    config["DEFAULT"] = new_data
-    config.write(output)
-    return "\n".join(output.getvalue().splitlines()[1:]) # remove section header
 
 def fetch_url_data(url:str) -> dict[str, str|None]:
     response = requests.get(url, timeout=5)
@@ -379,30 +356,9 @@ def split_iid(iid:str) -> tuple[str, str]:
     toks = iid.split("/")
     return ("/".join(toks[:-1]), toks[-1])
 
-def list_to_wsv(data:list[str], sep="\n") -> str:
-    return sep.join([urllib.parse.quote(item) for item in data])
-
-def wsv_to_list(data:str) -> list[str]:
-    return [urllib.parse.unquote(item) for item in data.strip().replace(" ", "\n").replace("\t", "\n").splitlines()]
-
-def safe_str_get(dikt:dict[str,str]|dict[str,str|None], key:str) -> str:
-    return dikt and dikt.get(key) or ""
-
-def parse_event(text:str) -> dict[str,str]:
-    [base, extra] = text.split(":")
-    extra += ","
-    [kind, time] = base.split("@")
-    event = {"kind": kind, "datetime": str(datetime.fromtimestamp(float(time)))}
-    if kind == "pin":
-        [item, user, collection] = extra.split(",")[:3]
-        event = event | {"item": item, "user": user, "collection": collection}
+def view_embedded(iid:str, template:str, key:str, kwarger:Callable|None=None):
+    if (item := load_item(iid)) and (media := item.get(key)):
+        kwargs = kwarger(item) if kwarger else {}
+        return render_template(f"embeds/{template}.html", **{key: media}, **kwargs)
     else:
-        [item, user] = extra.split(",")[:2]
-        event = event | {"item": item, "user": user}
-    return event
-
-def write_textual(filepath:str, content:str) -> None:
-    if Config.USE_BAK_FILES and os.path.isfile(filepath):
-        copyfile(filepath, f"{filepath}.bak")
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.write(content)
+        return abort(404)

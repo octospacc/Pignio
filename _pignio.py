@@ -54,7 +54,9 @@ EXTENSIONS = {
 ITEMS_EXT = ".ini"
 LISTS_EXT = ".wsv"
 # EVENTS_EXT = f".events{LISTS_EXT}"
-# THUMB_TYPE = "jpeg"
+THUMB_QUALITY = 75
+THUMB_WIDTH = 600
+THUMB_TYPE = "webp"
 RENDER_TYPE = "png"
 MEDIA_TYPES = [kind for kind in EXTENSIONS.keys() if "." not in kind]
 MODERATION_LIST = f"{DATA_ROOT}/moderation{LISTS_EXT}"
@@ -85,14 +87,14 @@ class Config:
     HTTP_THREADS = int(_get("http_threads"))
     LINKS_PREFIX = _get("links_prefix")
     RESULTS_LIMIT = int(_get("results_limit"))
-    AUTO_OCR = _get("auto_ocr")
+    AUTO_OCR = parse_bool(_get("auto_ocr"))
     INSTANCE_NAME = _get("instance_name")
     INSTANCE_DESCRIPTION = _get("instance_description")
-    ALLOW_REGISTRATION = _get("allow_registration")
+    ALLOW_REGISTRATION = parse_bool(_get("allow_registration"))
     # ALLOW_FEDERATION = False
-    # USE_THUMBNAILS = True
-    # THUMBNAIL_CACHE = True
-    RENDER_CACHE = _get("render_cache")
+    USE_THUMBNAILS = parse_bool(_get("use_thumbnails"))
+    THUMBNAIL_CACHE = parse_bool(_get("thumbnail_cache"))
+    RENDER_CACHE = parse_bool(_get("render_cache"))
     USE_BAK_FILES = parse_bool(_get("use_bak_files"))
     # PANSTORAGE_URL = ""
     SITE_VERIFICATION = {
@@ -141,14 +143,26 @@ STRINGS = {
     "Administration": {
         "it": "Amministrazione",
     },
+    "Current Configuration": {
+        "it": "Configurazione Attuale",
+    },
     "Clear Cache": {
         "it": "Pulisci Cache",
     },
     "Cache cleared": {
         "it": "Cache pulita",
     },
+    "Clear BAK Files": {
+        "it": "Pulisci File BAK",
+    },
+    "BAK files cleared": {
+        "it": "File BAK puliti",
+    },
     "Statistics": {
         "it": "Statistiche",
+    },
+    "Registration Allowed": {
+        "it": "Registrazione Permessa",
     },
     "Settings": {
         "it": "Impostazioni",
@@ -164,6 +178,18 @@ STRINGS = {
     },
     "Copy to clipboard": {
         "it": "Copia negli appunti",
+    },
+    "Expand": {
+        "it": "Espandi",
+    },
+    "Shrink": {
+        "it": "Riduci",
+    },
+    "Name": {
+        "it": "Nome",
+    },
+    "New Collection": {
+        "it": "Nuova Raccolta",
     },
     "Create": {
         "it": "Crea",
@@ -235,6 +261,10 @@ STRINGS = {
     "comment-placeholder": {
         "en": "What's on your mind?",
         "it": "A cosa stai pensando?",
+    },
+    "do-comment": {
+        "en": "Comment",
+        "it": "Commenta",
     },
     "login-to-access": {
         "en": "Please log in to access this page.",

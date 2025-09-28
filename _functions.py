@@ -6,7 +6,9 @@ from io import BytesIO
 from zipfile import ZipFile, ZIP_DEFLATED
 from bs4 import BeautifulSoup
 from functools import wraps
-from typing import Callable, Any
+from typing import Callable, Any, Literal, cast
+from base64 import b64decode, urlsafe_b64encode
+from hashlib import sha256
 from slugify import slugify
 from jinja2 import Undefined
 from flask import request, session, redirect, url_for, make_response, render_template, send_file, abort, Response
@@ -15,11 +17,12 @@ from werkzeug.utils import safe_join
 from _app_factory import app
 from _util import *
 from _pignio import *
-from _features import *
+# from _features import *
 
 class User(UserMixin):
     data: UserDict = {}
     is_admin = False
+    is_authed = False
 
     def __init__(self, username:str, filepath:str|None=None, url:str|None=None):
         self.username = username
@@ -70,6 +73,39 @@ def load_events(user:User) -> list[dict[str,str]]:
     events.reverse()
     return events
 
+def parse_event(text:str) -> dict[str,str]:
+    [base, extra] = text.split(":")
+    extra += ","
+    [kind, time] = base.split("@")
+    event = {"kind": kind, "datetime": str(datetime.fromtimestamp(float(time)))}
+    if kind == "pin":
+        [item, user, collection] = extra.split(",")[:3]
+        event = event | {"item": item, "user": user, "collection": collection}
+    else:
+        [item, user] = extra.split(",")[:2]
+        event = event | {"item": item, "user": user}
+    return event
+
+def generate_user_hash(username:str, password:str) -> str:
+    return f"{username}:" + urlsafe_b64encode(sha256(password.encode()).digest()).decode()
+
+def verify_token_auth() -> User|Literal[False]:
+    if (auth := request.headers.get("Authorization", "")).startswith("Bearer "):
+        [username, token] = auth.split(" ")[1].split(":")
+        if ((user := load_user(username)) and check_user_token(cast(list[str], user.data.get("tokens", [])), hash_api_token(token))):
+            user.__dict__["is_authenticated"] = True
+            return user
+    return False
+
+def check_user_token(tokens:list[str], hashed:str) -> str|Literal[False]:
+    for token in tokens:
+        if token.endswith(f":{hashed}"):
+            return token
+    return False
+
+def hash_api_token(token:str) -> str:
+    return urlsafe_b64encode(sha256(token.encode()).digest()).decode()
+
 def init_user_session(user:User, remember:bool):
     session["session_hash"] = generate_user_hash(user.username, user.data["password"])
     login_user(user, remember=remember)
@@ -104,34 +140,10 @@ def query_params(*param_names):
         return wrapper
     return decorator
 
-def verify_token_auth() -> bool:
-    #result = (auth := request.headers.get("Authorization", "")).startswith("Bearer ") \
-    #    and (username, token := auth.split(" ")[1].split(":")) \
-    #    and (user := load_user(username)) \
-    #    and check_user_token(user.data.get("tokens", []), hash_api_token(token))
-    #return bool(result)
-    if (auth := request.headers.get("Authorization", "")).startswith("Bearer "):
-        [username, token] = auth.split(" ")[1].split(":")
-        return bool((user := load_user(username)) and check_user_token(cast(list[str], user.data.get("tokens", [])), hash_api_token(token)))
-    return False
-
-def check_user_token(tokens:list[str], hashed:str) -> str|Literal[False]: # bool:
-    for token in tokens:
-        if token.endswith(f":{hashed}"):
-            return token # True
-    return False
-
 def response_with_type(content, mime):
     response = make_response(content)
     response.headers["Content-Type"] = mime
     return response
-
-def view_embedded(iid:str, template:str, key:str, kwarger:Callable|None=None):
-    if (item := load_item(iid)) and (media := item.get(key)):
-        kwargs = kwarger(item) if kwarger else {}
-        return render_template(f"embeds/{template}.html", **{key: media}, **kwargs)
-    else:
-        return abort(404)
 
 def send_zip_archive(name:str, files:list) -> Response:
     buffer = BytesIO()

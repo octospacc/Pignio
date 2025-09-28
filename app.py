@@ -8,9 +8,10 @@ from random import shuffle
 from base64 import urlsafe_b64decode
 from datetime import datetime
 from glob import glob
+from PIL import Image, ImageFile
 from flask import Flask, request, redirect, render_template, send_from_directory, send_file, abort, url_for, flash, session, make_response
 from flask_bcrypt import Bcrypt # type: ignore[import-untyped]
-from flask_login import LoginManager, UserMixin, current_user, login_user, logout_user, login_required, login_url # type: ignore[import-untyped]
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, login_url, current_user # type: ignore[import-untyped]
 from flask_wtf import FlaskForm # type: ignore[import-untyped]
 from wtforms import StringField, PasswordField, BooleanField, SubmitField # type: ignore[import-untyped]
 from wtforms.validators import DataRequired # type: ignore[import-untyped]
@@ -39,6 +40,7 @@ app.config["INSTANCE_NAME"] = Config.INSTANCE_NAME or app.config["APP_NAME"]
 app.config["INSTANCE_DESCRIPTION"] = Config.INSTANCE_DESCRIPTION or app.config["APP_DESCRIPTION"]
 app.config["ALLOW_REGISTRATION"] = Config.ALLOW_REGISTRATION
 app.config["SITE_VERIFICATION"] = Config.SITE_VERIFICATION
+app.config["CONFIG"] = Config
 
 login_manager = LoginManager()
 login_manager.login_view = "view_login"
@@ -156,28 +158,45 @@ def serve_media(filename:str):
 
 @app.route("/thumb/<path:iid>")
 def serve_thumb(iid:str):
-    ...
+    if Config.USE_THUMBNAILS and (item := load_item(iid)) and (image := item.get("image")) and not image.lower().endswith(".gif"):
+        filename = f'{item["id"]}.{THUMB_TYPE}'
+        filepath = os.path.join(CACHE_ROOT, filename)
+        if Config.THUMBNAIL_CACHE and os.path.exists(filepath):
+            return send_from_directory(CACHE_ROOT, filename)
+        else:
+            pil = Image.open(os.path.join(ITEMS_ROOT, image))
+            if pil.width > THUMB_WIDTH:
+                pil = pil.resize((THUMB_WIDTH, int(pil.height * (THUMB_WIDTH / float(pil.width)))), Image.LANCZOS) # type: ignore[assignment, attr-defined]
+            pil = pil.convert("RGBA") # type: ignore[assignment]
+            ImageFile.MAXBLOCK = pil.size[0] * pil.size[1]
+            if Config.THUMBNAIL_CACHE:
+                mkdirs(os.path.dirname(filepath))
+                pil.save(filepath, format=THUMB_TYPE, quality=THUMB_QUALITY, optimize=True, progressive=True)
+                return send_from_directory(CACHE_ROOT, filename)
+            else:
+                buffer = BytesIO()
+                pil.save(buffer, format=THUMB_TYPE, quality=THUMB_QUALITY, optimize=True, progressive=True)
+                buffer.seek(0)
+                return send_file(buffer, f"image/{THUMB_TYPE}")
+    return abort(404)
 
 @app.route("/render/<path:iid>")
 def render_media(iid:str):
-    if (item := load_item(iid)):
-        if (text := item.get("text")):
-            filename = f'{item["id"]}.{RENDER_TYPE}'
-            filepath = os.path.join(CACHE_ROOT, filename)
-            if Config.RENDER_CACHE and os.path.exists(filepath):
-                return send_from_directory(CACHE_ROOT, filename)
-            else:
-                args = ["node", "render.js"]
-                if (background := item.get("image")):
-                    args.append(os.path.join(ITEMS_ROOT, background))
-                image, err = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate(input=text.encode("utf-8"))
-                if Config.RENDER_CACHE:
-                    mkdirs(CACHE_ROOT)
-                    with open(filepath, "wb") as f:
-                        f.write(image) # TODO handle creation of parent directories when necessary
-                return response_with_type(image, f"image/{RENDER_TYPE}")
-        #else:
-        #    return redirect(url_for("serve_media", filename=(item.get("image") or item.get("video"))))
+    if (item := load_item(iid)) and (text := item.get("text")):
+        filename = f'{item["id"]}.{RENDER_TYPE}'
+        filepath = os.path.join(CACHE_ROOT, filename)
+        if Config.RENDER_CACHE and os.path.exists(filepath):
+            return send_from_directory(CACHE_ROOT, filename)
+        else:
+            args = ["node", "render.js"]
+            if (background := item.get("image")):
+                args.append(os.path.join(ITEMS_ROOT, background))
+            image, err = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate(input=text.encode("utf-8"))
+            if Config.RENDER_CACHE:
+                mkdirs(os.path.dirname(filepath))
+                with open(filepath, "wb") as f:
+                    f.write(image) # TODO handle creation of parent directories when necessary
+            return response_with_type(image, f"image/{RENDER_TYPE}")
     return abort(404)
 
 @app.route("/model-viewer/<path:iid>")
@@ -206,7 +225,7 @@ def view_item(iid:str, embed:bool=False):
                 else:
                     comments = walk_items(iid_to_filename(iid))
                     comments.reverse()
-                    return render_template("item.html", embed=embed, item=item, comments=comments, get_item_permissions=get_item_permissions)
+                    return render_template("item.html", embed=embed, item=item, comments=comments, get_item_permissions=get_item_permissions, time=time.time())
             else:
                 [*item_toks, cid] = iid.split("/")
                 return redirect(url_for("view_item", iid="/".join(item_toks)) + f"#{cid}")
@@ -214,10 +233,7 @@ def view_item(iid:str, embed:bool=False):
             store_item(f"{iid_to_filename(iid)}/{generate_iid()}", {"text": comment}, comment=True)
             return redirect(url_for("view_item", iid=iid))
     elif not embed and has_subitems_directory(iid):
-        if (ordering := request.args.get("ordering")) == "natural" or app.config["FREEZING"]:
-            return pagination("index.html", "items", walk_items(iid), root=iid, folders=list_folders(iid), ordering=ordering)
-        else:
-            return view_random_items(iid)
+        return view_orderable_items(iid)
     return abort(404)
 
 # TODO: also add @app.route("/@<path:username>"), redirecting to main url of user ?
@@ -247,7 +263,7 @@ def view_user(username:str, cid:str|None=None):
                     folders = []
                 else:
                     return abort(404)
-            return render_template("user.html", user=user, name=cid, description=description, items=pinned["items"], folders=folders, load_item=load_item)
+            return pagination("user.html", "items", pinned["items"], user=user, name=cid, description=description, folders=folders, load_item=load_item)
     return abort(404)
 
 @app.route("/user/<path:username>/feed") # TODO deprecate this which could conflict with collections
@@ -354,21 +370,21 @@ def view_settings():
     tokens = []
     tokens_raw = user.data.get("tokens", [])
     tokens_changed = False
+    # webhooks_changed = False
     if request.method == "POST":
-        if request.form.get("action") == "create-token":
-            token = token_urlsafe()
-            hashed = hash_api_token(token)
-            tokens_raw.append(f"{time.time()}:{hashed}")
-            tokens_changed = True
-            flash(f'{gettext("created-token")}: ({urlsafe_b64decode(hashed).hex()[:16]}) <input class="uk-input" style="width: 100%;" type="text" value="{current_user.username}:{token}" readonly />', "primary")
-        elif request.form.get("action") == "delete-token" and (hashed := request.form.get("token")) and (token := check_user_token(tokens_raw, hashed)):
-            # for token in tokens_raw:
-            #     if token.endswith(f":{hashed}"):
-            #         tokens_raw.remove(token)
-            #if check_user_token(tokens_raw, hashed):
-            tokens_raw.remove(token)
-            tokens_changed = True
-            flash(gettext("deleted-token"))
+        match request.form.get("action"):
+            case "create-token":
+                token = token_urlsafe()
+                hashed = hash_api_token(token)
+                tokens_raw.append(f"{time.time()}:{hashed}")
+                tokens_changed = True
+                flash(f'{gettext("created-token")}: ({urlsafe_b64decode(hashed).hex()[:16]}) <input class="uk-input" style="width: 100%;" type="text" value="{user.username}:{token}" readonly />', "primary")
+            case "delete-token" if (hashed := request.form.get("token")) and (token := check_user_token(tokens_raw, hashed)):
+                tokens_raw.remove(token)
+                tokens_changed = True
+                flash(gettext("deleted-token"))
+            # case "create-webhook":
+            # case "delete-webhook":
     for token in tokens_raw:
         [timestamp, hashed] = token.split(":")
         tokens.append({"date": datetime.fromtimestamp(float(timestamp)), "hash": hashed, "name": urlsafe_b64decode(hashed).hex()[:16]})
@@ -389,10 +405,16 @@ def view_stats():
 def view_admin():
     if current_user.is_admin:
         if request.method == "POST":
-            if request.form.get("action") == "clear-cache":
-                if os.path.exists(CACHE_ROOT):
-                    rmtree(CACHE_ROOT)
-                flash(f"{gettext("Cache cleared")}!")
+            match request.form.get("action"):
+                case "clear-cache":
+                    if os.path.exists(CACHE_ROOT):
+                        rmtree(CACHE_ROOT)
+                    flash(f'{gettext("Cache cleared")}!')
+                case "clear-bak-files":
+                    files = glob(f"{DATA_ROOT}/**/*.bak", recursive=True)
+                    for file in files:
+                        os.remove(file)
+                    flash(f'{gettext("BAK files cleared")}! ({len(files)})')
         return render_template("admin.html")
     else:
         abort(404)
@@ -457,20 +479,20 @@ def check_duplicates():
 @noindex
 @auth_required
 def export_api():
-    userbase = os.path.join(USERS_ROOT, current_user.username)
+    username = current_user.username
+    userbase = os.path.join(USERS_ROOT, username)
     files = [[f"{userbase}.ini"], *[[filename] for filename in glob(f"{userbase}/*.ini")]]
     for item in walk_items():
-        if item and safe_str_get(item, "creator") == current_user.username:
+        if item and safe_str_get(item, "creator") == username:
             filename = os.path.join(ITEMS_ROOT, iid_to_filename(item["id"]))
             for filename in glob(f"{filename}.*"):
                 files.append([filename])
-    return send_zip_archive(current_user.username, files)
+    return send_zip_archive(username, files)
 
 @app.route("/api/v0/download/<path:fid>")
 @noindex
 @auth_required
 def download_api(fid:str):
-    # if ((dirpath := safe_join(ITEMS_ROOT, fid)) and os.path.isdir(dirpath)):
     if (dirpath := is_items_folder(fid)):
         results = []
         for root, dirs, files in os.walk(dirpath):
@@ -486,11 +508,12 @@ def download_api(fid:str):
 @noindex
 @auth_required
 def collections_api(iid:str):
+    username = current_user.username
     if request.method == "POST":
         for collection, status in request.get_json().items():
-            toggle_in_collection(current_user.username, slugify_name(collection), iid, status)
+            toggle_in_collection(username, slugify_name(collection), iid, status)
     results: dict[str, bool] = {}
-    for cid, collection in walk_collections(current_user.username).items():
+    for cid, collection in walk_collections(username).items():
         results[cid] = iid in collection["items"]
     return results
 
@@ -560,6 +583,12 @@ def error_404(e):
 
 def feed_response(template:str, **kwargs:Any):
     return response_with_type(render_template(f"{template}.xml", limit=int(request.args.get("limit") or Config.RESULTS_LIMIT), **kwargs), "application/atom+xml")
+
+def view_orderable_items(root:str):
+    if (ordering := request.args.get("ordering")) == "natural" or app.config["FREEZING"]:
+        return pagination("index.html", "items", walk_items(root), root=root, folders=list_folders(root), ordering=ordering)
+    else:
+        return view_random_items(root)
 
 def view_random_items(root:str|None=None):
     return pagination("index.html", "items", walk_items(root), (lambda items: shuffle(items)), root=root, folders=(list_folders(root) if root else []))

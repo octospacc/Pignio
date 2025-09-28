@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% set full %}true{% endset %}
 {% set image %}{% include 'item-image.txt' %}{% endset %}
 {% set kindname %}
   {%- if item.doc -%} Document
@@ -36,9 +37,7 @@
   {% endwith %}
   <article class="uk-flex uk-flex-wrap item" data-item-id="{{ item.id }}">
     <div class="uk-width-1-1 uk-width-1-2@s uk-padding-small">
-      {% with full=true %}
-        {% include "item-content.html" %}
-      {% endwith %}
+      {% include "item-content.html" %}
     </div>
     <div class="uk-width-1-1 uk-width-1-2@s uk-padding-small">
       <div>
@@ -78,23 +77,23 @@
         {% include 'item-description.html' %}
         <div class="uk-margin uk-grid-small uk-grid" uk-grid>
           <div class="uk-visible@s">
-            <button class="uk-icon-button expand-shrink" uk-icon="expand" title="Expand" onclick="Pignio.expandShrinkContent();"></button>
+            <button class="uk-icon-button expand-shrink" uk-icon="expand" title="{{ _('Expand') }}" onclick="Pignio.expandShrinkContent();"></button>
           </div>
           <div>
             <button class="uk-icon-button" uk-icon="forward" title="{{ _('Copy to clipboard') }}" onclick="Pignio.copyToClipboard();"></button>
           </div>
           <div class="pin">
-            {% if embed or config.FREEZING %}
+            {% if embed %}
               <a class="uk-button uk-button-primary" href="{{ url_for('view_item', iid=item.id) }}" target="_blank">
                 View on {{ config.APP_NAME }} <span uk-icon="tag"></span>
               </a>
-            {% else %}
+            {% elif not config.FREEZING %}
               <button class="uk-button uk-button-primary uk-disabled" disabled>
                 Pin <span uk-icon="tag"></span>
               </button>
               <div uk-dropdown="mode: click; stretch: y;">
                 <ul class="uk-list">
-                  <li><button class="uk-button uk-button-default uk-button-small" uk-toggle="target: #new-collection">New Collection</button></li>
+                  <li><button class="uk-button uk-button-default uk-button-small" uk-toggle="target: #new-collection">{{ _('New Collection') }}</button></li>
                 </ul>
               </div>
             {% endif %}
@@ -128,7 +127,7 @@
                 <input class="uk-input" type="text" name="comment" placeholder="{% if current_user.is_authenticated %} {{ _('comment-placeholder') }} " {% else %} Please login to comment. " disabled {% endif %} required />
               </div>
               <div class="uk-inline uk-width-1-1">
-                <input class="uk-input uk-button uk-button-default {% if not current_user.is_authenticated %} uk-disabled" disabled {% else %} " {% endif %} type="submit" value="Comment" />
+                <input class="uk-input uk-button uk-button-default {% if not current_user.is_authenticated %} uk-disabled" disabled {% else %} " {% endif %} type="submit" value="{{ _('do-comment') }}" />
                 <span class="uk-form-icon uk-form-icon-flip" uk-icon="comment"></span>
               </div>
             </div>
@@ -172,17 +171,19 @@
       </div>
     </div>
   </article>
-  <div id="new-collection" uk-modal>
-    <div class="uk-modal-dialog uk-modal-body">
-      <button class="uk-modal-close-default" uk-close></button>
-      <h2 class="uk-modal-title">New Collection</h2>
-      <div class="uk-margin">
-        <input class="uk-input" type="text" placeholder="Name" />
-        <span class="uk-text-meta"><span class="notice"></span>&nbsp;</span>
-      </div>
-      <div class="uk-margin">
-        <button class="uk-button uk-button-primary">Create</button>
+  {% if not (embed or config.FREEZING) %}
+    <div id="new-collection" uk-modal>
+      <div class="uk-modal-dialog uk-modal-body">
+        <button class="uk-modal-close-default" uk-close></button>
+        <h2 class="uk-modal-title">{{ _('New Collection') }}</h2>
+        <div class="uk-margin">
+          <input class="uk-input" type="text" placeholder="{{ _('Name') }}" />
+          <span class="uk-text-meta"><span class="notice"></span>&nbsp;</span>
+        </div>
+        <div class="uk-margin">
+          <button class="uk-button uk-button-primary">{{ _('Create') }}</button>
+        </div>
       </div>
     </div>
-  </div>
+  {% endif %}
 {% endblock %}

@@ -3,18 +3,43 @@ const HTTP_BASE = '//' + document.documentElement.dataset.root.split('://').slic
 const API_BASE = HTTP_BASE + '/api';
 
 const STRINGS = {
+  normalizeNotice: {
+    en: (subject, text, article) => `${getArticle(article)} ${subject} will be normalized to <code>${text}</code>.`,
+    it: (subject, text, article) => `${getArticle(article)} ${STRINGS.get(subject)} sarà normalizzato come <code>${text}</code>.`,
+  },
   copiedLink: {
     en: "Link copied to clipboard",
     it: "Link copiato negli appunti",
-  }
+  },
+  Expand: {
+    en: "Expand",
+    it: "Espandi",
+  },
+  Shrink: {
+    en: "Shrink",
+    it: "Riduci",
+  },
+  name: {
+    en: "name",
+    it: "nome",
+  },
 };
 STRINGS.get = (key) => {
   const lang = document.documentElement.lang;
   const data = STRINGS[key];
-  return data[lang] || Object.values(data)[0];
+  return data && data[lang] || key; // (data ? Object.values(data)[0] : key);
 };
 
-registerHandler('form.Register', (form) => addSlugifyNoticeHandler(form.querySelector('input[name="username"]'), form.querySelector('span.notice'), 'username'));
+function getArticle(variant) {
+  switch (document.documentElement.lang) {
+    case 'it':
+      return ['Il', 'Lo'][variant];
+    default:
+      return 'The';
+  }
+}
+
+registerHandler('form.Register', (form) => addSlugifyNoticeHandler(form.querySelector('input[name="username"]'), form.querySelector('span.notice'), 'username', 1));
 registerHandler('form.add', addHandler);
 registerHandler('article.item', itemHandler);
 registerHandler('article.item div.clickable', lightboxHandler);
@@ -53,14 +78,14 @@ function addTextInputHandler(input, handler) {
   [/* 'change', */ 'input', 'paste'].forEach(event => input.addEventListener(event, handler));
 }
 
-function addSlugifyNoticeHandler(input, notice, subject) {
+function addSlugifyNoticeHandler(input, notice, subject, article) {
   addTextInputHandler(input, function(){
     if (input.value) {
       fetch(API_BASE + '/v0/slugify?text=' + encodeURIComponent(input.value))
       .then(res => res.text())
       .then(text => {
         if (text !== input.value) {
-          notice.innerHTML = `The ${subject} will be normalized to <code>${text}</code>.`;
+          notice.innerHTML = STRINGS.get('normalizeNotice')(subject, text, article);
         } else {
           notice.textContent = '';
         }
@@ -197,7 +222,7 @@ function itemHandler(section) {
     }
   });
 
-  addSlugifyNoticeHandler(nameEl, notice, 'name');
+  addSlugifyNoticeHandler(nameEl, notice, 'name', 0);
 }
 
 function lightboxHandler(clickable) {
@@ -217,7 +242,7 @@ function copyToClipboard() {
 function expandShrinkContent() {
   const style = document.querySelector('article.item > div').style;
   style.width = (style.width ? '' : '100%');
-  const title = style.width ? 'Shrink' : 'Expand';
+  const title = style.width ? STRINGS.get('Shrink') : STRINGS.get('Expand');
   const toggle = Object.assign(document.querySelector('button.uk-icon.expand-shrink'), {title});
   toggle.setAttribute('uk-icon', title.toLowerCase());
 }
