@@ -1,18 +1,26 @@
+{%- set link -%}{% include 'links-prefix.txt' %}{{ url_for('view_item', iid=item.id) }}{%- endset -%}
 <entry>
-  <id>{{ item.id }}</id>
-  <link href="{% include 'links-prefix.txt' %}{{ url_for('view_item', iid=item.id) }}" />
+  <id>{{ link }}</id>
+  <link type="text/html" href="{{ link }}" />
+  {% if item.creator %}
+    <author>
+      <name>{{ item.creator }}</name>
+      <uri>{% include 'links-prefix.txt' %}{{ url_for('view_user', username=item.creator) }}</uri>
+    </author>
+  {% endif %}
   <title>{% include 'item-title.txt' %}</title>
-  <published>{{ item.datetime }}</published>
+  {% if item.datetime %}
+    <published>{{ item.datetime.replace(' ', 'T') }}Z</published>
+    <updated>{{ item.datetime.replace(' ', 'T') }}Z</updated>
+  {% endif %}
   <summary>{{ item.description }}</summary>
   <content type="html">
-    <![CDATA[
-      <p>
-        {% with full=true, external=true %}
-          {% include "item-content.html" %}
-        {% endwith %}
-      </p>
-      {% include 'item-description.html' %}
-      <p><a href="{{ item.link }}" target="_blank">{{ item.link }}</a></p>
-    ]]>
+    {% with full=true, external=true %}
+      <![CDATA[
+        {% include "item-content.html" %}
+        {% include 'item-description.html' %}
+        <p><a href="{{ item.link }}" target="_blank">{{ item.link }}</a></p>
+      ]]>
+    {% endwith %}
   </content>
 </entry>

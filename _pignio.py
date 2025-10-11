@@ -60,6 +60,7 @@ THUMB_TYPE = "webp"
 RENDER_TYPE = "png"
 MEDIA_TYPES = [kind for kind in EXTENSIONS.keys() if "." not in kind]
 MODERATION_LIST = f"{DATA_ROOT}/moderation{LISTS_EXT}"
+ATOM_CONTENT_TYPE = "application/atom+xml; charset=UTF-8"
 ACTIVITYPUB_TYPES = ['application/ld+json; profile="https://www.w3.org/ns/activitystreams"', "application/activity+json"]
 
 mkdirs(ITEMS_ROOT, USERS_ROOT)
@@ -72,7 +73,8 @@ class Config:
         base = read_ini(base_ini)
 
         if not os.path.isfile(user_path):
-            write_textual(user_path, f"Secret_Key = {token_urlsafe()}\n\n{base_ini}")
+            with open(user_path, "w", encoding="utf-8") as f:
+                f.write(f"Secret_Key = {token_urlsafe()}\n\n{base_ini}")
         user = read_ini(read_textual(user_path))
 
         def _get(key:str) -> Any:
@@ -122,6 +124,9 @@ def moderation_writer():
 Thread(target=moderation_writer, daemon=True).start()
 
 STRINGS = {
+    "Profile": {
+        "it": "Profilo",
+    },
     "Item": {
         "it": "Elemento",
     },
@@ -190,6 +195,21 @@ STRINGS = {
     },
     "New Collection": {
         "it": "Nuova Raccolta",
+    },
+    "Pin to Collections": {
+        "it": "Salva nelle Raccolte",
+    },
+    "Pinned": {
+        "it": "Salvati",
+    },
+    "Created": {
+        "it": "Creati",
+    },
+    "Comments": {
+        "it": "Commenti",
+    },
+    "Notifications": {
+        "it": "Notifiche",
     },
     "Create": {
         "it": "Crea",

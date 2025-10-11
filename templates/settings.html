@@ -10,7 +10,7 @@
     <ul class="uk-list">
       {% for token in tokens %}
         <li>
-          {{ token.date }} - {{ token.name }}
+          {{ token.date }} — {{ token.name }}
           <button class="uk-icon-button uk-button-danger" uk-icon="trash" title="{{ _('Delete') }}" name="token" value="{{ token.hash }}" type="submit"></button>
         </li>
       {% endfor %}
@@ -32,4 +32,11 @@
       {% endfor %}
     </ul>
   </form> -->
+
+  {#
+    Inbound Feeds...
+    ...
+    Change Password...
+    Delete Account...
+  #}
 {% endblock %}

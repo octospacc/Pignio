@@ -42,10 +42,10 @@
       {{ placeholder }}
     {% endif %}
   {% elif item.image %}
-    <img class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ image }}" alt="{{ alttext }}" {% if not full %} loading="lazy" {% endif %} />
+    <img class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ image }}" alt="{{ alttext }}" title="{{ alttext }}" {% if not full %} loading="lazy" {% endif %} />
   {% elif item.video %}
     <video class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('serve_media', filename=item.video) }}"
-           aria-label="{{ alttext }}" {% if full %} controls {% else %} autoplay muted tabindex="-1" {% endif %} loop></video>
+           aria-label="{{ alttext }}" title="{{ alttext }}" {% if full %} controls {% else %} autoplay muted tabindex="-1" {% endif %} loop></video>
   {% elif item.audio %}
     {{ placeholder }}
     <audio {% if not full %} tabindex="-1" {% endif %} class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('serve_media', filename=item.audio) }}" controls loop></audio>

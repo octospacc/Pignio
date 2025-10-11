@@ -11,6 +11,10 @@ const STRINGS = {
     en: "Link copied to clipboard",
     it: "Link copiato negli appunti",
   },
+  Profile: {
+    en: "Profile",
+    it: "Profilo",
+  },
   Expand: {
     en: "Expand",
     it: "Espandi",
@@ -102,6 +106,7 @@ function addHandler(form) {
   var checkLink = form.querySelector('input.from-link');
   // var checkProxatore = form.querySelector('input.with-proxatore');
   var langs = form.querySelector('select[name="langs"]');
+  var collections = form.querySelector('select[name="collections"]');
   var image = form.querySelector('img.image');
   var video = form.querySelector('video.video');
   var audio = form.querySelector('audio.audio');
@@ -109,6 +114,7 @@ function addHandler(form) {
   var upload = form.querySelector('input[name="file"]');
 
   form.querySelector('button.langs-reset').addEventListener('click', () => (langs.selectedIndex = -1));
+  form.querySelector('button.collections-reset').addEventListener('click', () => (collections.selectedIndex = 0));
 
   pasteLink.addEventListener('click', () => navigator.clipboard.readText().then(text => {
     link.value = text;
@@ -186,6 +192,7 @@ function addHandler(form) {
 
 function itemHandler(section) {
   var url = `${API_BASE}/v0/collections/${section.dataset.itemId}`;
+  var userUrl = document.querySelector('footer .user').href;
   var button = section.querySelector('div.pin button');
   var pins = section.querySelector('div.pin ul');
   var create = document.querySelector('#new-collection');
@@ -198,7 +205,10 @@ function itemHandler(section) {
     if (!data) return;
 
     Object.keys(data).forEach(name => pins.appendChild(Object.assign(document.createElement('li'), { innerHTML: `
-      <label data-collection="${name}"><input class="uk-checkbox" type="checkbox" ${data[name] ? 'checked' : ''}> ${name || 'Profile'}</label>
+      <label data-collection="${name}">
+        <input class="uk-checkbox" type="checkbox" ${data[name] ? 'checked' : ''}> ${name || STRINGS.get('Profile')}
+      </label>
+      <a href="${userUrl}/${name}" class="uk-icon-link uk-float-right" uk-icon="link-external"></a>
     ` })));
 
     pins.querySelectorAll('li input').forEach(checkbox => {

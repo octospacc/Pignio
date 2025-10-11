@@ -26,6 +26,7 @@ from _features import *
 app.jinja_env.globals["_"] = gettext
 app.jinja_env.globals["getlang"] = getlang
 app.jinja_env.globals["clean_url_for"] = clean_url_for
+app.jinja_env.globals["ATOM_CONTENT_TYPE"] = ATOM_CONTENT_TYPE
 app.config["DEVELOPMENT"] = Config.DEVELOPMENT
 app.config["SECRET_KEY"] = Config.SECRET_KEY
 app.config["BCRYPT_HANDLE_LONG_PASSWORDS"] = True
@@ -121,7 +122,7 @@ def webfinger(resource:str):
             },
             {
                 "rel": "http://schemas.google.com/g/2010#updates-from",
-                "type": "application/atom+xml",
+                "type": ATOM_CONTENT_TYPE,
                 "href": prefix + url_for("view_user_feed", username=user.username),
             },
             # {
@@ -253,17 +254,31 @@ def view_user(username:str, cid:str|None=None):
         if is_for_activitypub():
             return make_activitypub_user(user)
         else:
-            description = None
-            collections = walk_collections(user.username)
-            pinned = collections.pop("")
-            folders = make_folders(collections)
-            if cid:
-                if (pinned := collections.get(cid)):
-                    description = pinned["description"]
-                    folders = []
+            mode = request.args.get("mode")
+            if mode == "created":
+                return pagination("user.html", "items", walk_items(creator=user.username), user=user, load_item=load_item, mode=mode)
+            elif mode == "comments":
+                if current_user.is_authenticated and current_user.username == user.username:
+                    comments = walk_items(creator=user.username, comments=True)
+                    for comment in comments:
+                        tokens = comment['id'].split('/')
+                        comment['iid'] = '/'.join(tokens[:-1])
+                        comment['cid'] = tokens[-1]
+                    return pagination("user.html", "comments", comments, user=user, load_item=load_item, mode=mode)
                 else:
                     return abort(404)
-            return pagination("user.html", "items", pinned["items"], user=user, name=cid, description=description, folders=folders, load_item=load_item)
+            else:
+                description = None
+                collections = walk_collections(user.username)
+                pinned = collections.pop("")
+                folders = make_folders(collections)
+                if cid:
+                    if (pinned := collections.get(cid)):
+                        description = pinned["description"]
+                        folders = []
+                    else:
+                        return abort(404)
+                return pagination("user.html", "items", pinned["items"], user=user, name=cid, description=description, folders=folders, load_item=load_item, mode=mode)
     return abort(404)
 
 @app.route("/user/<path:username>/feed") # TODO deprecate this which could conflict with collections
@@ -314,14 +329,14 @@ def add_item():
     elif request.method == "POST":
         iid = request.form.get("id") or generate_iid()
         data = {key: request.form[key] for key in request.form}
-        for key in ["langs"]:
+        for key in ["langs", "collections"]:
             if key in data and type(data[key]) != list:
                 data[key] = request.form.getlist(key)
         if store_item(iid, data, request.files, Config.AUTO_OCR):
             return redirect(url_for("view_item", iid=iid))
         else:
             flash("Cannot save item", "danger")
-    return render_template("add.html", item=item)
+    return render_template("add.html", item=item, collections=walk_collections(current_user.username))
 
 @app.route("/delete", methods=["GET", "POST"])
 @noindex
@@ -482,11 +497,10 @@ def export_api():
     username = current_user.username
     userbase = os.path.join(USERS_ROOT, username)
     files = [[f"{userbase}.ini"], *[[filename] for filename in glob(f"{userbase}/*.ini")]]
-    for item in walk_items():
-        if item and safe_str_get(item, "creator") == username:
-            filename = os.path.join(ITEMS_ROOT, iid_to_filename(item["id"]))
-            for filename in glob(f"{filename}.*"):
-                files.append([filename])
+    for item in walk_items(creator=username):
+        filename = os.path.join(ITEMS_ROOT, iid_to_filename(item["id"]))
+        for filename in glob(f"{filename}.*"):
+            files.append([filename])
     return send_zip_archive(username, files)
 
 @app.route("/api/v0/download/<path:fid>")
@@ -582,7 +596,7 @@ def error_404(e):
     return render_template("error.html", code=404, name=gettext("Not Found"), description="The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again."), 404
 
 def feed_response(template:str, **kwargs:Any):
-    return response_with_type(render_template(f"{template}.xml", limit=int(request.args.get("limit") or Config.RESULTS_LIMIT), **kwargs), "application/atom+xml")
+    return response_with_type(render_template(f"{template}.xml", limit=int(request.args.get("limit") or Config.RESULTS_LIMIT), content_type=ATOM_CONTENT_TYPE, **kwargs), ATOM_CONTENT_TYPE)
 
 def view_orderable_items(root:str):
     if (ordering := request.args.get("ordering")) == "natural" or app.config["FREEZING"]:

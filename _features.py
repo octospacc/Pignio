@@ -31,7 +31,7 @@ def check_file_is_content(filename:str) -> str|Literal[False]:
             return kind
     return False
 
-def walk_items(walk_path:str|None=None, only_ids:bool=False) -> list:
+def walk_items(walk_path:str|None=None, only_ids:bool=False, creator:str|None=None, comments:bool=False) -> list:
     results: dict[str, dict[str, ItemDict|None]] = {}
 
     walk_root = ITEMS_ROOT
@@ -53,10 +53,14 @@ def walk_items(walk_path:str|None=None, only_ids:bool=False) -> list:
 
         if not only_ids:
             for iid in results[rel_path]:
-                if not (rel_rel_path := "/".join(rel_path.split("/")[:-1])) or (rel_rel_path not in results) or (filename_to_iid(rel_path) not in results[rel_rel_path]):
-                    results[rel_path][iid] = load_item(iid)
+                is_comment = not (not (rel_rel_path := "/".join(rel_path.split("/")[:-1])) or (rel_rel_path not in results) or (filename_to_iid(rel_path) not in results[rel_rel_path]))
+                if (not comments and not is_comment) or (comments and is_comment):
+                    item = load_item(iid)
+                    if item and (not creator or item.get("creator") == creator):
+                        results[rel_path][iid] = item
 
-    return [value for inner in results.values() for value in inner.values()]
+    output = [value for inner in results.values() for value in inner.values()]
+    return [item for item in output if item]
 
 def count_items() -> int:
     return len(walk_items(only_ids=True))
@@ -78,9 +82,10 @@ def walk_collections(username:str) -> dict:
         if rel_path == ".":
             rel_path = ""
         for file in files:
-            cid = rel_path + strip_ext(file)
-            data = cast(UserDict, read_metadata(read_textual(os.path.join(filepath, file))))
-            results[cid] = load_collection(data)
+            if check_file_is_meta(file):
+                cid = rel_path + strip_ext(file)
+                data = cast(UserDict, read_metadata(read_textual(os.path.join(filepath, file))))
+                results[cid] = load_collection(data)
 
     return results
 
@@ -88,8 +93,6 @@ def list_folders(path:str):
     folders = []
     if path and (base := safe_join(ITEMS_ROOT, path)):
         for folder in [name for name in os.listdir(base) if os.path.isdir(os.path.join(base, name))]:
-            # if len(list(filter(lambda item: item.get("type") != "comment", list(filter(None, walk_items(safe_join(path, folder))))))) > 0:
-            # if len([item for item in [x for x in walk_items(safe_join(path, folder)) if x] if item.get("type") != "comment"]) > 0:
             if is_items_folder(f"{path}/{folder}"):
                 folders.append(folder)
     return folders
@@ -171,7 +174,7 @@ def store_item(iid:str, data:dict[str, str], files:dict|None=None, ocr:bool=Fals
     existing_media: str|None = None
 
     extra = {key: data[key] for key in ["provenance"] if key in data}
-    data = {key: data[key] for key in ["link", "title", "description", "image", "video", "audio", "text", "alttext", "langs", "status"] if key in data}
+    data = {key: data[key] for key in ["link", "title", "description", "image", "video", "audio", "text", "alttext", "langs", "collections", "status"] if key in data}
     if comment:
         data["type"] = "comment"
 
@@ -204,7 +207,12 @@ def store_item(iid:str, data:dict[str, str], files:dict|None=None, ocr:bool=Fals
     else:
         data["creator"] = (username := get_current_user().username)
         if not comment:
-            toggle_in_collection(username, "", iid, True)
+            if (collections := data["collections"] if "collections" in data else None):
+                for collection in list(collections):
+                    if collection != "-":
+                        toggle_in_collection(username, collection, iid, True)
+            else:
+                toggle_in_collection(username, "", iid, True)
 
     if (provenance := safe_str_get(extra, "provenance")):
         data["systags"] = provenance

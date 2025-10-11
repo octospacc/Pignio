@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Notifications{% endblock %}
+{% block title %}{{ _('Notifications') }}{% endblock %}
 {% block content %}
   <div class="notifications content uk-text-break">
     {% if events | length > 0 %}

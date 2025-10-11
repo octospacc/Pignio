@@ -34,7 +34,7 @@
         </label>
       </div>
       <div>
-        <label>
+        <p><label>
           {{ _('Visibility') }}
           <select class="uk-select" name="status">
             <option value="public" {% if item.status == 'public' %} selected {% endif %}>🌐 {{ _('Public') }}</option>
@@ -42,17 +42,15 @@
             <!-- <option value="unlisted">🔗 Unlisted</option> -->
             <!-- <option value="private">🔒 {{ _('Private') }}</option> -->
           </select>
-        </label>
-      </div>
-      <div>
-        <label>
+        </label></p>
+        <p><label>
           {{ _('Provenance') }}
           <select class="uk-select" name="provenance">
             <option value="">❓ No provenance</option>
             <option value="oc" {% if 'oc' in item.systags %} selected {% endif %}>🎨 Original content</option>
             <option value="ai" {% if 'ai' in item.systags %} selected {% endif %}>👾 AI-generated</option>
           </select>
-        </label>
+        </label></p>
       </div>
       <div>
         <label>
@@ -68,6 +66,20 @@
           </select>
         </label>
       </div>
+      {% if not item %}
+        <div>
+          <label>
+            {{ _('Pin to Collections') }}
+            <button class="collections-reset uk-button uk-button-default uk-button-small" type="button">Reset</button>
+            <select class="uk-select" name="collections" multiple>
+              <option value="-" hidden></option>{# Sentinel value to allow sending of empty collections fields when no item is selected #}
+              {% for name in collections %}
+                <option value="{{ name }}" {% if not name %} selected {% endif %}>{{ name or _('Profile') }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </div>
+      {% endif %}
       <!-- <label>
         <input type="checkbox" class="with-proxatore uk-checkbox" />
         Transparently use Proxatore

@@ -1,5 +1,7 @@
+{%- autoescape true -%}
 {%- if config.LINKS_PREFIX -%}
   {{- config.LINKS_PREFIX.rstrip('/') -}}
 {%- else -%}
   {{- request.host_url.rstrip('/') -}}
 {%- endif -%}
+{%- endautoescape -%}

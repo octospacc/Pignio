@@ -4,6 +4,8 @@
       {% for word in line.split(' ') %}
         {% if word.startswith(("http://", "https://")) %}
           <a href="{{ word }}" rel="nofollow" target="_blank">{{ word }}</a>
+        {% elif word.startswith('#') %}
+          <a href="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('search', query=word) }}">{{ word }}</a>
         {% else %}
           {{ word }}
         {% endif %}

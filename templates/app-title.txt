@@ -1,1 +1,3 @@
+{%- autoescape true -%}
 {{ config.INSTANCE_NAME }} {{ config.APP_ICON }}
+{%- endautoescape -%}
