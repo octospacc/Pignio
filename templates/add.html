@@ -9,7 +9,7 @@
       {{ _('Text') }} <span uk-icon="icon: quote-right"></span>
     </a></li>
   </ul>
-  <form method="POST" enctype="multipart/form-data" class="add">
+  <form method="POST" enctype="multipart/form-data" class="add" up-layer="root">
     <input type="hidden" name="id" value="{{ item.id }}" />
     <input type="hidden" name="image" />
     <input type="hidden" name="video" />
@@ -28,18 +28,20 @@
     </div>
     <div class="uk-margin" uk-grid>
       <div>
-        <label>
+        <p><label>
           <input type="checkbox" class="from-link uk-checkbox" {% if not item.id %} checked {% endif %} />
           {{ _('link-fill') }}
-        </label>
-      </div>
-      <div>
+        </label></p>
+        <p><label>
+          <input name="nsfw" type="checkbox" class="uk-checkbox" {% if 'nsfw' in item.systags %} checked {% endif %} />
+          {{ _('Mark as sensitive') }} (NSFW)
+        </label></p>
         <p><label>
           {{ _('Visibility') }}
           <select class="uk-select" name="status">
             <option value="public" {% if item.status == 'public' %} selected {% endif %}>🌐 {{ _('Public') }}</option>
             <option value="silent" {% if item.status == 'silent' %} selected {% endif %}>🔇 {{ _('Silent') }}</option>
-            <!-- <option value="unlisted">🔗 Unlisted</option> -->
+            <!-- <option value="unlisted">🔗 {{ _('Unlisted') }}</option> -->
             <!-- <option value="private">🔒 {{ _('Private') }}</option> -->
           </select>
         </label></p>
@@ -124,7 +126,7 @@
     </div>
     <div class="uk-margin uk-grid-small" uk-grid>
       {% if item %}
-        <div class="uk-width-auto">
+        <div class="uk-width-auto back">
           <a class="uk-button uk-button-default" href="{{ url_for('view_item', iid=item.id) }}">{{ _('Back') }}</a>
         </div>
       {% endif %}

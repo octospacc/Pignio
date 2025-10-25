@@ -9,3 +9,4 @@ waitress
 pillow
 pytesseract
 python-slugify
+ffmpeg-python

@@ -60,16 +60,10 @@
           {% for tag in item.systags %}
             <button class="uk-button uk-button-default uk-button-small" uk-toggle="target: #modal-systags-{{ tag }}">{{ tag }}</button>
             <div id="modal-systags-{{ tag }}" uk-modal>
-              <div class="uk-modal-dialog uk-modal-body">
+              <div class="uk-modal-dialog uk-modal-body {{ colortheme }}">
                 <button class="uk-modal-close-default" type="button" uk-close></button>
-                <h2 class="uk-modal-title">"{{ tag }}" marking</h2>
-                <p>
-                  {% if tag == 'ai' %}
-                    {{ _('systag-ai') }}
-                  {% elif tag == 'oc' %}
-                    {{ _('systag-oc') }}
-                  {% endif %}
-                </p>
+                <h2 class="uk-modal-title">{{ _('Marking') }}: "{{ tag }}"</h2>
+                <p>{{ _('systag-' + tag) }}</p>
               </div>
           </div>
           {% endfor %}
@@ -91,7 +85,7 @@
               <button class="uk-button uk-button-primary uk-disabled" disabled>
                 Pin <span uk-icon="tag"></span>
               </button>
-              <div uk-dropdown="mode: click; stretch: y;">
+              <div class="{{ colortheme }}" uk-dropdown="mode: click; stretch: y;">
                 <ul class="uk-list">
                   <li><button class="uk-button uk-button-default uk-button-small" uk-toggle="target: #new-collection">{{ _('New Collection') }}</button></li>
                 </ul>
@@ -99,11 +93,38 @@
             {% endif %}
           </div>
           {% if not (embed or config.FREEZING) and (not current_user.is_authenticated or get_item_permissions(item).edit) %}
-            <div>
-              <a class="uk-button uk-button-default uk-icon-link" href="{{ url_for('add_item') }}?item={{ item.id }}" rel="nofollow">
-                {{ _('Edit') }} <span uk-icon="file-edit"></span>
-              </a>
-            </div>
+            {% if item.video %}
+              <div class="uk-button-group">
+                <a class="uk-button uk-button-default uk-icon-link" href="{{ url_for('add_item') }}?item={{ item.id }}" rel="nofollow">
+                  {{ _('Edit') }} <span uk-icon="file-edit"></span>
+                </a>
+                <div class="uk-inline">
+                  <button class="uk-button uk-button-default" type="button" aria-label="Toggle Dropdown"><span uk-icon="icon:  triangle-down"></span></button>
+                  <div uk-dropdown="mode: click; target: !.uk-button-group;">
+                    <ul class="uk-nav uk-dropdown-nav">
+                      <li><a href="{{ url_for('add_item') }}?item={{ item.id }}" rel="nofollow" up-layer="new">
+                        {{ _('Edit') }} <span uk-icon="file-edit"></span>
+                      </a></li>
+                      <li class="uk-nav-divider"></li>
+                      <li><a href="{{ url_for('video_join') }}?iid={{ item.id }}" rel="nofollow" up-layer="new">
+                        {{ _('Join') }} <span uk-icon="link"></span>
+                      </a></li>
+                      <li><a href="{{ url_for('video_trim') }}?iid={{ item.id }}" rel="nofollow" up-layer="new">
+                        {{ _('Trim') }} <span uk-icon="crosshairs"></span>
+                      </a></li>
+                      {# <li><a href="#">{{ _('Crop') }} <span uk-icon="shrink"></span></a></a></li> #}
+                      {# <li><a href="#">{{ _('Compress') }} <span uk-icon="pull"></span></a></a></li> #}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            {% else %}
+              <div>
+                <a class="uk-button uk-button-default uk-icon-link" href="{{ url_for('add_item') }}?item={{ item.id }}" rel="nofollow">
+                  {{ _('Edit') }} <span uk-icon="file-edit"></span>
+                </a>
+              </div>
+            {% endif %}
             <div>
               <a class="uk-button uk-button-default" href="{{ url_for('remove_item') }}?item={{ item.id }}" rel="nofollow" up-layer="new">
                 {{ _('Delete') }} <span uk-icon="trash"></span>
@@ -135,7 +156,7 @@
         {% endif %}
         {% for item in comments %}
           {% set iid %}{{ item.id.split('/')[-1] }}{% endset %}
-          <div class="uk-card uk-margin uk-card-default uk-card-small" id="{{ iid }}">
+          <div class="uk-card uk-margin uk-card-default uk-card-small {{ colortheme }}" id="{{ iid }}">
             <div class="uk-card-header">
               <h3 class="uk-card-title">
                 {% if item.creator %}
@@ -173,7 +194,7 @@
   </article>
   {% if not (embed or config.FREEZING) %}
     <div id="new-collection" uk-modal>
-      <div class="uk-modal-dialog uk-modal-body">
+      <div class="uk-modal-dialog uk-modal-body {{ colortheme }}">
         <button class="uk-modal-close-default" uk-close></button>
         <h2 class="uk-modal-title">{{ _('New Collection') }}</h2>
         <div class="uk-margin">

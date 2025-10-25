@@ -2,7 +2,8 @@ import os
 import time
 import urllib.parse
 import subprocess
-from shutil import rmtree
+import ffmpeg
+from shutil import rmtree, move, copyfile
 from typing import Any, cast
 from random import shuffle
 from base64 import urlsafe_b64decode
@@ -25,6 +26,7 @@ from _features import *
 
 app.jinja_env.globals["_"] = gettext
 app.jinja_env.globals["getlang"] = getlang
+app.jinja_env.globals["gettheme"] = gettheme
 app.jinja_env.globals["clean_url_for"] = clean_url_for
 app.jinja_env.globals["ATOM_CONTENT_TYPE"] = ATOM_CONTENT_TYPE
 app.config["DEVELOPMENT"] = Config.DEVELOPMENT
@@ -59,6 +61,7 @@ class RegisterForm(LoginForm):
     submit = SubmitField("Register")
 
 @app.route("/")
+# @auth_required_config(False) # Restrict_Index
 def view_index():
     return view_random_items()
 
@@ -217,6 +220,7 @@ def emulator_player(iid:str):
     return view_embedded(iid, "emulatorjs", "rom")
 
 @app.route("/item/<path:iid>", methods=["GET", "POST"])
+# @auth_required_config(False) # Restrict_Items
 def view_item(iid:str, embed:bool=False):
     if (item := load_item(iid)) and get_item_permissions(item)["view"]:
         if request.method == "GET":
@@ -240,6 +244,7 @@ def view_item(iid:str, embed:bool=False):
 # TODO: also add @app.route("/@<path:username>"), redirecting to main url of user ?
 @app.route("/user/<path:username>")
 @app.route("/user/<path:username>/<path:cid>")
+# @auth_required_config(False) # Restrict_Users
 def view_user(username:str, cid:str|None=None):
     userparts = username.lstrip("@").split("@")
     if len(userparts) > 1:
@@ -309,6 +314,7 @@ def view_embed(kind:str, path:str):
 
 @app.route("/search")
 @noindex
+# @auth_required_config(False) # Restrict_Search
 def search():
     query = request.args.get("query", "").lower()
     results = []
@@ -317,9 +323,66 @@ def search():
             results.append(item)
     return pagination("search.html", "items", results, query=query)
 
+@app.route("/trim", methods=["GET", "POST"])
+@query_params("iid")
+@extra_login_required
+def video_trim(iid:str):
+    if (item := load_item(iid)) and (video := item.get("video")) and (perms := get_item_permissions(item))["view"]:
+        if request.method == "GET":
+            return render_template("video-trim.html", item=item, can_overwrite=perms["edit"])
+        elif request.method == "POST" and (action := request.form.get("action")):
+            video_path = os.path.join(ITEMS_ROOT, video)
+            temp_path = os.path.join(TEMP_ROOT, video)
+            mkdirs(os.path.dirname(temp_path))
+            (ffmpeg
+                ).input(video_path, ss=request.form.get("start")
+                ).output(temp_path, to=request.form.get("end"), c="copy"
+                ).run(overwrite_output=True)
+            if action == "save" and perms["edit"]:
+                if Config.USE_BAK_FILES:
+                    copyfile(video_path, f"{video_path}.bak")
+                move(temp_path, video_path)
+                return redirect(url_for("view_item", iid=item["id"]))
+            elif action == "copy":
+                new_iid = generate_iid()
+                new_path = os.path.join(ITEMS_ROOT, iid_to_filename(new_iid))
+                move(temp_path, f"{new_path}.{temp_path.split('.')[-1]}")
+                copyfile(os.path.join(ITEMS_ROOT, iid_to_filename(item["id"]) + ITEMS_EXT), new_path + ITEMS_EXT)
+                toggle_in_collection(current_user.username, "", new_iid, True)
+                return redirect(url_for("view_item", iid=new_iid))
+    else:
+        return abort(404)
+
+@app.route("/join", methods=["GET", "POST"])
+@extra_login_required
+def video_join():
+    iids = request.args.getlist("iid")
+    if request.method == "POST":
+        iids = list(filter(lambda iid: iid.strip(), request.form.get("iids").splitlines()))
+        if len(iids) < 2:
+            flash("You must specify 2 or more videos to join", "danger")
+        else:
+            items = []
+            for iid in iids:
+                if (item := load_item(iid)) and (video := item.get("video")) and get_item_permissions(item)["view"]:
+                    items.append(item)
+                else:
+                    items = []
+                    flash("One or more of the specified items is not available", "danger")
+            if len(items) >= 2:
+                iid = generate_iid()
+                item_path = os.path.join(ITEMS_ROOT, iid_to_filename(iid))
+                (ffmpeg
+                    ).concat(*[stream for item in items for stream in [ffmpeg.input(os.path.join(ITEMS_ROOT, item["video"]))] for stream in [stream.video, stream.audio]], v=1, a=1
+                    ).output(item_path + ".mp4"
+                    ).run(overwrite_output=True)
+                write_textual(item_path + ITEMS_EXT, write_metadata({"description": "Joined from " + " + ".join(iids)}))
+                toggle_in_collection(current_user.username, "", iid, True)
+                return redirect(url_for("view_item", iid=iid))
+    return render_template("video-join.html", iids=iids)
+
 @app.route("/add", methods=["GET", "POST"])
-@noindex
-@login_required
+@extra_login_required
 def add_item():
     item = {}
     if request.method == "GET":
@@ -339,8 +402,7 @@ def add_item():
     return render_template("add.html", item=item, collections=walk_collections(current_user.username))
 
 @app.route("/delete", methods=["GET", "POST"])
-@noindex
-@login_required
+@extra_login_required
 def remove_item():
     if request.method == "GET":
         iid = request.args.get("item")
@@ -356,8 +418,7 @@ def remove_item():
     return abort(404)
 
 @app.route("/report", methods=["GET", "POST"])
-@noindex
-@login_required
+@extra_login_required
 def report_item():
     if request.method == "GET":
         iid = request.args.get("item")
@@ -372,14 +433,12 @@ def report_item():
     return abort(404)
 
 @app.route("/notifications")
-@noindex
-@login_required
+@extra_login_required
 def view_notifications():
     return pagination("notifications.html", "events", load_events(current_user))
 
 @app.route("/settings", methods=["GET", "POST"])
-@noindex
-@login_required
+@extra_login_required
 def view_settings():
     user = load_user(current_user.username)
     tokens = []
@@ -415,8 +474,7 @@ def view_stats():
     return render_template("stats.html", items=count_items(), users=count_users())
 
 @app.route("/admin", methods=["GET", "POST"])
-@noindex
-@login_required
+@extra_login_required
 def view_admin():
     if current_user.is_admin:
         if request.method == "POST":
@@ -430,6 +488,10 @@ def view_admin():
                     for file in files:
                         os.remove(file)
                     flash(f'{gettext("BAK files cleared")}! ({len(files)})')
+                case "clear-temp-files":
+                    if os.path.exists(TEMP_ROOT):
+                        rmtree(TEMP_ROOT)
+                    flash(f'{gettext("Temp files cleared")}!')
         return render_template("admin.html")
     else:
         abort(404)
@@ -479,19 +541,20 @@ def logout():
         logout_user()
     return redirect(url_for("view_index"))
 
-@app.route("/setlang", methods=["POST"])
+@app.route("/setprefs", methods=["POST"])
 @noindex
-def setlang():
-    return setprefs(lang=request.form.get("lang"))
+def set_http_prefs():
+    theme = gettheme()
+    if request.form.get("option") == "theme":
+        theme = "light" if gettheme() == "dark" else "dark"
+    return setprefs(lang=request.form.get("lang"), theme=theme)
 
 @app.route("/api/v0/duplicates", methods=["POST"])
-@noindex
-@login_required
+@extra_login_required
 def check_duplicates():
     ...
 
 @app.route("/api/v0/export")
-@noindex
 @auth_required
 def export_api():
     username = current_user.username
@@ -504,7 +567,6 @@ def export_api():
     return send_zip_archive(username, files)
 
 @app.route("/api/v0/download/<path:fid>")
-@noindex
 @auth_required
 def download_api(fid:str):
     if (dirpath := is_items_folder(fid)):
@@ -519,7 +581,6 @@ def download_api(fid:str):
         return abort(404)
 
 @app.route("/api/v0/collections/<path:iid>", methods=["GET", "POST"])
-@noindex
 @auth_required
 def collections_api(iid:str):
     username = current_user.username
@@ -533,7 +594,6 @@ def collections_api(iid:str):
 
 @app.route("/api/v1/items", defaults={"iid": None}, methods=["POST"])
 @app.route("/api/v1/items/<path:iid>", methods=["GET", "PUT", "DELETE"])
-@noindex
 @auth_required
 def items_api(iid:str):
     if request.method == "GET" and (item := load_item(iid)) and get_item_permissions(item)["view"]:
@@ -554,8 +614,7 @@ def slugify_api(text:str):
     return slugify_name(text)
 
 @app.route("/api/v0/preview")
-@noindex
-@login_required
+@extra_login_required
 @query_params("url")
 def preview_api(url:str):
     return fetch_url_data(url)

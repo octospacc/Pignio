@@ -37,6 +37,7 @@ class UserDict(CollectionDict, total=False):
 DATA_ROOT = "data"
 ITEMS_ROOT = f"{DATA_ROOT}/items"
 CACHE_ROOT = f"{DATA_ROOT}/cache"
+TEMP_ROOT = f"{DATA_ROOT}/temp"
 USERS_ROOT = f"{DATA_ROOT}/users"
 EVENTS_ROOT = f"{DATA_ROOT}/events"
 EXTENSIONS = {
@@ -163,6 +164,12 @@ STRINGS = {
     "BAK files cleared": {
         "it": "File BAK puliti",
     },
+    "Clear Temp Files": {
+        "it": "Pulisci File Temporanei",
+    },
+    "Temp files cleared": {
+        "it": "File temporanei puliti",
+    },
     "Statistics": {
         "it": "Statistiche",
     },
@@ -274,6 +281,36 @@ STRINGS = {
     "Export data": {
         "it": "Esporta dati",
     },
+    "Overwrite": {
+        "it": "Sovrascrivi",
+    },
+    "Join": {
+        "it": "Unisci",
+    },
+    "Join Videos": {
+        "it": "Unisci Video",
+    },
+    "Trim": {
+        "it": "Accorcia",
+    },
+    "Trim Video": {
+        "it": "Accorcia Video",
+    },
+    "Save as New": {
+        "it": "Salva come Nuovo",
+    },
+    "Set End": {
+        "it": "Imposta Fine",
+    },
+    "Marking": {
+        "it": "Indicazione",
+    },
+    "Mark as sensitive": {
+        "it": "Indica come sensibile",
+    },
+    "Switch Theme": {
+        "it": "Cambia Tema",
+    },
     "username-note": {
         "en": "You cannot change this later.",
         "it": "Non può essere cambiato in seguito.",
@@ -304,11 +341,15 @@ STRINGS = {
     },
     "systag-ai": {
         "en": "This media is marked as being generated, in whole or substantial part, by artificial intelligence models.",
-        # "it": "",
+        "it": "Questo media è indicato come generato, completamente o in gran parte, da modelli di intelligenza artificiale.",
     },
     "systag-oc": {
         "en": "The user who uploaded this media has marked it as being their own original content.",
-        # "it": "",
+        "it": "L'utente che ha caricato questo media lo ha indicato come proprio contenuto originale.",
+    },
+    "systag-nsfw": {
+        "en": "This media is marked as potentially sensitive, or \"not safe for work\". Click it to reveal it.",
+        "it": "Questo media è indicato come potenzialmente sensibile, o \"not safe for work\". Cliccalo per rivelarlo.",
     },
     "API Tokens": {
         "it": "Token API",

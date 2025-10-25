@@ -173,7 +173,7 @@ def store_item(iid:str, data:dict[str, str], files:dict|None=None, ocr:bool=Fals
     media_path: str|None = None
     existing_media: str|None = None
 
-    extra = {key: data[key] for key in ["provenance"] if key in data}
+    extra = {key: data[key] for key in ["provenance", "nsfw"] if key in data}
     data = {key: data[key] for key in ["link", "title", "description", "image", "video", "audio", "text", "alttext", "langs", "collections", "status"] if key in data}
     if comment:
         data["type"] = "comment"
@@ -214,8 +214,11 @@ def store_item(iid:str, data:dict[str, str], files:dict|None=None, ocr:bool=Fals
             else:
                 toggle_in_collection(username, "", iid, True)
 
+    data["systags"] = []
     if (provenance := safe_str_get(extra, "provenance")):
-        data["systags"] = provenance
+        data["systags"].append(provenance)
+    if extra.get("nsfw"):
+        data["systags"].append("nsfw")
 
     write_textual(filepath + ITEMS_EXT, write_metadata(data))
     delete_item_cache(iid)

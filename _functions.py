@@ -125,10 +125,27 @@ def noindex(view_func):
     return wrapped_view
 
 def auth_required(func):
+    @noindex
     @wraps(func)
     def wrapped(*args, **kwargs):
         return func(*args, **kwargs) if (current_user.is_authenticated or verify_token_auth()) else app.login_manager.unauthorized()
     return wrapped
+
+def extra_login_required(func):
+    @noindex
+    @login_required
+    @wraps(func)
+    def wrapped(*args, **kwargs):
+        return func(*args, **kwargs)
+    return wrapped
+
+def auth_required_config(config_value:bool):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            return f(*args, **kwargs) if not config_value or (current_user.is_authenticated or verify_token_auth()) else app.login_manager.unauthorized()
+        return wrapper
+    return decorator
 
 def query_params(*param_names):
     def decorator(f):
@@ -155,6 +172,9 @@ def send_zip_archive(name:str, files:list) -> Response:
 
 def getlang() -> str:
     return getprefs().get("lang") or request.headers.get("Accept-Language", "en").split(",")[0].split("-")[0]
+
+def gettheme() -> str|None:
+    return getprefs().get("theme")
 
 def gettext(key:str, lang:str|None=None) -> str:
     data = STRINGS.get(key) or {}

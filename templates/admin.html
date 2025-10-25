@@ -3,7 +3,8 @@
 {% block content %}
   <form method="POST">
     <button class="uk-button uk-button-default" name="action" value="clear-cache" type="submit">{{ _('Clear Cache') }}</button>
-    <button class="uk-button uk-button-danger" name="action" value="clear-bak-files" type="submit">{{ _('Clear BAK Files') }}</button>
+    <button class="uk-button uk-button-secondary" name="action" value="clear-bak-files" type="submit">{{ _('Clear BAK Files') }}</button>
+    <button class="uk-button uk-button-secondary" name="action" value="clear-temp-files" type="submit">{{ _('Clear Temp Files') }}</button>
     <!-- <button fill-missing-ocr > -->
   </form>
   <h2>{{ _('Current Configuration') }}</h2>

@@ -45,13 +45,22 @@ function getArticle(variant) {
 
 registerHandler('form.Register', (form) => addSlugifyNoticeHandler(form.querySelector('input[name="username"]'), form.querySelector('span.notice'), 'username', 1));
 registerHandler('form.add', addHandler);
+registerHandler('form.video-trim', videoTrimHandler);
 registerHandler('article.item', itemHandler);
-registerHandler('article.item div.clickable', lightboxHandler);
+registerHandler('article.item div.clickable', clickableHandler, true);
+registerHandler('article.item div.alt-clickable', clickableHandler, false);
 registerHandler('select[name="ordering"]', select => select.addEventListener('change', () => select.parentElement.submit()));
-registerHandler('select.lang', select => select.addEventListener('change', () => {
-  const form = document.querySelector('form.lang');
+registerHandler('form.prefs select.lang', select => select.addEventListener('change', () => {
+  var form = document.querySelector('form.prefs');
   form.action += '?next=' + encodeURIComponent(location.href);
   form.submit();
+}));
+registerHandler('form.prefs button[value="theme"]', button => button.addEventListener('click', ev => {
+  ev.preventDefault();
+  var form = document.querySelector('form.prefs');
+  var data = new FormData(form);
+  data.append('option', 'theme');
+  fetch(form.action, { method: form.method, body: data }).then(() => location.reload());
 }));
 
 up.compiler('.notifications.placeholder', target => {
@@ -70,11 +79,11 @@ up.compiler('.notifications.placeholder', target => {
   });
 });
 
-function registerHandler(query, handler) {
+function registerHandler(query, handler, ...args) {
   if ('up' in window) {
-    up.compiler(query, handler);
+    up.compiler(query, (el) => handler(el, ...args));
   } else {
-    document.querySelectorAll(query).forEach(el => handler(el));
+    document.querySelectorAll(query).forEach(el => handler(el, ...args));
   }
 }
 
@@ -190,6 +199,83 @@ function addHandler(form) {
   }
 }
 
+function videoTrimHandler(form) {
+  var minGap = 0;
+
+  var duration;
+  var video = form.parentElement.querySelector('video');
+  var fieldStart = form.querySelector('input[name="start"]');
+  var fieldEnd = form.querySelector('input[name="end"]');
+
+  var slider1 = form.querySelector('input[name="range-start"]');
+  var slider2 = form.querySelector('input[name="range-end"]');
+  var sliderTrack = form.querySelector('.slider-track');
+
+  video.addEventListener('loadedmetadata', onLoaded);
+
+  function onLoaded() {
+    video.removeEventListener('loadedmetadata', onLoaded);
+
+    duration = video.duration;
+    video.width = video.videoWidth;
+    video.height = video.videoHeight;
+
+    fieldStart.max = fieldEnd.max = fieldEnd.value = slider1.max = slider2.max = slider2.value = duration;
+
+    fieldStart.addEventListener('input', function(){
+      slider1.value = fieldStart.value;
+      setBounds();
+    });
+    fieldEnd.addEventListener('input', function(){
+      slider2.value = fieldEnd.value;
+      setBounds();
+    });
+
+    slider1.addEventListener('input', slide1);
+    slider2.addEventListener('input', slide2);
+
+    form.querySelector('button[name="backward"]').addEventListener('click', function(){
+      var wasPlaying = !video.paused;
+      video.currentTime = fieldStart.value;
+      if (wasPlaying) video.play();
+    });
+    form.querySelector('button[name="forward"]').addEventListener('click', function(){
+      var wasPlaying = !video.paused;
+      video.currentTime = fieldEnd.value;
+      if (wasPlaying) video.play();
+    });
+    form.querySelector('button[name="set-end"]').addEventListener('click', function(){ fieldEnd.value = video.currentTime; });
+
+    slide1(); slide2();
+  }
+
+  function slide1() {
+    if (parseFloat(slider2.value) - parseFloat(slider1.value) <= minGap) {
+      slider1.value = parseFloat(slider2.value) - minGap;
+    }
+    fieldStart.value = slider1.value;
+    setBounds();
+  }
+
+  function slide2() {
+    if (parseFloat(slider2.value) - parseFloat(slider1.value) <= minGap) {
+      slider2.value = parseFloat(slider1.value) + minGap;
+    }
+    fieldEnd.value = slider2.value;
+    setBounds();
+  }
+
+  function setBounds() {
+    var percent1 = (parseFloat(slider1.value) / duration) * 100;
+    var percent2 = (parseFloat(slider2.value) / duration) * 100;
+    sliderTrack.style.background = `linear-gradient(to right, #dadae5 ${percent1}% , #3264fe ${percent1}% , #3264fe ${percent2}%, #dadae5 ${percent2}%)`;
+    
+    var wasPlaying = !video.paused;
+    video.src = video.src.split('#')[0] + `#t=${fieldStart.value},${fieldEnd.value}`;
+    if (wasPlaying) video.play();
+  }
+}
+
 function itemHandler(section) {
   var url = `${API_BASE}/v0/collections/${section.dataset.itemId}`;
   var userUrl = document.querySelector('footer .user').href;
@@ -235,13 +321,24 @@ function itemHandler(section) {
   addSlugifyNoticeHandler(nameEl, notice, 'name', 0);
 }
 
-function lightboxHandler(clickable) {
-  clickable.addEventListener('click', expandShrinkContent);
+function clickableHandler(clickable, lightbox) {
+  if (clickable.classList.contains('alt-clickable')) {
+    clickable.children[0].style.pointerEvents = 'none';
+  }
+  clickable.addEventListener('click', function(){
+    if (clickable.classList.contains('tag-nsfw') && !clickable.dataset.unblur) {
+      clickable.dataset.unblur = true;
+      clickable.children[0].style.pointerEvents = null;
+      clickable.classList.remove('alt-clickable');
+    } else if (lightbox) {
+      expandShrinkContent();
+    }
+  });
   clickable.addEventListener('keypress', ev => {
     if (ev.key === 'Enter') {
       clickable.click();
     }
-  })
+  });
 }
 
 function copyToClipboard() {

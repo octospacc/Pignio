@@ -18,6 +18,7 @@ You can view a production demo of the latest version of the software at <https:/
     * Additionally, `node` is needed to render text posts into images correctly, as well as fonts, which must be available for all kinds of characters that might be rendered.
         * On Windows, all fonts should be available out of the box, while on Linux you might need to install them. On Debian and derivatives, install the `fonts-noto` metapackage for a nice collection of glyphs, including non-latin scripts and emojis.
     * Optionally, `tesseract` and all desired scripts/languages must also be installed, to allow for image OCR.
+    * Optionally, to use video editing features, `ffmpeg` must also be installed.
 1. Get the source code of Pignio: `git clone --depth 1 https://gitlab.com/octospacc/Pignio` `&& cd Pignio`.
 2. Install all requirements: `python -m pip install -r requirements.txt` `&&` `npm install` (don't forget this last one, otherwise the app will run but the frontend and some features will be broken).
 3. Run with `python app.py`. Optionally, you can edit the configuration file that is automatically created (`data/config.ini`).
