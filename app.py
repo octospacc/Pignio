@@ -2,7 +2,8 @@ import os
 import time
 import urllib.parse
 import subprocess
-import ffmpeg
+import ffmpeg # type: ignore[import-untyped]
+from hashlib import sha256
 from shutil import rmtree, move, copyfile
 from typing import Any, cast
 from random import shuffle
@@ -24,6 +25,8 @@ from _pignio import *
 from _functions import *
 from _features import *
 
+FFMPEG_AVAILABLE = check_ffmpeg_available()
+
 app.jinja_env.globals["_"] = gettext
 app.jinja_env.globals["getlang"] = getlang
 app.jinja_env.globals["gettheme"] = gettheme
@@ -44,6 +47,8 @@ app.config["INSTANCE_DESCRIPTION"] = Config.INSTANCE_DESCRIPTION or app.config["
 app.config["ALLOW_REGISTRATION"] = Config.ALLOW_REGISTRATION
 app.config["SITE_VERIFICATION"] = Config.SITE_VERIFICATION
 app.config["CONFIG"] = Config
+app.config["FFMPEG_AVAILABLE"] = FFMPEG_AVAILABLE
+app.config["VIDEO_THUMBS"] = FFMPEG_AVAILABLE and Config.USE_THUMBNAILS
 
 login_manager = LoginManager()
 login_manager.login_view = "view_login"
@@ -162,26 +167,49 @@ def serve_media(filename:str):
 
 @app.route("/thumb/<path:iid>")
 def serve_thumb(iid:str):
-    if Config.USE_THUMBNAILS and (item := load_item(iid)) and (image := item.get("image")) and not image.lower().endswith(".gif"):
-        filename = f'{item["id"]}.{THUMB_TYPE}'
-        filepath = os.path.join(CACHE_ROOT, filename)
-        if Config.THUMBNAIL_CACHE and os.path.exists(filepath):
-            return send_from_directory(CACHE_ROOT, filename)
-        else:
-            pil = Image.open(os.path.join(ITEMS_ROOT, image))
-            if pil.width > THUMB_WIDTH:
-                pil = pil.resize((THUMB_WIDTH, int(pil.height * (THUMB_WIDTH / float(pil.width)))), Image.LANCZOS) # type: ignore[assignment, attr-defined]
-            pil = pil.convert("RGBA") # type: ignore[assignment]
-            ImageFile.MAXBLOCK = pil.size[0] * pil.size[1]
-            if Config.THUMBNAIL_CACHE:
-                mkdirs(os.path.dirname(filepath))
-                pil.save(filepath, format=THUMB_TYPE, quality=THUMB_QUALITY, optimize=True, progressive=True)
+    if Config.USE_THUMBNAILS and (item := load_item(iid)):
+        image = item.get("image")
+        video = FFMPEG_AVAILABLE and item.get("video")
+        if video:
+            filename = f'{item["id"]}.gif'
+            filepath = os.path.join(CACHE_ROOT, filename)
+            if Config.THUMBNAIL_CACHE and os.path.exists(filepath):
                 return send_from_directory(CACHE_ROOT, filename)
             else:
-                buffer = BytesIO()
-                pil.save(buffer, format=THUMB_TYPE, quality=THUMB_QUALITY, optimize=True, progressive=True)
-                buffer.seek(0)
-                return send_file(buffer, f"image/{THUMB_TYPE}")
+                streams = (ffmpeg
+                    ).input(os.path.join(ITEMS_ROOT, video), t=VIDEO_THUMB_DURATION
+                    ).video.filter("fps", VIDEO_THUMB_FPS
+                    ).filter("scale", VIDEO_THUMB_WIDTH, -1, flags="lanczos"
+                    ).filter_multi_output("split")
+                gif = ffmpeg.filter([streams[1], streams[0].filter("palettegen")], "paletteuse", dither="none")
+                if Config.THUMBNAIL_CACHE:
+                    mkdirs(os.path.dirname(filepath))
+                    ffmpeg.output(gif, filepath, format="gif").run()
+                    return send_from_directory(CACHE_ROOT, filename)
+                else:
+                    return send_file(BytesIO(ffmpeg.output(gif, 'pipe:1', format="gif").run(capture_stdout=True)[0]), f"image/gif")
+        elif image:
+            if image.lower().endswith(".gif"):
+                return redirect(url_for("serve_media", filename=image))
+            filename = f'{item["id"]}.{THUMB_TYPE}'
+            filepath = os.path.join(CACHE_ROOT, filename)
+            if Config.THUMBNAIL_CACHE and os.path.exists(filepath):
+                return send_from_directory(CACHE_ROOT, filename)
+            else:
+                pil = Image.open(os.path.join(ITEMS_ROOT, image))
+                if pil.width > THUMB_WIDTH:
+                    pil = pil.resize((THUMB_WIDTH, int(pil.height * (THUMB_WIDTH / float(pil.width)))), Image.LANCZOS) # type: ignore[assignment, attr-defined]
+                pil = pil.convert("RGBA") # type: ignore[assignment]
+                ImageFile.MAXBLOCK = pil.size[0] * pil.size[1]
+                if Config.THUMBNAIL_CACHE:
+                    mkdirs(os.path.dirname(filepath))
+                    pil.save(filepath, format=THUMB_TYPE, quality=THUMB_QUALITY, optimize=True, progressive=True)
+                    return send_from_directory(CACHE_ROOT, filename)
+                else:
+                    buffer = BytesIO()
+                    pil.save(buffer, format=THUMB_TYPE, quality=THUMB_QUALITY, optimize=True, progressive=True)
+                    buffer.seek(0)
+                    return send_file(buffer, f"image/{THUMB_TYPE}")
     return abort(404)
 
 @app.route("/render/<path:iid>")
@@ -264,7 +292,8 @@ def view_user(username:str, cid:str|None=None):
                 return pagination("user.html", "items", walk_items(creator=user.username), user=user, load_item=load_item, mode=mode)
             elif mode == "comments":
                 if current_user.is_authenticated and current_user.username == user.username:
-                    comments = walk_items(creator=user.username, comments=True)
+                    comments = sorted(walk_items(creator=user.username, comments=True), key=(lambda comment: comment["datetime"]))
+                    comments.reverse()
                     for comment in comments:
                         tokens = comment['id'].split('/')
                         comment['iid'] = '/'.join(tokens[:-1])
@@ -326,28 +355,31 @@ def search():
 @app.route("/trim", methods=["GET", "POST"])
 @query_params("iid")
 @extra_login_required
-def video_trim(iid:str):
-    if (item := load_item(iid)) and (video := item.get("video")) and (perms := get_item_permissions(item))["view"]:
+def media_trim(iid:str):
+    if FFMPEG_AVAILABLE and (item := load_item(iid)) and ((video := item.get("video")) or ((audio := item.get("audio")) and not audio.lower().endswith((".mid", ".midi")))) and (perms := get_item_permissions(item))["view"]:
         if request.method == "GET":
-            return render_template("video-trim.html", item=item, can_overwrite=perms["edit"])
+            return render_template("media-trim.html", item=item, can_overwrite=perms["edit"])
         elif request.method == "POST" and (action := request.form.get("action")):
-            video_path = os.path.join(ITEMS_ROOT, video)
-            temp_path = os.path.join(TEMP_ROOT, video)
-            mkdirs(os.path.dirname(temp_path))
+            media_path = os.path.join(ITEMS_ROOT, video or audio)
+            media_ext = (video or audio).split('.')[-1]
+            temp_path = os.path.join(TEMP_ROOT, f"{time.time()}-{sha256((video or audio).encode()).hexdigest()}.{media_ext}")
+            mkdirs(TEMP_ROOT)
             (ffmpeg
-                ).input(video_path, ss=request.form.get("start")
+                ).input(media_path, ss=request.form.get("start")
                 ).output(temp_path, to=request.form.get("end"), c="copy"
                 ).run(overwrite_output=True)
             if action == "save" and perms["edit"]:
                 if Config.USE_BAK_FILES:
-                    copyfile(video_path, f"{video_path}.bak")
-                move(temp_path, video_path)
+                    copyfile(media_path, f"{media_path}.bak")
+                move(temp_path, media_path)
                 return redirect(url_for("view_item", iid=item["id"]))
             elif action == "copy":
                 new_iid = generate_iid()
                 new_path = os.path.join(ITEMS_ROOT, iid_to_filename(new_iid))
-                move(temp_path, f"{new_path}.{temp_path.split('.')[-1]}")
-                copyfile(os.path.join(ITEMS_ROOT, iid_to_filename(item["id"]) + ITEMS_EXT), new_path + ITEMS_EXT)
+                old_ini = os.path.join(ITEMS_ROOT, iid_to_filename(item["id"]) + ITEMS_EXT)
+                move(temp_path, f"{new_path}.{media_ext}")
+                if os.path.exists(old_ini):
+                    copyfile(old_ini, new_path + ITEMS_EXT)
                 toggle_in_collection(current_user.username, "", new_iid, True)
                 return redirect(url_for("view_item", iid=new_iid))
     else:
@@ -356,6 +388,8 @@ def video_trim(iid:str):
 @app.route("/join", methods=["GET", "POST"])
 @extra_login_required
 def video_join():
+    if not FFMPEG_AVAILABLE:
+        return abort(404)
     iids = request.args.getlist("iid")
     if request.method == "POST":
         iids = list(filter(lambda iid: iid.strip(), request.form.get("iids").splitlines()))

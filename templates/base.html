@@ -27,6 +27,7 @@
     body { overflow-x: auto; }
     up-modal .back { display: none; }
     .clickable, .alt-clickable { cursor: pointer; }
+    .alt-clickable.tag-nsfw:not([data-unblur="true"]) > video { pointer-events: none; }
     .tag-nsfw:not([data-unblur="true"]) > img,
     .tag-nsfw:not([data-unblur="true"]) > video { filter: blur(16px); }
     /* workaround for old or no-js browsers not loading icons and buttons size not being set */
@@ -77,12 +78,12 @@
       </div>
       {% if not (embed or config.FREEZING) %}
         <div class="uk-navbar-right uk-margin-left">
-          <a class="uk-button uk-button-default uk-icon-link" title="Create" uk-icon="plus" href="{{ url_for('add_item') }}" rel="nofollow">
+          <a class="uk-button uk-button-default uk-icon-link" title="{{ _('Create') }}" uk-icon="plus" href="{{ url_for('add_item') }}" rel="nofollow">
             <span class="uk-visible@s">{{ _('Create') }}</span>
           </a>
           {% if current_user.is_authenticated %}
             <div class="uk-inline" tabindex="-1">
-              <button class="uk-icon-button" uk-icon="bell" title="Notifications"></button>
+              <button class="uk-icon-button" uk-icon="bell" title="{{ _('Notifications') }}" uk-tooltip="{{ _('Notifications') }}"></button>
               <span class="uk-badge uk-position-top-right" inert hidden></span>
             </div>
             <div class="{{ colortheme }}" uk-dropdown="mode: click; stretch: y;">
@@ -120,7 +121,7 @@
             Powered by <a class="uk-text-primary" target="_blank" href="{{ config.APP_REPO }}">{{ config.APP_NAME }}</a>, © 2025 OctoSpacc (AGPLv3)
             {% if not config.FREEZING %}
               <span class="uk-float-right uk-inline">
-                &nbsp; <button name="option" value="theme" title="{{ _('Switch Theme') }}" uk-icon="paint-bucket" type="submit"></button>
+                &nbsp; <button name="option" value="theme" title="{{ _('Switch Theme') }}" uk-tooltip="{{ _('Switch Theme') }}" uk-icon="paint-bucket" type="submit"></button>
               </span>
               <select class="lang uk-select uk-inline uk-float-right uk-width-auto uk-form-small uk-margin-left" name="lang">
                 <option value="en" {% if getlang() == 'en' %} selected {% endif %}>🇬🇧 {{ _('English', 'en') }} &nbsp;</option>

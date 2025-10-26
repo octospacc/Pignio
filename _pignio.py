@@ -43,7 +43,7 @@ EVENTS_ROOT = f"{DATA_ROOT}/events"
 EXTENSIONS = {
     "image": ("jpg", "jpeg", "jfif", "bmp", "png", "apng", "gif", "webp", "avif", "svg"),
     "video": ("mp4", "mov", "mpg", "ogv", "webm", "mkv"),
-    "audio": ("mp3", "m4a", "flac", "opus", "ogg", "wav"),
+    "audio": ("mp3", "m4a", "flac", "opus", "ogg", "wav", "mid", "midi"),
     "audio.extra": {"mpeg": "mp3"},
     "model": ("glb", ),
     "font": ("ttf", "otf", "woff", "woff2"),
@@ -55,6 +55,9 @@ EXTENSIONS = {
 ITEMS_EXT = ".ini"
 LISTS_EXT = ".wsv"
 # EVENTS_EXT = f".events{LISTS_EXT}"
+VIDEO_THUMB_DURATION = 4
+VIDEO_THUMB_WIDTH = 200
+VIDEO_THUMB_FPS = 15
 THUMB_QUALITY = 75
 THUMB_WIDTH = 600
 THUMB_TYPE = "webp"
@@ -293,11 +296,14 @@ STRINGS = {
     "Trim": {
         "it": "Accorcia",
     },
-    "Trim Video": {
-        "it": "Accorcia Video",
+    "Trim Media": {
+        "it": "Accorcia Media",
     },
     "Save as New": {
         "it": "Salva come Nuovo",
+    },
+    "Set Start": {
+        "it": "Imposta Inizio",
     },
     "Set End": {
         "it": "Imposta Fine",
@@ -338,6 +344,10 @@ STRINGS = {
     "link-fill": {
         "en": "Fill data from link",
         "it": "Inserisci dati da link",
+    },
+    "switch-render-mode": {
+        "en": "Switch rendering mode",
+        "it": "Cambia modalità di rendering",
     },
     "systag-ai": {
         "en": "This media is marked as being generated, in whole or substantial part, by artificial intelligence models.",

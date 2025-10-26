@@ -1,4 +1,4 @@
-{% set image %}{% include 'item-image.txt' %}{% endset %}
+{% set image %}{% include 'item-image.html' %}{% endset %}
 {% set alttext %}{% if item.alttext %}{{ item.alttext }}{% else %}{{ item.description }}{% endif %}{% endset %}
 {% set placeholder %}
   <div class="uk-overflow-hidden">
@@ -13,12 +13,12 @@
     </span>
   </div>
 {% endset %}
-{% set classtags %}
-  {% for tag in item.systags %} tag-{{ tag }} {% endfor %}
-{% endset %}
-<div {% if folder %} style="display: inline-block; width: 50%; object-fit: cover;" {% endif %} {% if full and (item.model or item.font or item.doc or item.swf) %} class="uk-height-1-1 uk-height-viewport {{ classtags }}" {% elif full and (item.image or item.text) %} class="clickable uk-overflow-hidden {{ classtags }}" tabindex="0" {% else %} class="alt-clickable uk-text-center uk-overflow-hidden {{ classtags }}" {% endif %}>
+{%- set classtags -%}
+  {%- for tag in item.systags %} tag-{{ tag }} {% endfor -%}
+{%- endset -%}
+<div {% if folder %} style="display: inline-block; width: 50%; object-fit: cover;" {% endif %} {% if full and (item.image or item.text) and 'nsfw' not in item.systags %} style='height:100%; background-image: url("{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('serve_thumb', iid=item.id) }}"); background-size: contain; background-position: top center; background-repeat: no-repeat;' {% endif %} {% if full and (item.model or item.font or item.doc or item.swf) %} class="uk-height-1-1 uk-height-viewport {{ classtags }}" {% elif full and (item.image or item.text) %} class="clickable uk-overflow-hidden {{ classtags }}" tabindex="0" {% else %} class="alt-clickable uk-text-center uk-overflow-hidden {{ classtags }}" {% endif %}>
   {% if item.text %}
-    <img class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ image }}{% if time %}?v={{ time }}{% endif %}" alt="{{ item.text }}" title="{{ item.text }}" {% if not full %} loading="lazy" {% endif %} />
+    <img class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ image }}{% if time %}?v={{ time }}{% endif %}" alt="{{ item.text }}" title="{{ item.text }}" {% if full %} onload="this.parentElement.style='';" {% else %} loading="lazy" {% endif %} />
   {% elif item.model or item.font or item.doc or item.swf or item.rom %}
     {% if full %}
       {% set iframe %}
@@ -45,12 +45,23 @@
       {{ placeholder }}
     {% endif %}
   {% elif item.image %}
-    <img class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ image }}" alt="{{ alttext }}" title="{{ alttext }}" {% if not full %} loading="lazy" {% endif %} />
+    <img class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ image }}" alt="{{ alttext }}" title="{{ alttext }}" {% if full %} onload="this.parentElement.style='';" {% else %} loading="lazy" {% endif %} />
   {% elif item.video %}
-    <video class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('serve_media', filename=item.video) }}"
-           aria-label="{{ alttext }}" title="{{ alttext }}" {% if full %} controls {% else %} autoplay muted tabindex="-1" {% endif %} loop></video>
+    {% if full or not config.VIDEO_THUMBS %}
+      <video class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('serve_media', filename=item.video) }}"
+             aria-label="{{ alttext }}" title="{{ alttext }}" {% if full %} controls {% else %} autoplay muted tabindex="-1" {% endif %} loop></video>
+    {% else %}
+      <img class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('serve_thumb', iid=item.id) }}" alt="{{ alttext }}" title="{{ alttext }}" loading="lazy" />
+    {% endif %}
   {% elif item.audio %}
-    {{ placeholder }}
-    <audio {% if not full %} tabindex="-1" {% endif %} class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('serve_media', filename=item.audio) }}" controls loop></audio>
+    {%- set midi = item.audio.lower().endswith((".mid", ".midi")) -%}
+    {% if full and midi %}
+      <iframe class="uk-width-expand uk-height-medium" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('static', filename='spessasynth/embed.html') }}?midi={{ url_for('serve_media', filename=item.audio) }}"></iframe>
+    {% else %}
+      {{ placeholder }}
+      {% if not midi %}
+        <audio {% if not full %} tabindex="-1" {% endif %} class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('serve_media', filename=item.audio) }}" controls loop></audio>
+      {% endif %}
+    {% endif %}
   {% endif %}
 </div>

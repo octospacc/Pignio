@@ -45,7 +45,7 @@ function getArticle(variant) {
 
 registerHandler('form.Register', (form) => addSlugifyNoticeHandler(form.querySelector('input[name="username"]'), form.querySelector('span.notice'), 'username', 1));
 registerHandler('form.add', addHandler);
-registerHandler('form.video-trim', videoTrimHandler);
+registerHandler('form.media-trim', mediaTrimHandler);
 registerHandler('article.item', itemHandler);
 registerHandler('article.item div.clickable', clickableHandler, true);
 registerHandler('article.item div.alt-clickable', clickableHandler, false);
@@ -199,11 +199,11 @@ function addHandler(form) {
   }
 }
 
-function videoTrimHandler(form) {
+function mediaTrimHandler(form) {
   var minGap = 0;
 
   var duration;
-  var video = form.parentElement.querySelector('video');
+  var media = form.parentElement.querySelector('video, audio');
   var fieldStart = form.querySelector('input[name="start"]');
   var fieldEnd = form.querySelector('input[name="end"]');
 
@@ -211,16 +211,22 @@ function videoTrimHandler(form) {
   var slider2 = form.querySelector('input[name="range-end"]');
   var sliderTrack = form.querySelector('.slider-track');
 
-  video.addEventListener('loadedmetadata', onLoaded);
+  media.addEventListener('loadedmetadata', onLoaded);
 
   function onLoaded() {
-    video.removeEventListener('loadedmetadata', onLoaded);
+    media.removeEventListener('loadedmetadata', onLoaded);
 
-    duration = video.duration;
-    video.width = video.videoWidth;
-    video.height = video.videoHeight;
+    duration = media.duration;
+    media.width = media.videoWidth;
+    media.height = media.videoHeight;
 
-    fieldStart.max = fieldEnd.max = fieldEnd.value = slider1.max = slider2.max = slider2.value = duration;
+    fieldStart.max = fieldEnd.max = slider1.max = slider2.max = duration;
+    slider2.value = duration;
+    if (!fieldEnd.value) {
+      fieldEnd.value = duration;
+    }
+    setBounds();
+    slider1.disabled = slider2.disabled = false;
 
     fieldStart.addEventListener('input', function(){
       slider1.value = fieldStart.value;
@@ -235,18 +241,28 @@ function videoTrimHandler(form) {
     slider2.addEventListener('input', slide2);
 
     form.querySelector('button[name="backward"]').addEventListener('click', function(){
-      var wasPlaying = !video.paused;
-      video.currentTime = fieldStart.value;
-      if (wasPlaying) video.play();
+      var wasPlaying = !media.paused;
+      media.currentTime = fieldStart.value;
+      if (wasPlaying) media.play();
     });
     form.querySelector('button[name="forward"]').addEventListener('click', function(){
-      var wasPlaying = !video.paused;
-      video.currentTime = fieldEnd.value;
-      if (wasPlaying) video.play();
+      var wasPlaying = !media.paused;
+      media.currentTime = fieldEnd.value;
+      if (wasPlaying) media.play();
     });
-    form.querySelector('button[name="set-end"]').addEventListener('click', function(){ fieldEnd.value = video.currentTime; });
 
-    slide1(); slide2();
+    form.querySelector('button[name="set-start"]').addEventListener('click', function(){
+      fieldStart.value = media.currentTime;
+      slider1.value = media.currentTime;
+      setBounds();
+    });
+    form.querySelector('button[name="set-end"]').addEventListener('click', function(){
+      fieldEnd.value = media.currentTime;
+      slider2.value = media.currentTime;
+      setBounds();
+    });
+
+    // slide1(); slide2();
   }
 
   function slide1() {
@@ -270,9 +286,9 @@ function videoTrimHandler(form) {
     var percent2 = (parseFloat(slider2.value) / duration) * 100;
     sliderTrack.style.background = `linear-gradient(to right, #dadae5 ${percent1}% , #3264fe ${percent1}% , #3264fe ${percent2}%, #dadae5 ${percent2}%)`;
     
-    var wasPlaying = !video.paused;
-    video.src = video.src.split('#')[0] + `#t=${fieldStart.value},${fieldEnd.value}`;
-    if (wasPlaying) video.play();
+    var wasPlaying = !media.paused;
+    media.src = media.src.split('#')[0] + `#t=${fieldStart.value},${fieldEnd.value}`;
+    if (wasPlaying) media.play();
   }
 }
 
@@ -281,9 +297,14 @@ function itemHandler(section) {
   var userUrl = document.querySelector('footer .user').href;
   var button = section.querySelector('div.pin button');
   var pins = section.querySelector('div.pin ul');
+  var avMedia = section.querySelector('video, audio');
   var create = document.querySelector('#new-collection');
   var notice = create.querySelector('span.notice');
   var nameEl = create.querySelector('input[type="text"]');
+
+  if (avMedia && location.hash.startsWith('#t=')) {
+    avMedia.src += location.hash;
+  }
 
   fetch(url)
   .then(res => (res.ok && res.json()))
@@ -322,13 +343,12 @@ function itemHandler(section) {
 }
 
 function clickableHandler(clickable, lightbox) {
-  if (clickable.classList.contains('alt-clickable')) {
-    clickable.children[0].style.pointerEvents = 'none';
+  if (!clickable.classList.contains('tag-nsfw')) {
+    clickable.classList.remove('alt-clickable');
   }
   clickable.addEventListener('click', function(){
     if (clickable.classList.contains('tag-nsfw') && !clickable.dataset.unblur) {
       clickable.dataset.unblur = true;
-      clickable.children[0].style.pointerEvents = null;
       clickable.classList.remove('alt-clickable');
     } else if (lightbox) {
       expandShrinkContent();
@@ -350,9 +370,16 @@ function expandShrinkContent() {
   const style = document.querySelector('article.item > div').style;
   style.width = (style.width ? '' : '100%');
   const title = style.width ? STRINGS.get('Shrink') : STRINGS.get('Expand');
-  const toggle = Object.assign(document.querySelector('button.uk-icon.expand-shrink'), {title});
+  const toggle = document.querySelector('button.uk-icon.expand-shrink');
+  toggle.title = title;
+  toggle.setAttribute('uk-tooltip', title);
   toggle.setAttribute('uk-icon', title.toLowerCase());
 }
 
-window.Pignio = {copyToClipboard, expandShrinkContent};
+function switchRenderMode() {
+  var style = document.querySelector('article.item img, article.item video').style;
+  style.imageRendering = style.imageRendering ? null : 'pixelated';
+}
+
+window.Pignio = {copyToClipboard, expandShrinkContent, switchRenderMode};
 })();

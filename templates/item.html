@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% set full %}true{% endset %}
-{% set image %}{% include 'item-image.txt' %}{% endset %}
+{% set full = true %}
+{% set image %}{% include 'item-image.html' %}{% endset %}
 {% set kindname %}
   {%- if item.doc -%} Document
   {%- elif item.swf -%} Shockwave Flash
@@ -65,16 +65,24 @@
                 <h2 class="uk-modal-title">{{ _('Marking') }}: "{{ tag }}"</h2>
                 <p>{{ _('systag-' + tag) }}</p>
               </div>
-          </div>
+            </div>
+          {% endfor %}
+          {% for lang in item.langs %}
+            <button class="uk-button uk-button-default uk-button-small uk-disabled" disabled>{{ lang }}</button>
           {% endfor %}
         </div>
         {% include 'item-description.html' %}
         <div class="uk-margin uk-grid-small uk-grid" uk-grid>
           <div class="uk-visible@s">
-            <button class="uk-icon-button expand-shrink" uk-icon="expand" title="{{ _('Expand') }}" onclick="Pignio.expandShrinkContent();"></button>
+            <button class="uk-icon-button expand-shrink" uk-icon="expand" title="{{ _('Expand') }}" uk-tooltip="{{ _('Expand') }}" onclick="Pignio.expandShrinkContent();"></button>
           </div>
+          {% if item.image or item.video %}
+            <div>
+              <button class="uk-icon-button" uk-icon="bolt" title="{{ _('switch-render-mode') }}" uk-tooltip="{{ _('switch-render-mode') }}" onclick="Pignio.switchRenderMode();"></button>
+            </div>
+          {% endif %}
           <div>
-            <button class="uk-icon-button" uk-icon="forward" title="{{ _('Copy to clipboard') }}" onclick="Pignio.copyToClipboard();"></button>
+            <button class="uk-icon-button" uk-icon="forward" title="{{ _('Copy to clipboard') }}" uk-tooltip="{{ _('Copy to clipboard') }}" onclick="Pignio.copyToClipboard();"></button>
           </div>
           <div class="pin">
             {% if embed %}
@@ -93,7 +101,7 @@
             {% endif %}
           </div>
           {% if not (embed or config.FREEZING) and (not current_user.is_authenticated or get_item_permissions(item).edit) %}
-            {% if item.video %}
+            {% if (item.video or (item.audio and not item.audio.lower().endswith((".mid", ".midi")))) and config.FFMPEG_AVAILABLE %}
               <div class="uk-button-group">
                 <a class="uk-button uk-button-default uk-icon-link" href="{{ url_for('add_item') }}?item={{ item.id }}" rel="nofollow">
                   {{ _('Edit') }} <span uk-icon="file-edit"></span>
@@ -106,10 +114,12 @@
                         {{ _('Edit') }} <span uk-icon="file-edit"></span>
                       </a></li>
                       <li class="uk-nav-divider"></li>
-                      <li><a href="{{ url_for('video_join') }}?iid={{ item.id }}" rel="nofollow" up-layer="new">
-                        {{ _('Join') }} <span uk-icon="link"></span>
-                      </a></li>
-                      <li><a href="{{ url_for('video_trim') }}?iid={{ item.id }}" rel="nofollow" up-layer="new">
+                      {% if item.video %}
+                        <li><a href="{{ url_for('video_join') }}?iid={{ item.id }}" rel="nofollow" up-layer="new">
+                          {{ _('Join') }} <span uk-icon="link"></span>
+                        </a></li>
+                      {% endif %}
+                      <li><a href="{{ url_for('media_trim') }}?iid={{ item.id }}" rel="nofollow" up-layer="new">
                         {{ _('Trim') }} <span uk-icon="crosshairs"></span>
                       </a></li>
                       {# <li><a href="#">{{ _('Crop') }} <span uk-icon="shrink"></span></a></a></li> #}

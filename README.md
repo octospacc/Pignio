@@ -10,7 +10,7 @@ Pignio is your personal self-hosted media pinboard, built on top of flat-file st
 
 You can view a production demo of the latest version of the software at <https://pignio.octt.eu.org/>.
 
-![](https://octospacc.altervista.org/wp-content/uploads/2025/07/img_20250713_1007347894476461753800707-960x1280.jpg)
+[![](https://octospacc.altervista.org/wp-content/uploads/2025/07/img_20250713_1007347894476461753800707-960x1280.jpg)](https://octospacc.altervista.org/2025/07/13/pignio-pignatico-si-rende-superpignastico-per-pignare-cose-e-cosine/)
 
 ## Deploying
 
@@ -18,7 +18,7 @@ You can view a production demo of the latest version of the software at <https:/
     * Additionally, `node` is needed to render text posts into images correctly, as well as fonts, which must be available for all kinds of characters that might be rendered.
         * On Windows, all fonts should be available out of the box, while on Linux you might need to install them. On Debian and derivatives, install the `fonts-noto` metapackage for a nice collection of glyphs, including non-latin scripts and emojis.
     * Optionally, `tesseract` and all desired scripts/languages must also be installed, to allow for image OCR.
-    * Optionally, to use video editing features, `ffmpeg` must also be installed.
+    * Optionally, to use the audio/video editing features, and generation of GIF video thumbnails, `ffmpeg` must also be installed.
 1. Get the source code of Pignio: `git clone --depth 1 https://gitlab.com/octospacc/Pignio` `&& cd Pignio`.
 2. Install all requirements: `python -m pip install -r requirements.txt` `&&` `npm install` (don't forget this last one, otherwise the app will run but the frontend and some features will be broken).
 3. Run with `python app.py`. Optionally, you can edit the configuration file that is automatically created (`data/config.ini`).
@@ -60,5 +60,6 @@ Pignio contains a work-in-progress HTTP JSON API, partly built for use inside th
 * [UIkit](https://getuikit.com/) for the frontend framework
 * [Unpoly](https://unpoly.com/) for smooth SPA-like navigation
 * [model-viewer](https://modelviewer.dev/) for displaying of 3D models
+* [spessasynth_lib](https://github.com/spessasus/spessasynth_lib) for MIDI playback
 * [Ruffle](https://ruffle.rs/) for Shockwave Flash emulation
 * [EmulatorJS](https://emulatorjs.org/) for emulation of various game consoles

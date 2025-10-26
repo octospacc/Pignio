@@ -2,6 +2,7 @@ import os
 import json
 import requests
 import urllib.parse
+import ffmpeg
 from io import BytesIO
 from zipfile import ZipFile, ZIP_DEFLATED
 from bs4 import BeautifulSoup
@@ -111,10 +112,11 @@ def init_user_session(user:User, remember:bool):
     login_user(user, remember=remember)
     return redirect_next()
 
-def redirect_next():
-    next_data = urllib.parse.urlparse(request.args.get("next", ""))
-    next_url = next_data.path + (f"?{next_data.query}" if next_data.query else "")
-    return redirect(next_url or url_for("view_index"))
+def redirect_next(strict:bool=False):
+    if (next_arg := request.args.get("next", "")) or not strict:
+        next_data = urllib.parse.urlparse(next_arg)
+        next_url = next_data.path + (f"?{next_data.query}" if next_data.query else "")
+        return redirect(next_url or url_for("view_index"))
 
 def noindex(view_func):
     @wraps(view_func)
@@ -184,7 +186,8 @@ def getprefs() -> dict[str, str]:
     return {k: v[0] for k, v in urllib.parse.parse_qs(request.cookies.get("prefs")).items()}
 
 def setprefs(**props:Any) -> Response:
-    response = redirect_next()
+    if not (response := redirect_next(True)):
+        response = make_response()
     response.set_cookie("prefs", urllib.parse.urlencode(getprefs() | props), max_age=(60 * 60 * 24 * 365 * 5))
     return response
 
@@ -233,3 +236,12 @@ def load_remote_user(username:str, host:str) -> RemoteUser|None:
         return RemoteUser(username, url)
     except (json.JSONDecodeError, requests.ConnectionError):
         return None
+
+def check_ffmpeg_available():
+    try:
+        ffmpeg.probe("")
+    except FileNotFoundError:
+        return False
+    except ffmpeg.Error:
+        pass
+    return True

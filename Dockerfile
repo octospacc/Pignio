@@ -9,17 +9,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get install -y nodejs \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Install ffmpeg
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install Tesseract dependencies
+# Install Tesseract
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Tesseract languages (English)
+RUN apt-get install -y tesseract-ocr-eng
+
+# TODO, if desired: Install additional Tesseract language packs (eg. Italian)
+# RUN apt-get install -y tesseract-ocr-ita
+
 # Install Python dependencies
 RUN pip install --no-cache-dir pytesseract pillow
-
-# TODO: Install additional Tesseract language packs (Italian)
-# RUN apt-get install -y tesseract-ocr-ita
 
 # Copy the rest of the application code into the container
 COPY . /app

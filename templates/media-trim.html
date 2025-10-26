@@ -1,17 +1,23 @@
 {% extends 'base.html' %}
-{% block title %}{{ _('Trim Video') }}{% endblock %}
+{% block title %}{{ _('Trim Media') }}{% endblock %}
 {% block content %}
-  <h3>{{ _('Trim Video') }} <var>{{ item.id }}</var></h3>
+  <h3>{{ _('Trim Media') }} <var>{{ item.id }}</var></h3>
   <div class="uk-margin">
-    <video src="{{ url_for('serve_media', filename=item.video) }}" class="video" controls></video>
+    {% if item.video %}
+      <video src="{{ url_for('serve_media', filename=item.video) }}" class="video" controls></video>
+    {% elif item.audio %}
+      <audio src="{{ url_for('serve_media', filename=item.audio) }}" class="audio" controls></audio>
+    {% endif %}
   </div>
-  <form method="POST" class="video-trim" up-layer="root">
+  <form method="POST" class="media-trim" up-layer="root">
     <div class="uk-margin double-slider">
       <div class="slider-track"></div>
-      <input name="range-start" class="uk-range-" type="range" min="0" step="0.000001" value="0" />
-      <input name="range-end" class="uk-range-" type="range" min="0" step="0.000001" />
+      <input name="range-start" class="uk-range-" type="range" min="0" step="0.000001" value="0" disabled />
+      <input name="range-end" class="uk-range-" type="range" min="0" step="0.000001" disabled />
     </div>
     <div class="uk-margin">
+      <button name="set-start" class="uk-icon-button" uk-icon="check" title="{{ _('Set Start') }}" type="button"></button>
+      &nbsp;
       <button name="backward" class="uk-icon-button" uk-icon="chevron-double-left" title="Backward" type="button"></button>
       &nbsp;
       <input name="start" class="uk-input uk-form-width-small" type="number" min="0" step="0.000001" placeholder="{{ _('Start') }}" value="0" />
