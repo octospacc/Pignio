@@ -1,0 +1,40 @@
+site_name: Pignio Docs
+repo_url: https://github.com/octospacc/Pignio
+# edit_uri: edit/mkdocs/docs/
+theme:
+  name: material
+  language: en
+  features:
+    - content.action.view
+    - content.code.copy
+    - navigation.tabs
+  palette:
+    - primary: pink
+      scheme: default 
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - primary: pink
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+plugins:
+  - awesome-nav
+  - blog
+  - glightbox:
+      auto_caption: true
+  - ezlinks
+  - offline
+  - open-in-new-tab
+  - search
+  - tags
+markdown_extensions:
+  - pymdownx.extra
+  - pymdownx.highlight:
+      anchor_linenums: true
+      auto_title: true
+      linenums: true
+      use_pygments: true
+  - pymdownx.magiclink
+  - pymdownx.tasklist

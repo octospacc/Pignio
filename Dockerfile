@@ -6,21 +6,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     bash \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs \
+    && apt-get install -y \
+    nodejs \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install ffmpeg
 RUN apt-get update && apt-get install -y \
     ffmpeg \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Tesseract
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Tesseract languages (English)
-RUN apt-get install -y tesseract-ocr-eng
+RUN apt-get update && apt-get install -y \
+	tesseract-ocr-eng \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # TODO, if desired: Install additional Tesseract language packs (eg. Italian)
 # RUN apt-get install -y tesseract-ocr-ita

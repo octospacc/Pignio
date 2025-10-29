@@ -1,0 +1,9 @@
+services:
+  pignio:
+    image: octospacc/pignio:latest
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    container_name: Pignio
