@@ -3,3 +3,5 @@ mkdocs-glightbox
 mkdocs-wikilinks-plugin
 mkdocs-open-in-new-tab
 mkdocs-awesome-nav
+mkdocs-link-preview-plugin
+mkdocstrings[python]

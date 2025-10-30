@@ -1,3 +1,5 @@
+Under construction. Refer to [Types reference#UserDict](Types reference.md#_pignio.UserDict) for the metadata fields reference.
+
 ## User Roles
 
 * Guest: any user with no account on the app

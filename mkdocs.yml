@@ -1,11 +1,14 @@
 site_name: Pignio Docs
-repo_url: https://github.com/octospacc/Pignio
-# edit_uri: edit/mkdocs/docs/
+site_url: https://octospacc.github.io/Pignio/
+repo_url: https://gitlab.com/octospacc/Pignio
+edit_uri: edit/main/docs/
 theme:
   name: material
+  custom_dir: docs/.overrides
   language: en
   features:
     - content.action.view
+    - content.action.edit
     - content.code.copy
     - navigation.tabs
   palette:
@@ -22,9 +25,15 @@ theme:
 plugins:
   - awesome-nav
   - blog
+  - ezlinks
   - glightbox:
       auto_caption: true
-  - ezlinks
+  - link-preview
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_root_heading: true
   - offline
   - open-in-new-tab
   - search
@@ -38,3 +47,5 @@ markdown_extensions:
       use_pygments: true
   - pymdownx.magiclink
   - pymdownx.tasklist
+extra_css:
+  - link-preview.css

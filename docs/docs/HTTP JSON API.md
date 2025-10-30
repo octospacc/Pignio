@@ -2,7 +2,7 @@ Pignio contains a work-in-progress HTTP JSON API, partly built for use inside th
 
 + An example of a practical implementation of the API is available in the [WinDog](https://gitlab.com/octospacc/WinDog) multi-purpose chatbot for saving items via Telegram chats.
     + You can also test it using the `/Pignio` command in [@WinDogBot](https://t.me/WinDogBot).
-+ Please refer to [`_pignio.py`](./_pignio.py) for type definitions for now.
++ Please refer to [[Types reference]] for type definitions for now, although what the HTTP API accepts is not exactly 1:1 how the program internally represents and stores data.
 + To make external calls to the API (when permitted), you need to set a standard `Authorization: Bearer <your API token>` on your HTTP request.
     + You can generate API tokens from your user settings page (`/settings`).
 

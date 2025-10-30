@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block extrahead %}
+  {{ super() }}
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="{{ page.canonical_url }}" />
+  <meta name="twitter:title" property="og:title" content="{{ page.title }}" />
+  <meta name="twitter:card" content="summary" />
+{% endblock %}

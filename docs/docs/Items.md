@@ -4,14 +4,6 @@ In Pignio, an item is a single, atomic piece of media or non-media which the app
 
 Various kinds of items are supported, each with specified features and scopes, specified below with the corresponding formats and file extensions.
 
-<!--
-|Type |Social preview support|
-|-----|----------------------|
-|Image|✅                    |
-|Video|✅                    |
-|Audio|                      |
--->
-
 * Images
 	* JPEG (`.jpg`, `.jpeg`)
 	* JFIF
@@ -53,7 +45,11 @@ Various kinds of items are supported, each with specified features and scopes, s
 	* NDS
 * Text on image
 
+::: _pignio.EXTENSIONS
+
 ## Item metadata
+
+Under construction. Refer to [Types reference#ItemDict](Types reference.md#_pignio.ItemDict) for the full fields reference straight from the source code.
 
 All items:
 

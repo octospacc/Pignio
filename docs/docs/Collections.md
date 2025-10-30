@@ -1,0 +1,5 @@
+Collections in Pignio, like boards in Pinterest, allow for many items to be grouped together. They are essentially like folders, except user-specific, not dependent on the file system but instead defined by an INI file, and non-exclusive (unlike file folders, an item can be contained in an unlimited number of collections at the same time, or even none at all).
+
+For each user, the profile itself is a collection, considered the default to save newly-created items to, and it corresponds with the user's profile INI file (`/users/<username>.ini`). New collections can be created when wanting to save an item, and they correspond with dedicated INI files inside the user's profile-adjacent folder (`/users/<username>/<collection>.ini`).
+
+Refer to [Types reference#CollectionDict](Types reference.md#_pignio.CollectionDict) for the metadata fields reference.
