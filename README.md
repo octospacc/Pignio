@@ -21,13 +21,14 @@ Read the documentation for help with installing the software and making the best
 ## Quick Links
 
 + [Installing / Running / Deploying / Self-hosting](docs/docs/Running.md)
-+ [Static site generation (with demo)](docs/docs/Static site generation.md)
-+ [HTTP API & third-party apps](docs/docs/HTTP JSON API.md)
++ [Static site generation (with demo)](docs/docs/Static%20site%20generation.md)
++ [HTTP API & third-party apps](docs/docs/HTTP%20JSON%20API.md)
 
 ## Thanks & Third-Party Libraries
 
 * [UIkit](https://getuikit.com/) for the frontend framework
 * [Unpoly](https://unpoly.com/) for smooth SPA-like navigation
+* [SimpleLightbox](https://simplelightbox.js.org/) for advanced viewing of images
 * [model-viewer](https://modelviewer.dev/) for displaying of 3D models
 * [spessasynth_lib](https://github.com/spessasus/spessasynth_lib) for MIDI playback
 * [Ruffle](https://ruffle.rs/) for Shockwave Flash emulation

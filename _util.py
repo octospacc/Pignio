@@ -11,9 +11,9 @@ def parse_bool(v:str|bool) -> bool|None:
         return v
     elif type(v) == str:
         v = v.lower()
-        if v in ("true", "1", "yes"):
+        if v in ("true", "1", "yes", "on"):
             return True
-        elif v in ("false", "0", "no"):
+        elif v in ("false", "0", "no", "off"):
             return False
     return None
 

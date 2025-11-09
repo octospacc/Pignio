@@ -130,7 +130,7 @@ def auth_required(func):
     @noindex
     @wraps(func)
     def wrapped(*args, **kwargs):
-        return func(*args, **kwargs) if (current_user.is_authenticated or verify_token_auth()) else app.login_manager.unauthorized()
+        return func(*args, **kwargs) if (current_user.is_authenticated or verify_token_auth() or app.config["FREEZING"]) else app.login_manager.unauthorized()
     return wrapped
 
 def extra_login_required(func):

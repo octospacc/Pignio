@@ -13,10 +13,10 @@
     </span>
   </div>
 {% endset %}
-{%- set classtags -%}
-  {%- for tag in item.systags %} tag-{{ tag }} {% endfor -%}
+{%- set classes -%}
+  {% for tag in item.systags %} tag-{{ tag }} {% endfor %} content
 {%- endset -%}
-<div {% if folder %} style="display: inline-block; width: 50%; object-fit: cover;" {% endif %} {% if full and (item.image or item.text) and 'nsfw' not in item.systags %} style='height:100%; background-image: url("{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('serve_thumb', iid=item.id) }}"); background-size: contain; background-position: top center; background-repeat: no-repeat;' {% endif %} {% if full and (item.model or item.font or item.doc or item.swf) %} class="uk-height-1-1 uk-height-viewport {{ classtags }}" {% elif full and (item.image or item.text) %} class="clickable uk-overflow-hidden {{ classtags }}" tabindex="0" {% else %} class="alt-clickable uk-text-center uk-overflow-hidden {{ classtags }}" {% endif %}>
+<div {% if folder %} style="display: inline-block; width: 50%; object-fit: cover;" {% endif %} {% if full and (item.image or item.text) and 'nsfw' not in item.systags %} style='height:100%; background-image: url("{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('serve_thumb', iid=item.id) }}"); background-size: contain; background-position: top center; background-repeat: no-repeat;' {% endif %} {% if full and (item.model or item.font or item.doc or item.swf) %} class="uk-height-1-1 uk-height-viewport {{ classes }}" {% elif full and (item.image or item.text) %} class="clickable uk-overflow-hidden {{ classes }}" tabindex="0" {% else %} class="alt-clickable uk-text-center uk-overflow-hidden {{ classes }}" {% endif %}>
   {% if item.text %}
     <img class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ image }}{% if time %}?v={{ time }}{% endif %}" alt="{{ item.text }}" title="{{ item.text }}" {% if full %} onload="this.parentElement.style='';" {% else %} loading="lazy" {% endif %} />
   {% elif item.model or item.font or item.doc or item.swf or item.rom %}

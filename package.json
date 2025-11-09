@@ -2,6 +2,7 @@
   "dependencies": {
     "canvas": "^3.1.2",
     "canvas-txt": "^4.1.1",
+    "simplelightbox": "^2.14.3",
     "uikit": "^3.23.11",
     "unpoly": "^3.11.0"
   }

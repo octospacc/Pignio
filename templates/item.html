@@ -71,7 +71,6 @@
             <button class="uk-button uk-button-default uk-button-small uk-disabled" disabled>{{ lang }}</button>
           {% endfor %}
         </div>
-        {% include 'item-description.html' %}
         <div class="uk-margin uk-grid-small uk-grid" uk-grid>
           <div class="uk-visible@s">
             <button class="uk-icon-button expand-shrink" uk-icon="expand" title="{{ _('Expand') }}" uk-tooltip="{{ _('Expand') }}" onclick="Pignio.expandShrinkContent();"></button>
@@ -149,6 +148,7 @@
             </div>
           {% endif %}
         </div>
+        {% include 'item-description.html' %}
       </div>
       <div class="uk-padding uk-padding-remove-left uk-padding-remove-right">
         {% if not (embed or config.FREEZING) %}

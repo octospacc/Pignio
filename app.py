@@ -161,6 +161,11 @@ def serve_module_uikit(filename:str):
 def serve_module_unpoly(filename:str):
     return send_from_directory(os.path.join("node_modules", "unpoly"), filename)
 
+@app.route("/static/module/simplelightbox/<path:filename>")
+@noindex
+def serve_module_simplelightbox(filename:str):
+    return send_from_directory(os.path.join("node_modules", "simplelightbox", "dist"), filename)
+
 @app.route("/media/<path:filename>")
 def serve_media(filename:str):
     return send_from_directory(ITEMS_ROOT, filename)
@@ -288,12 +293,15 @@ def view_user(username:str, cid:str|None=None):
             return make_activitypub_user(user)
         else:
             mode = request.args.get("mode")
-            if mode == "created":
-                return pagination("user.html", "items", walk_items(creator=user.username), user=user, load_item=load_item, mode=mode)
+            if mode == "all":
+                pinned = [item for folder in walk_collections(user.username).values() for item in folder["items"]]
+                created = [item for item in sort_items(walk_items(creator=user.username)) if item["id"] not in pinned]
+                return pagination("user.html", "items", created+pinned, user=user, load_item=load_item, mode=mode)
+            elif mode == "created":
+                return pagination("user.html", "items", sort_items(walk_items(creator=user.username)), user=user, load_item=load_item, mode=mode)
             elif mode == "comments":
                 if current_user.is_authenticated and current_user.username == user.username:
-                    comments = sorted(walk_items(creator=user.username, comments=True), key=(lambda comment: comment["datetime"]))
-                    comments.reverse()
+                    comments = sort_items(walk_items(creator=user.username, comments=True))
                     for comment in comments:
                         tokens = comment['id'].split('/')
                         comment['iid'] = '/'.join(tokens[:-1])
@@ -345,12 +353,23 @@ def view_embed(kind:str, path:str):
 @noindex
 # @auth_required_config(False) # Restrict_Search
 def search():
-    query = request.args.get("query", "").lower()
+    query_raw = query = request.args.get("query", "")
+    cased = parse_bool(request.args.get("cased"))
+    field = request.args.get("field", "")
+    creators = request.args.get("creators", "").lower().replace("+", " ").replace(",", " ").split()
+    if not cased:
+        query = query.lower()
     results = []
     for item in walk_items():
-        if item and any([query in (value if type(value) == str else list_to_wsv(value)).lower() for value in item.values()]):
+        if field:
+            value = item.get(field, "")
+            if query in (value if type(value) == str else list_to_wsv(value)).lower():
+                results.append(item)
+        elif any([query in (value if type(value) == str else list_to_wsv(value)).lower() for value in item.values()]):
             results.append(item)
-    return pagination("search.html", "items", results, query=query)
+    if len(creators) > 0:
+        results = list(filter(lambda item: item.get("creator") in creators, results))
+    return pagination("search.html", "items", results, query=query_raw, cased=cased, field=field, creators=", ".join(creators))
 
 @app.route("/trim", methods=["GET", "POST"])
 @query_params("iid")
@@ -626,19 +645,23 @@ def collections_api(iid:str):
         results[cid] = iid in collection["items"]
     return results
 
-@app.route("/api/v1/items", defaults={"iid": None}, methods=["POST"])
+@app.route("/api/v1/items", defaults={"iid": None}, methods=["GET", "POST"])
 @app.route("/api/v1/items/<path:iid>", methods=["GET", "PUT", "DELETE"])
 @auth_required
-def items_api(iid:str):
-    if request.method == "GET" and (item := load_item(iid)) and get_item_permissions(item)["view"]:
-        return item
-    elif request.method == "POST" or request.method == "PUT":
-        iid = iid or generate_iid()
-        status = store_item(iid, request.get_json(), None, Config.AUTO_OCR)
-        return {"id": iid if status else None}
-    elif request.method == "DELETE" and get_item_permissions(iid)["edit"]:
-        delete_item(iid)
-        return {}
+def items_api(iid:str|None):
+    if request.method == "GET":
+        if not iid:
+            return walk_items()
+        elif (item := load_item(iid)) and get_item_permissions(item)["view"]:
+            return item
+    elif not app.config["FREEZING"]:
+        if request.method == "POST" or request.method == "PUT":
+            iid = iid or generate_iid()
+            status = store_item(iid, request.get_json(), None, Config.AUTO_OCR)
+            return {"id": iid if status else None}
+        elif iid and request.method == "DELETE" and get_item_permissions(iid)["edit"]:
+            delete_item(iid)
+            return {}
     return abort(404)
 
 @app.route("/api/v0/slugify")

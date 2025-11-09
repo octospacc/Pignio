@@ -221,6 +221,9 @@ STRINGS = {
     "Notifications": {
         "it": "Notifiche",
     },
+    "No notifications": {
+        "it": "Nessuna notifica",
+    },
     "Create": {
         "it": "Crea",
     },
@@ -253,6 +256,15 @@ STRINGS = {
     },
     "Load more": {
         "it": "Carica altro",
+    },
+    "Apply": {
+        "it": "Applica",
+    },
+    "Fields": {
+        "it": "Campi",
+    },
+    "All": {
+        "it": "Tutto",
     },
     "Add": {
         "it": "Aggiungi",

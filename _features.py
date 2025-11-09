@@ -31,6 +31,12 @@ def check_file_is_content(filename:str) -> str|Literal[False]:
             return kind
     return False
 
+def sort_items(items, key:str="datetime", inverse:bool=False):
+    items = sorted(items, key=(lambda item: item.get(key, '0')))
+    if inverse or key == "datetime":
+        items.reverse()
+    return items
+
 def walk_items(walk_path:str|None=None, only_ids:bool=False, creator:str|None=None, comments:bool=False) -> list:
     results: dict[str, dict[str, ItemDict|None]] = {}
 
@@ -149,7 +155,8 @@ def load_item(iid:str) -> ItemDict|None:
         if safe_str_get(cast(dict, data), "type") == "comment":
             data["datetime"] = str(datetime_from_snowflake(iid.split("/")[-1])).split(".")[0]
 
-        return data
+        if len(data) > 1: # prevent empty ini files with no valid media from being returned
+            return data
     return None
 
 # TODO: when updating existing item, and providing new media in the request, first delete old ones to account for different extensions; also clean cache every time
