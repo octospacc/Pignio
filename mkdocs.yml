@@ -29,6 +29,7 @@ plugins:
   - glightbox:
       auto_caption: true
   - link-preview
+  - meta
   - mkdocstrings:
       handlers:
         python:
@@ -36,6 +37,10 @@ plugins:
             show_root_heading: true
   - offline
   - open-in-new-tab
+  - rss:
+      date_from_meta:
+        as_creation: "date"
+        as_update: "git"
   - search
   - tags
 markdown_extensions:

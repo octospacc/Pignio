@@ -23,6 +23,7 @@ Read the documentation for help with installing the software and making the best
 + [Installing / Running / Deploying / Self-hosting](docs/docs/Running.md)
 + [Static site generation (with demo)](docs/docs/Static%20site%20generation.md)
 + [HTTP API & third-party apps](docs/docs/HTTP%20JSON%20API.md)
++ [Philosophy and technical choices](docs/docs/Philosophy%20and%20technical%20choices.md)
 
 ## Thanks & Third-Party Libraries
 

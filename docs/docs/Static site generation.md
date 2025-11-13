@@ -13,7 +13,7 @@ Given the impossibility to interpret query parameters in the URL, some features 
 * Pagination is limited to the fixed size specified in the app configuration at build time, and is done via numbers appended to the page name (`.2.html`, `.3.html`, ...).
 * Where otherwise reorderable on request between random or not, item lists are forced to be in natural order and are fixed this way.
 * No searching is currently available, as this would need to be reimplemented with custom client-side JavaScript.
-* In general, any feature that requires dynamic interpretation at request of query parameters, or cookies (eg. UI language or color theme) is not yet available.
+* In general, any feature that requires dynamic interpretation at request of query parameters or cookies (eg. UI language or color theme) is not yet available.
 * Support in static sites for specific random things might fall behind in development, and be broken, but overall things should always work.
 
 Additionally, for the moment the generated HTML pages rely on absolute links, so the static website must be hosted on the root of a domain and can't be browsed from the local file system (`file://`) without a server.

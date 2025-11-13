@@ -1,0 +1,15 @@
+Pignio has been created and is currently developed with a specific philosophy, which is simply based, but in some cases implies some uncommon technical choices that might be misunderstood. For the benefit of the whole world, let's try to address what Pignio overall stands for.
+
+Pignio is heavily inspired by Pinterest in its scope, usage, and UI/UX, but features various differences in the details. For once, Pignio has less of a focus on social media interactions and discovery, and is more catered to personal usage and very personal collections. Social features, like multi-user and comments, already exist, and even more are planned for the longer future, but Pignio aims to satisfy that need for:
+
++ Quickly and easily collecting media, both from the Internet and from local file collections, in a more personal space, but which is also designed for resharing with the public.
++ With that, personally owning all the data, unbothered by draconian ToS and impromptu content deletions, ensuring precious media is never lost.
+
+With that, a self-hosted web platform — ideally to be used online, but which also provides a working offline (localhosted) experience if desired — is clearly the best choice. What might not be so obvious to some, instead, is the absence of a traditional binary database, with the program being completely based on a flat-file structure, but this is entirely by design:
+
++ It allows for importing infinite media files from local archives, without any hassle: you just copy them over to the Pignio `data/items/` directory, and even the folder structures will be preserved. This is invaluable for loading things like years of photos from your cameras, or a big old meme folder built over time.
+    + The INI format, used to store metadata on the side of media files, is easily writable by hand even by non-technical users, and allows for specifying titles, description, and anything else with any plain old text editor, without having to use the frontend, which comes very useful for this kind of bulk imports.
++ It allows for easier backups. For example, you can preserve your entire Pignio instance, with all the media, either on a Git repository or a traditional cloud storage service, because the many files are relatively small and never opaque.
++ It facilitates interoperability and sharing. You could navigate all your Pignio data via external programs, albeit clunkily, for example with just your operating system's file explorer (including its text search) and media viewer(s).
+
+Additionally, while the web frontend requires a modern browser for correct viewing and to access all the features, Pignio is designed to be as accessible as possible even from ancient systems (think an old Java phone, or a PC with Internet Explorer 6), or just more esoteric ones (like a Nintendo 3DS, where you might also want to upload photos from the gallery, just to say one). This is possible, while still providing a responsive and modern experience where allowed, by developing the frontend with server-side rendering, and then using various progressive enhancement techniques on the client-side.

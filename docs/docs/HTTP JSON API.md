@@ -8,6 +8,7 @@ Pignio contains a work-in-progress HTTP JSON API, partly built for use inside th
 
 ### Items API
 
+* GET `/api/v1/items`: get the full representation of all accessible Items (returns an array of Items)
 * GET `/api/v1/items/<item_id>`: get the full representation of an Item
 * POST `/api/v1/items` (body = an Item): create a new Item on the server, as specified by the body
 * PUT `/api/v1/items/<item_id>` (body = an Item): update the specified Item with new provided data
