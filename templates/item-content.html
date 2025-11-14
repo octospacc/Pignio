@@ -9,6 +9,7 @@
       {%- elif item.font -%} 🔣
       {%- elif item.model -%} 📦
       {%- elif item.audio -%} 🎶
+      {%- elif item.type == 'carousel' -%} 🖼️
       {%- endif -%}
     </span>
   </div>
@@ -19,7 +20,7 @@
 <div {% if folder %} style="display: inline-block; width: 50%; object-fit: cover;" {% endif %} {% if full and (item.image or item.text) and 'nsfw' not in item.systags %} style='height:100%; background-image: url("{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('serve_thumb', iid=item.id) }}"); background-size: contain; background-position: top center; background-repeat: no-repeat;' {% endif %} {% if full and (item.model or item.font or item.doc or item.swf) %} class="uk-height-1-1 uk-height-viewport {{ classes }}" {% elif full and (item.image or item.text) %} class="clickable uk-overflow-hidden {{ classes }}" tabindex="0" {% else %} class="alt-clickable uk-text-center uk-overflow-hidden {{ classes }}" {% endif %}>
   {% if item.text %}
     <img class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ image }}{% if time %}?v={{ time }}{% endif %}" alt="{{ item.text }}" title="{{ item.text }}" {% if full %} onload="this.parentElement.style='';" {% else %} loading="lazy" {% endif %} />
-  {% elif item.model or item.font or item.doc or item.swf or item.rom %}
+  {% elif item.model or item.font or item.doc or item.swf or item.rom or (item.type == 'carousel' and not full) %}
     {% if full %}
       {% set iframe %}
         {%- if item.model -%} model_viewer
@@ -44,6 +45,19 @@
     {% else %}
       {{ placeholder }}
     {% endif %}
+  {% elif item.type == 'carousel' and full %}
+    <div uk-slider="center: true">
+      <div class="uk-position-relative uk-visible-toggle uk-light" tabindex="-1">
+        <div class="uk-slider-items uk-grid">
+          {% for image in item.images %}
+            <div class="uk-width-4-5"><img src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{- url_for('serve_media', filename=image) -}}" alt="{{ alttext }}" title="{{ alttext }}" /></div>
+          {% endfor %}
+        </div>
+        <a style="color: gray;" class="uk-position-center-left uk-position-small uk-hidden-hover" href uk-slidenav-previous uk-slider-item="previous"></a>
+        <a style="color: gray;" class="uk-position-center-right uk-position-small uk-hidden-hover" href uk-slidenav-next uk-slider-item="next"></a>
+      </div>
+      <ul class="uk-slider-nav uk-dotnav uk-flex-center uk-margin"></ul>
+    </div>
   {% elif item.image %}
     <img class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ image }}" alt="{{ alttext }}" title="{{ alttext }}" {% if full %} onload="this.parentElement.style='';" {% else %} loading="lazy" {% endif %} />
   {% elif item.video %}

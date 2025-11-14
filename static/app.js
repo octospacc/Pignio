@@ -31,7 +31,7 @@ const STRINGS = {
 STRINGS.get = (key) => {
   const lang = document.documentElement.lang;
   const data = STRINGS[key];
-  return data && data[lang] || key; // (data ? Object.values(data)[0] : key);
+  return data && data[lang] || key;
 };
 
 function getArticle(variant) {
@@ -47,9 +47,11 @@ registerHandler('form.Register', (form) => addSlugifyNoticeHandler(form.querySel
 registerHandler('form.add', addHandler);
 registerHandler('form.media-trim', mediaTrimHandler);
 registerHandler('nav form.uk-search', searchHandler);
+registerHandler('main form.search', searchExtraHandler);
 registerHandler('article.item', itemHandler);
-registerHandler('article.item div.clickable', clickableHandler, true);
-registerHandler('article.item div.alt-clickable', clickableHandler, false);
+registerHandler('article.item div.clickable', clickableHandler, true, false);
+registerHandler('article.item div.alt-clickable', clickableHandler, false, false);
+registerHandler('article.item div.uk-slider-items', clickableHandler, true, true);
 registerHandler('select[name="ordering"]', select => select.addEventListener('change', () => select.parentElement.submit()));
 registerHandler('form.prefs select.lang', select => select.addEventListener('change', () => {
   var form = document.querySelector('form.prefs');
@@ -122,10 +124,14 @@ function searchHandler(form) {
     var extraForm = document.querySelector('main > form.search');
     if (extraForm) {
       ev.preventDefault();
-      // extraForm.submit();
-      extraForm.querySelector('button[type="submit"]').click();
+      extraForm.querySelector('button.apply').click();
     }
   });
+}
+
+function searchExtraHandler(form) {
+  form.querySelector('button.langs-reset').addEventListener('click', () => (form.querySelector('select[name="langs"]').selectedIndex = -1));
+  form.querySelector('button.apply').hidden = true;
 }
 
 function addHandler(form) {
@@ -280,8 +286,6 @@ function mediaTrimHandler(form) {
       slider2.value = media.currentTime;
       setBounds();
     });
-
-    // slide1(); slide2();
   }
 
   function slide1() {
@@ -363,28 +367,35 @@ function itemHandler(section) {
   addSlugifyNoticeHandler(nameEl, notice, 'name', 0);
 }
 
-function clickableHandler(clickable, lightbox) {
+function clickableHandler(clickable, lightbox, multiple) {
   var simpleLightbox;
   if (!clickable.classList.contains('tag-nsfw')) {
     clickable.classList.remove('alt-clickable');
   }
-  // if (lightbox && clickable.children[0].tagName === 'IMG') {
-  //   clickable.setAttribute('href', clickable.children[0].src);
-  //   new SimpleLightbox(clickable);
-  // }
-  clickable.addEventListener('click', function(){
+  if (multiple && lightbox && !clickable.classList.contains('lightbox')) {
+    clickable.classList.add('lightbox');
+    var imgs = Array.from(clickable.children);
+    imgs.forEach(div => div.dataset.src = div.children[0].src);
+    simpleLightbox = new SimpleLightbox(imgs, { captions: false, sourceAttr: "data-src", animationSpeed: 150 });
+  }
+  clickable.addEventListener('click', function(ev){
     if (lightbox && !clickable.classList.contains('lightbox')) {
       clickable.classList.add('lightbox');
-      // clickable.setAttribute('href', clickable.children[0].src);
-      clickable.dataset.src = clickable.children[0].src;
-      simpleLightbox = new SimpleLightbox(clickable, { captions: false, sourceAttr: "data-src" });
+      // var target;
+      // if (multiple) {
+      //   target = Array.from(clickable.children);
+      //   target.forEach(div => div.dataset.src = div.children[0].src);
+      // } else {
+        clickable.dataset.src = clickable.children[0].src;
+        // target = clickable;
+      // }
+      simpleLightbox = new SimpleLightbox(clickable, { captions: false, sourceAttr: "data-src", animationSpeed: 150 });
     }
     if (clickable.classList.contains('tag-nsfw') && !clickable.dataset.unblur) {
       clickable.dataset.unblur = true;
       clickable.classList.remove('alt-clickable');
-    } else {
-      simpleLightbox.open();
-      console.log(simpleLightbox)
+    } else if (simpleLightbox) {
+      simpleLightbox.open(multiple && ev.target.tagName === 'IMG' && ev.target);
     }
   });
   clickable.addEventListener('keypress', ev => {

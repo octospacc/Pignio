@@ -257,13 +257,15 @@ def emulator_player(iid:str):
 def view_item(iid:str, embed:bool=False):
     if (item := load_item(iid)) and get_item_permissions(item)["view"]:
         if request.method == "GET":
-            if safe_str_get(cast(dict, item), "type") != "comment":
+            parent_toks = iid_to_filename(item["id"]).split("/")[:-1]
+            if item.get("type") != "comment" and (len(parent_toks) == 0 or not (parent := load_item("/".join(parent_toks))) or parent.get("type") != "carousel"):
                 if is_for_activitypub():
                     return make_activitypub_item(item)
                 else:
-                    comments = walk_items(iid_to_filename(iid))
+                    comments = list(filter(lambda item: item.get("type") == "comment", walk_items(iid_to_filename(iid))))
                     comments.reverse()
                     return render_template("item.html", embed=embed, item=item, comments=comments, get_item_permissions=get_item_permissions, time=time.time())
+            # elif item is image of carousel : redirect
             else:
                 [*item_toks, cid] = iid.split("/")
                 return redirect(url_for("view_item", iid="/".join(item_toks)) + f"#{cid}")
@@ -310,17 +312,15 @@ def view_user(username:str, cid:str|None=None):
                 else:
                     return abort(404)
             else:
-                description = None
                 collections = walk_collections(user.username)
                 pinned = collections.pop("")
                 folders = make_folders(collections)
                 if cid:
                     if (pinned := collections.get(cid)):
-                        description = pinned["description"]
                         folders = []
                     else:
                         return abort(404)
-                return pagination("user.html", "items", pinned["items"], user=user, name=cid, description=description, folders=folders, load_item=load_item, mode=mode)
+                return pagination("user.html", "items", pinned["items"], user=user, collection_meta=pinned, name=cid, folders=folders, load_item=load_item, mode=mode)
     return abort(404)
 
 @app.route("/user/<path:username>/feed") # TODO deprecate this which could conflict with collections
@@ -356,6 +356,7 @@ def search():
     query_raw = query = request.args.get("query", "")
     cased = parse_bool(request.args.get("cased"))
     field = request.args.get("field", "")
+    langs = " ".join(request.args.getlist("langs")).lower().replace("+", " ").replace(",", " ").split()
     creators = request.args.get("creators", "").lower().replace("+", " ").replace(",", " ").split()
     if not cased:
         query = query.lower()
@@ -367,9 +368,13 @@ def search():
                 results.append(item)
         elif any([query in (value if type(value) == str else list_to_wsv(value)).lower() for value in item.values()]):
             results.append(item)
+    if len(langs) > 0:
+        results = list(filter(lambda item: len(set(item.get("langs", [])) & set(langs)) > 0, results))
     if len(creators) > 0:
         results = list(filter(lambda item: item.get("creator") in creators, results))
-    return pagination("search.html", "items", results, query=query_raw, cased=cased, field=field, creators=", ".join(creators))
+    if (nsfw := parse_bool(request.args.get("nsfw"))) != None:
+        results = list(filter(lambda item: "nsfw" in item.get("systags", []) if nsfw else "nsfw" not in item.get("systags", []), results))
+    return pagination("search.html", "items", results, query=query_raw, cased=cased, field=field, langs=langs, creators=", ".join(creators), nsfw=nsfw)
 
 @app.route("/trim", methods=["GET", "POST"])
 @query_params("iid")

@@ -29,6 +29,7 @@ class ItemDict(MetaDict, total=False):
 
 class CollectionDict(MetaDict, total=False):
     items: list[str]
+    title: str
     description: str
 
 class UserDict(CollectionDict, total=False):
@@ -41,13 +42,13 @@ TEMP_ROOT = f"{DATA_ROOT}/temp"
 USERS_ROOT = f"{DATA_ROOT}/users"
 EVENTS_ROOT = f"{DATA_ROOT}/events"
 EXTENSIONS = {
-    "image": ("jpg", "jpeg", "jfif", "bmp", "png", "apng", "gif", "webp", "avif", "svg"),
+    "image": ("mpo", "jpg", "jpeg", "jfif", "bmp", "png", "apng", "gif", "webp", "avif", "svg"),
     "video": ("mp4", "mov", "mpg", "ogv", "webm", "mkv"),
     "audio": ("mp3", "m4a", "flac", "opus", "ogg", "wav", "mid", "midi"),
     "audio.extra": {"mpeg": "mp3"},
     "model": ("glb", ),
     "font": ("ttf", "otf", "woff", "woff2"),
-    "doc": ("pdf", "txt"),
+    "doc": ("pdf", "txt", "md", "markdown"),
     # "web": ("warc", ),
     "swf": ("swf", ),
     "rom": ("nes", "sfc", "n64", "z64", "gb", "gbc", "gba", "nds"),
@@ -137,6 +138,9 @@ STRINGS = {
     "Items": {
         "it": "Elementi",
     },
+    "User": {
+        "it": "Utente",
+    },
     "Users": {
         "it": "Utenti",
     },
@@ -203,6 +207,12 @@ STRINGS = {
     "Name": {
         "it": "Nome",
     },
+    "Folder": {
+        "it": "Cartella",
+    },
+    "Collection": {
+        "it": "Raccolta",
+    },
     "New Collection": {
         "it": "Nuova Raccolta",
     },
@@ -266,6 +276,9 @@ STRINGS = {
     "All": {
         "it": "Tutto",
     },
+    "Any": {
+        "it": "Qualsiasi",
+    },
     "Add": {
         "it": "Aggiungi",
     },
@@ -295,6 +308,9 @@ STRINGS = {
     },
     "Export data": {
         "it": "Esporta dati",
+    },
+    "Download folder": {
+        "it": "Scarica cartella",
     },
     "Overwrite": {
         "it": "Sovrascrivi",
@@ -400,13 +416,23 @@ STRINGS = {
     "German": {
         "de": "Deutsch",
     },
+    "Greek": {
+        "el": "ελληνικά",
+    },
     "Italian": {
         "it": "Italiano",
     },
     "Japanese": {
         "ja": "日本語",
     },
+    "Korean": {
+        "kp": "조선어",
+        "kr": "한국어",
+    },
     "Russian": {
         "ru": "Русский",
+    },
+    "Spanish": {
+        "es": "Español",
     },
 }

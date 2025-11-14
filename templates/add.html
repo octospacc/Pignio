@@ -54,20 +54,9 @@
           </select>
         </label></p>
       </div>
-      <div>
-        <label>
-          {{ _('Content Languages') }}
-          <button class="langs-reset uk-button uk-button-default uk-button-small" type="button">Reset</button>
-          <select class="uk-select" name="langs" multiple>
-            <option value="deu" {% if 'deu' in item.langs %} selected {% endif %}>🇩🇪 {{ _('German', 'de') }}</option>
-            <option value="eng" {% if 'eng' in item.langs %} selected {% endif %}>🇬🇧 {{ _('English', 'en') }}</option>
-            <option value="fra" {% if 'fra' in item.langs %} selected {% endif %}>🇫🇷 {{ _('French', 'fr') }}</option>
-            <option value="ita" {% if 'ita' in item.langs %} selected {% endif %}>🇮🇹 {{ _('Italian', 'it') }}</option>
-            <option value="jpn" {% if 'jpn' in item.langs %} selected {% endif %}>🇯🇵 {{ _('Japanese', 'ja') }}</option>
-            <option value="rus" {% if 'rus' in item.langs %} selected {% endif %}>🇷🇺 {{ _('Russian', 'ru') }}</option>
-          </select>
-        </label>
-      </div>
+      {% with langs=item.langs %}
+        {% include 'langs-select.html' %}
+      {% endwith %}
       {% if not item %}
         <div>
           <label>

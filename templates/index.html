@@ -1,9 +1,18 @@
-{% extends "base.html" %}
-{% block canonical %}{{ url_for('view_index') }}{% endblock %}
+{%- extends "base.html" -%}
+{%- block title %}{% if root %}{{ _('Folder') }}: {{ root.split('/')[-1] }}{% endif %}{% endblock -%}
+{%- block canonical %}{{ url_for('view_item', iid=root) if root else url_for('view_index') }}{% endblock -%}
+{% block metadata %}{% if root %}
+  <meta name="twitter:title" property="og:title" content="{{ title }}" />
+{% endif %}{% endblock %}
 {% block content %}
   {% if root %}
     <div class="uk-text-center">
       <h2>{{ root.split('/')[-1] }}</h2>
+      {% if current_user.is_authenticated %}
+        <a class="uk-button uk-button-default uk-icon-link" href="{{ url_for('download_api', fid=root) }}" target="_blank" rel="nofollow">
+          {{ _('Download folder') }} (ZIP) <span uk-icon="download"></span>
+        </a>
+      {% endif %}
     </div>
     {% with path=root, always=true %}
       {% include "breadcrumbs.html" %}

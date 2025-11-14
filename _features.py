@@ -78,7 +78,6 @@ def walk_collections(username:str) -> dict:
     results: dict[str, CollectionDict] = {}
     filepath = USERS_ROOT
 
-    # if username:
     filepath = os.path.join(filepath, username)
     data = cast(UserDict, read_metadata(read_textual(filepath + ITEMS_EXT)))
     results[""] = load_collection(data)
@@ -108,7 +107,7 @@ def make_folders(collections):
     for cid in collections:
         items = list(filter(None, [load_item(iid) for iid in collections[cid]["items"]]))
         if len(items) > 0:
-            folders.append({"id": cid, "items": items[:2] + items[-2:]})
+            folders.append({**collections[cid], "id": cid, "items": items[:2] + items[-2:]})
     return folders
 
 def has_subitems_directory(iid:str) -> str|Literal[False]:
@@ -152,8 +151,13 @@ def load_item(iid:str) -> ItemDict|None:
             elif (kind := check_file_is_content(file)):
                 cast(dict, data)[kind] = file.replace(os.sep, "/").removeprefix(f"{ITEMS_ROOT}/")
 
-        if safe_str_get(cast(dict, data), "type") == "comment":
+        if data.get("type") == "comment":
             data["datetime"] = str(datetime_from_snowflake(iid.split("/")[-1])).split(".")[0]
+        elif data.get("type") == "carousel":
+            data["images"] = []
+            for file in glob(f"{filepath}/*.*"):
+                if (kind := check_file_is_content(file)) == "image":
+                    data["images"].append(file.replace(os.sep, "/").removeprefix(f"{ITEMS_ROOT}/"))
 
         if len(data) > 1: # prevent empty ini files with no valid media from being returned
             return data
@@ -309,7 +313,7 @@ def get_collection_filepath(username:str, cid:str) -> str:
 def load_collection(data:UserDict) -> CollectionDict:
     items = data.get("items", [])
     items.reverse()
-    return cast(CollectionDict, {"items": items, "description": data.get("description")})
+    return cast(CollectionDict, {**data, "items": items})
 
 def fetch_url_data(url:str) -> dict[str, str|None]:
     response = requests.get(url, timeout=5)

@@ -1,8 +1,8 @@
 {% if name %}
   <div class="uk-text-center">
-    <h3>{{ name }}</h3>
-    {% if description %}
-      <p>{{ description }}</p>
+    <h3>{{ collection_meta.title or name }}</h3>
+    {% if collection_meta.description %}
+      <p>{{ collection_meta.description }}</p>
     {% endif %}
   </div>
 {% endif %}

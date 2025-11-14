@@ -1,0 +1,8 @@
+services:
+  pignio:
+    image: octospacc/pignio:latest
+    command: python freeze.py
+    volumes:
+      - ./data:/app/data
+      - ./build:/app/build
+    container_name: Pignio-Freeze

@@ -1,17 +1,22 @@
-{% extends "base.html" %}
-{% set feed_url %}{{ url_for('view_user_feed', username=user.username) }}{% endset %}
-{% block title %}{{ _('User') }} {{ user.username }}{% endblock %}
+{%- extends "base.html" -%}
+{%- set feed_url -%}{{ url_for('view_user_feed', username=user.username) }}{%- endset -%}
+{% block title %}{% if name %}{{ _('Collection') }}: {{ collection_meta.title or name }} | {% endif %}{{ _('User') }}: {{ user.data.title or user.username }}{% endblock %}
 {% block canonical %}{{ url_for('view_user', username=user.username) }}{% endblock %}
 {% block external %}{{ user.url or "" }}{% endblock %}
 {% block metadata %}
   <link rel="alternate" type="{{ ATOM_CONTENT_TYPE }}" href="{{ feed_url }}" title="@{{ user.username }} Feed" />
+  <meta name="twitter:title" property="og:title" content="{{ title }}" />
+  {% if collection_meta.description or user.data.description %}
+    <meta name="twitter:description" property="og:description" content="{{ collection_meta.description or user.data.description }}" />
+    <meta name="description" content="{{ collection_meta.description or user.data.description }}" />
+  {% endif %}
 {% endblock %}
 {% block content %}
   <div class="uk-text-center">
     <h2>
       {% if user.url %}<a target="_blank" href="{{ user.url }}">{% endif %}
       {% if name %}<a href="{{ url_for('view_user', username=user.username) }}">{% endif %}
-        {{ user.username }}
+        {{ user.data.title or user.username }}
       {% if name %}</a>{% endif %}
       {% if user.url %}</a>{% endif %}
     </h2>
@@ -64,7 +69,7 @@
                 {% include 'item-content.html' %}
               {% endfor %}
             </div>
-            <span class="uk-text-break">{{ folder.id }}</span>
+            <span class="uk-text-break">{{ folder.title or folder.id }}</span>
           </a>
         </div>
       {% endfor %}

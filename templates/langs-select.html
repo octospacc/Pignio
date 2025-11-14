@@ -1,0 +1,19 @@
+<div>
+  <label>
+    {{ _('Content Languages') }}
+    <button class="langs-reset uk-button uk-button-default uk-button-small" type="button">Reset</button>
+    <select class="uk-select" name="langs" multiple>
+      <option value="deu" {% if 'deu' in langs %} selected {% endif %}>🇩🇪 {{ _('German', 'de') }}</option>
+      <option value="ell" {% if 'ell' in langs %} selected {% endif %}>🇬🇷 {{ _('Greek', 'el') }}</option>
+      <option value="eng" {% if 'eng' in langs %} selected {% endif %}>🇬🇧 {{ _('English', 'en') }}</option>
+      {# <option value="epo" {% if 'epo' in langs %} selected {% endif %}>🟩 {{ _('Esperanto', 'eo') }}</option> #}
+      <option value="fra" {% if 'fra' in langs %} selected {% endif %}>🇫🇷 {{ _('French', 'fr') }}</option>
+      <option value="ita" {% if 'ita' in langs %} selected {% endif %}>🇮🇹 {{ _('Italian', 'it') }}</option>
+      <option value="jpn" {% if 'jpn' in langs %} selected {% endif %}>🇯🇵 {{ _('Japanese', 'ja') }}</option>
+      <option value="kor" {% if 'kor' in langs %} selected {% endif %}>🇰🇵 {{ _('Korean', 'kp') }}</option>
+      <option value="kor" {% if 'kor' in langs %} selected {% endif %}>🇰🇷 {{ _('Korean', 'kr') }}</option>
+      <option value="rus" {% if 'rus' in langs %} selected {% endif %}>🇷🇺 {{ _('Russian', 'ru') }}</option>
+      <option value="spa" {% if 'spa' in langs %} selected {% endif %}>🇪🇸 {{ _('Spanish', 'es') }}</option>
+    </select>
+  </label>
+</div>

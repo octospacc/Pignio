@@ -4,7 +4,7 @@ import requests
 import urllib.parse
 import ffmpeg
 from io import BytesIO
-from zipfile import ZipFile, ZIP_DEFLATED
+from zipstream import ZipFile, ZIP_DEFLATED
 from bs4 import BeautifulSoup
 from functools import wraps
 from typing import Callable, Any, Literal, cast
@@ -165,12 +165,12 @@ def response_with_type(content, mime):
     return response
 
 def send_zip_archive(name:str, files:list) -> Response:
-    buffer = BytesIO()
-    with ZipFile(buffer, "w", ZIP_DEFLATED, compresslevel=9) as zipf:
-        for file in files:
-            zipf.write(*file)
-    buffer.seek(0)
-    return send_file(buffer, "application/zip", True, f"{name}.zip")
+    zipf = ZipFile(mode="w", compression=ZIP_DEFLATED)
+    for file in files:
+        zipf.write(*file)
+    response = Response(zipf, mimetype='application/zip')
+    response.headers['Content-Disposition'] = f'attachment; filename={name}.zip'
+    return response
 
 def getlang() -> str:
     return getprefs().get("lang") or request.headers.get("Accept-Language", "en").split(",")[0].split("-")[0]

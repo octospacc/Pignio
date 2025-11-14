@@ -4,17 +4,29 @@
   <form class="search">
     <input type="hidden" name="query" value="{{ query }}" />
     <div uk-grid>
-      <div><label>
-        {{ _('Fields') }}
-        <select class="uk-select uk-width-auto" name="field">
-          <option value="">🌟 {{ _('All') }}</option>
-          <option value="title"       {% if field == 'title' %}       selected {% endif %}>〰️ {{ _('Title') }}</option>
-          <option value="description" {% if field == 'description' %} selected {% endif %}>🧾 {{ _('Description') }}</option>
-          <option value="text"        {% if field == 'text' %}        selected {% endif %}>📝 {{ _('Text') }}</option>
-          <option value="alttext"     {% if field == 'alttext' %}     selected {% endif %}>🖼️ Alt Text</option>
-          <option value="link"        {% if field == 'link' %}        selected {% endif %}>🔗 Link</option>
-        </select>
-      </label></div>
+      {% include 'langs-select.html' %}
+      <div>
+        <p><label>
+          {{ _('Fields') }}
+          <select class="uk-select uk-width-auto" name="field">
+            <option value="">🌟 {{ _('All') }}</option>
+            <option value="id"          {% if field == 'id' %}          selected {% endif %}>📛 ID</option>
+            <option value="title"       {% if field == 'title' %}       selected {% endif %}>〰️ {{ _('Title') }}</option>
+            <option value="description" {% if field == 'description' %} selected {% endif %}>🧾 {{ _('Description') }}</option>
+            <option value="text"        {% if field == 'text' %}        selected {% endif %}>📝 {{ _('Text') }}</option>
+            <option value="alttext"     {% if field == 'alttext' %}     selected {% endif %}>🖼️ Alt Text</option>
+            <option value="link"        {% if field == 'link' %}        selected {% endif %}>🔗 Link</option>
+          </select>
+        </label></p>
+        <p><label>
+          {{ _('NSFW') }}
+          <select class="uk-select uk-width-auto" name="nsfw">
+            <option value="">🌟 {{ _('Any') }}</option>
+            <option value="yes" {% if nsfw == True %}  selected {% endif %}>✔️ {{ _('Yes') }}</option>
+            <option value="no"  {% if nsfw == False %} selected {% endif %}>❌ {{ _('No') }}</option>
+          </select>
+        </label></p>
+      </div>
       <div><div class="uk-inline">
         <span class="uk-form-icon" uk-icon="users"></span>
         <input class="uk-input" type="text" name="creators" placeholder="{{ _('Creators') }}" value="{{ creators }}" />
@@ -23,7 +35,7 @@
         <input name="cased" type="checkbox" class="uk-checkbox" {% if cased %} checked {% endif %} />
         Case-sensitive
       </label></div>
-      <div><button class="uk-button uk-button-default" type="submit">{{ _('Apply') }}</button></div>
+      <div><button class="apply uk-button uk-button-default" type="submit">{{ _('Apply') }}</button></div>
     </div>
   </form>
   {% if items %}

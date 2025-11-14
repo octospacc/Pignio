@@ -1,6 +1,6 @@
-Pignio has been created and is currently developed with a specific philosophy, which is simply based, but in some cases implies some uncommon technical choices that might be misunderstood. For the benefit of the whole world, let's try to address what Pignio overall stands for.
+Pignio has been created and is currently developed with a specific philosophy in mind, which is simply _based_, but in some cases implies some uncommon technical choices that might be misunderstood. For the benefit of the whole world, let's try to address what Pignio overall stands for.
 
-Pignio is heavily inspired by Pinterest in its scope, usage, and UI/UX, but features various differences in the details. For once, Pignio has less of a focus on social media interactions and discovery, and is more catered to personal usage and very personal collections. Social features, like multi-user and comments, already exist, and even more are planned for the longer future, but Pignio aims to satisfy that need for:
+Pignio is heavily inspired by Pinterest in its scope, usage, and UI/UX, but features various differences in the details. For once, Pignio has less of a focus on social media interactions and discovery, and is more catered to personal usage and very personal collections. Social features, like multi-user and comments, already exist, and even more are planned for the longer future, but Pignio primarily aims to satisfy that need for:
 
 + Quickly and easily collecting media, both from the Internet and from local file collections, in a more personal space, but which is also designed for resharing with the public.
 + With that, personally owning all the data, unbothered by draconian ToS and impromptu content deletions, ensuring precious media is never lost.
