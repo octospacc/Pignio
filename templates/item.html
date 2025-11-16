@@ -149,7 +149,9 @@
             </div>
           {% endif %}
         </div>
-        {% include 'item-description.html' %}
+        {% with text=item.description %}
+          {% include 'parsed-text.html' %}
+        {% endwith %}
       </div>
       <div class="uk-padding uk-padding-remove-left uk-padding-remove-right">
         {% if not (embed or config.FREEZING) %}
@@ -167,7 +169,7 @@
         {% endif %}
         {% for item in comments %}
           {% set iid %}{{ item.id.split('/')[-1] }}{% endset %}
-          <div class="uk-card uk-margin uk-card-default uk-card-small {{ colortheme }}" id="{{ iid }}">
+          <div class="comment uk-card uk-margin uk-card-default uk-card-small {{ colortheme }}" id="{{ iid }}">
             <div class="uk-card-header">
               <h3 class="uk-card-title">
                 {% if item.creator %}
@@ -185,19 +187,24 @@
                 {% if not (embed or config.FREEZING) %}
                   <div class="uk-float-right uk-grid-small" uk-grid>
                     {% if get_item_permissions(item).edit %}
-                      <div>
-                        <a href="{{ url_for('remove_item', item=item.id) }}" rel="nofollow" up-layer="new" class="uk-icon-button uk-float-right" uk-icon="trash" title="{{ _('Delete') }}"></a>
-                      </div>
+                      <div><button type="button" class="edit uk-icon-button uk-float-right" uk-icon="pencil" title="{{ _('Edit') }}" uk-tooltip="{{ _('Edit') }}"></button></div>
+                      <div><a href="{{ url_for('remove_item', item=item.id) }}" rel="nofollow" up-layer="new" class="uk-icon-button uk-float-right" uk-icon="trash" title="{{ _('Delete') }}" uk-tooltip="{{ _('Delete') }}"></a></div>
                     {% else %}
-                      <div>
-                        <a href="{{ url_for('report_item', item=item.id) }}" rel="nofollow" up-layer="new" class="uk-icon-button uk-float-right" uk-icon="warning" title="{{ _('Report') }}"></a>
-                      </div>
+                      <div><a href="{{ url_for('report_item', item=item.id) }}" rel="nofollow" up-layer="new" class="uk-icon-button uk-float-right" uk-icon="warning" title="{{ _('Report') }}" uk-tooltip="{{ _('Report') }}"></a></div>
                     {% endif %}
                   </div>
                 {% endif %}
               </h3>
             </div>
-            <div class="uk-card-body">{{ item.text }}</div>
+            <div class="uk-card-body">
+              {% with text=item.text, nomargin=true %}
+                {% include 'parsed-text.html' %}
+              {% endwith %}
+              <div class="uk-grid-small" uk-grid hidden>
+                <div class="uk-width-expand"><input type="text" class="uk-input" value="{{ item.text }}" /></div>
+                <div><button type="button" class="save uk-icon-button" uk-icon="check" title="{{ _('Save') }}" uk-tooltip="{{ _('Save') }}"></button></div>
+              </div>
+            </div>
           </div>
         {% endfor %}
       </div>

@@ -10,3 +10,4 @@ pillow
 pytesseract
 python-slugify
 ffmpeg-python
+zipstream-new

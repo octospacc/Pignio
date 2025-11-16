@@ -1,4 +1,5 @@
 import os
+import json
 import requests
 import urllib.parse
 from PIL import Image
@@ -185,7 +186,7 @@ def store_item(iid:str, data:dict[str, str], files:dict|None=None, ocr:bool=Fals
     existing_media: str|None = None
 
     extra = {key: data[key] for key in ["provenance", "nsfw"] if key in data}
-    data = {key: data[key] for key in ["link", "title", "description", "image", "video", "audio", "text", "alttext", "langs", "collections", "status"] if key in data}
+    data = {key: data[key] for key in ["link", "title", "description", "images", "image", "video", "audio", "text", "alttext", "langs", "collections", "status"] if key in data}
     if comment:
         data["type"] = "comment"
 
@@ -201,6 +202,13 @@ def store_item(iid:str, data:dict[str, str], files:dict|None=None, ocr:bool=Fals
     if not has_media and (media := (data.get("video") or data.get("audio") or data.get("image"))):
         if (stored := store_url_file(media, filepath)):
             has_media, media_path = stored
+    
+    if not has_media and (images := data.get("images")) and (images := json.loads(images)) and len(images) >= 2:
+        mkdirs(filepath)
+        for i, image in enumerate(images):
+            if store_url_file(image, f"{filepath}/{i + 1}") == False:
+                return False
+        has_media = "images"
 
     if not (existing or has_media or safe_str_get(data, "text")):
         return False
@@ -213,10 +221,14 @@ def store_item(iid:str, data:dict[str, str], files:dict|None=None, ocr:bool=Fals
             data["alttext"] = ocr_image(media_path, langs)
 
     if existing:
-        if (creator := safe_str_get(cast(dict, existing), "creator")):
+        if (kind := existing.get("type")):
+            data["type"] = kind
+        if (creator := existing.get("creator")):
             data["creator"] = creator
     else:
         data["creator"] = (username := get_current_user().username)
+        if has_media == "images":
+            data["type"] = "carousel"
         if not comment:
             if (collections := data["collections"] if "collections" in data else None):
                 for collection in list(collections):
@@ -263,21 +275,23 @@ def get_current_user():
         return user
     return current_user
 
-def store_url_file(url:str, filepath:str) -> tuple[str, str]|None:
-    if (urllow := url.lower()).startswith("data:"):
+def store_url_file(url:str, filepath:str) -> tuple[str, str]|Literal[False]|None:
+    if (urllow := url.lower()).startswith("data:") and "/" in urllow:
         [kind, ext] = urllow.split(",")[0].split(";")[0].split(":")[1].split("/")
         if (newext := get_allowed_filetype(kind, ext)):
             with open(media_path := f"{filepath}.{newext}", "wb") as f:
                 f.write(b64decode(url.split(",")[1]))
                 return (kind, media_path)
-    else:
+    elif urllow.startswith(("http://", "https://", "//")):
         response = requests.get(url, timeout=15)
         [kind, ext] = response.headers["Content-Type"].lower().split(";")[0].split("/")
         if (newext := get_allowed_filetype(kind, ext)):
             with open(media_path := f"{filepath}.{newext}", "wb") as f:
                 f.write(response.content)
                 return (kind, media_path)
-    return None
+    else:
+        return None
+    return False
 
 def get_allowed_filetype(kind:str, ext:str) -> str|Literal[False]:
     for testkind in MEDIA_TYPES:
@@ -325,7 +339,7 @@ def fetch_url_data(url:str) -> dict[str, str|None]:
         }
     else:
         soup = BeautifulSoup(response.text, "html.parser")
-        media = {"image": None, "video": None}
+        media = {"image": None, "video": None, "audio": None}
 
         description = None
         desc_tag = soup.find("meta", attrs={"name": "description"}) or \
@@ -333,14 +347,24 @@ def fetch_url_data(url:str) -> dict[str, str|None]:
         if desc_tag and "content" in desc_tag.attrs: # type: ignore[attr-defined]
             description = desc_tag["content"] # type: ignore[index]
 
-        img_tag = soup.find("meta", attrs={"property": "og:image"}) or \
-                soup.find("meta", attrs={"name": "twitter:image"})
-        if img_tag and "content" in img_tag.attrs: # type: ignore[attr-defined]
+        img_tag = soup.find("meta", attrs={"property": "og:image", "content": True}) or \
+                  soup.find("meta", attrs={"property": "og:image:url", "content": True}) or \
+                  soup.find("meta", attrs={"property": "og:image:secure_url", "content": True}) or \
+                  soup.find("meta", attrs={"name": "twitter:image", "content": True})
+        if img_tag: # type: ignore[attr-defined]
             media["image"] = img_tag["content"] # type: ignore[index]
 
-        video_tag = soup.find("meta", attrs={"property": "og:video"})
-        if video_tag and "content" in video_tag.attrs: # type: ignore[attr-defined]
+        video_tag = soup.find("meta", attrs={"property": "og:video", "content": True}) or \
+                    soup.find("meta", attrs={"property": "og:video:url", "content": True}) or \
+                    soup.find("meta", attrs={"property": "og:video:secure_url", "content": True})
+        if video_tag: # type: ignore[attr-defined]
             media["video"] = video_tag["content"] # type: ignore[index]
+
+        audio_tag = soup.find("meta", attrs={"property": "og:audio", "content": True}) or \
+                    soup.find("meta", attrs={"property": "og:audio:url", "content": True}) or \
+                    soup.find("meta", attrs={"property": "og:audio:secure_url", "content": True})
+        if audio_tag: # type: ignore[attr-defined]
+            media["audio"] = audio_tag["content"] # type: ignore[index]
 
         for kind in media.keys():
             if (source := media[kind]):

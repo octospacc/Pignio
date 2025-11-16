@@ -3,6 +3,7 @@ import time
 import urllib.parse
 import subprocess
 import ffmpeg # type: ignore[import-untyped]
+import json
 from hashlib import sha256
 from shutil import rmtree, move, copyfile
 from typing import Any, cast
@@ -30,6 +31,7 @@ FFMPEG_AVAILABLE = check_ffmpeg_available()
 app.jinja_env.globals["_"] = gettext
 app.jinja_env.globals["getlang"] = getlang
 app.jinja_env.globals["gettheme"] = gettheme
+app.jinja_env.globals["json"] = json
 app.jinja_env.globals["clean_url_for"] = clean_url_for
 app.jinja_env.globals["ATOM_CONTENT_TYPE"] = ATOM_CONTENT_TYPE
 app.config["DEVELOPMENT"] = Config.DEVELOPMENT
@@ -265,7 +267,6 @@ def view_item(iid:str, embed:bool=False):
                     comments = list(filter(lambda item: item.get("type") == "comment", walk_items(iid_to_filename(iid))))
                     comments.reverse()
                     return render_template("item.html", embed=embed, item=item, comments=comments, get_item_permissions=get_item_permissions, time=time.time())
-            # elif item is image of carousel : redirect
             else:
                 [*item_toks, cid] = iid.split("/")
                 return redirect(url_for("view_item", iid="/".join(item_toks)) + f"#{cid}")
@@ -364,9 +365,9 @@ def search():
     for item in walk_items():
         if field:
             value = item.get(field, "")
-            if query in (value if type(value) == str else list_to_wsv(value)).lower():
+            if query in (value if type(value) == str else list_to_wsv(value)).lower().replace("\n", " "):
                 results.append(item)
-        elif any([query in (value if type(value) == str else list_to_wsv(value)).lower() for value in item.values()]):
+        elif any([query in (value if type(value) == str else list_to_wsv(value)).lower().replace("\n", " ") for value in item.values()]):
             results.append(item)
     if len(langs) > 0:
         results = list(filter(lambda item: len(set(item.get("langs", [])) & set(langs)) > 0, results))
@@ -638,17 +639,44 @@ def download_api(fid:str):
     else:
         return abort(404)
 
+@app.route("/api/v0/collections", defaults={"iid": None})
 @app.route("/api/v0/collections/<path:iid>", methods=["GET", "POST"])
 @auth_required
-def collections_api(iid:str):
+def collections_api(iid:str|None):
     username = current_user.username
-    if request.method == "POST":
-        for collection, status in request.get_json().items():
-            toggle_in_collection(username, slugify_name(collection), iid, status)
-    results: dict[str, bool] = {}
-    for cid, collection in walk_collections(username).items():
-        results[cid] = iid in collection["items"]
-    return results
+    if iid:
+        if request.method == "POST":
+            for collection, status in request.get_json().items():
+                toggle_in_collection(username, slugify_name(collection), iid, status)
+        results: dict[str, bool] = {}
+        for cid, collection in walk_collections(username).items():
+            results[cid] = iid in collection["items"]
+        return results
+    else:
+        collections = {}
+        for cid, data in walk_collections(username).items():
+            collections[cid] = data.get("title")
+        return collections
+
+@app.route("/api/v0/comments/<path:iid>", defaults={"cid": None})
+@app.route("/api/v0/comments/<path:iid>/<path:cid>", methods=["GET", "POST"])
+@auth_required
+def comments_api(iid:str, cid:str|None):
+    comments = list(filter(lambda item: item.get("type") == "comment", walk_items(iid_to_filename(iid))))
+    comment = None
+    if cid:
+        for item in comments:
+            if item["id"].endswith(f"/{cid}"):
+                comment = item
+    if comment:
+        if request.method == "GET":
+            return comment
+        elif request.method == "POST":
+            store_item(comment["id"], request.get_json(), comment=True)
+            return load_item(comment["id"])
+    else:
+        return comments
+    return abort(404)
 
 @app.route("/api/v1/items", defaults={"iid": None}, methods=["GET", "POST"])
 @app.route("/api/v1/items/<path:iid>", methods=["GET", "PUT", "DELETE"])

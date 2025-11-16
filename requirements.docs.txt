@@ -7,3 +7,4 @@ mkdocs-link-preview-plugin
 mkdocs-rss-plugin
 mkdocstrings[python]
 beautifulsoup4
+tzdata

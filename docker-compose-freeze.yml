@@ -5,4 +5,4 @@ services:
     volumes:
       - ./data:/app/data
       - ./build:/app/build
-    container_name: Pignio-Freeze
+    container_name: Pignio-Freezer

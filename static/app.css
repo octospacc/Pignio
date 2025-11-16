@@ -1,0 +1,46 @@
+body {
+  overflow-x: auto;
+}
+
+up-modal .back {
+  display: none;
+}
+
+form.add > div > img.image,
+form.add > div > video.video {
+  max-height: 50vh;
+}
+
+form.add table.images img {
+  max-height: 25vh;
+}
+
+.clickable, .alt-clickable {
+  cursor: pointer;
+}
+
+.alt-clickable.tag-nsfw:not([data-unblur="true"]) > video {
+  pointer-events: none;
+}
+
+.tag-nsfw:not([data-unblur="true"]) > img,
+.tag-nsfw:not([data-unblur="true"]) > video {
+  filter: blur(16px);
+}
+
+.rendering-pixelated article.item .content > img,
+.rendering-pixelated article.item .content > video,
+.rendering-pixelated .sl-image > img {
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+}
+
+/* workaround for old or no-js browsers not loading icons and buttons size not being set */
+/* [uk-icon] > [class="uk-visible@s"] { display: initial !important; }
+[uk-icon].uk-icon > [class="uk-visible@s"] { display: none !important; } */
+
+/* ensure carousels gracefully fall back to stacked images with no JS */
+div[uk-slider]:not(.uk-slider) .uk-slider-items.uk-grid {
+  flex-wrap: wrap;
+}

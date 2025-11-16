@@ -75,7 +75,7 @@ def write_metadata(data:dict[str, str]|MetaDict) -> str:
     config = ConfigParser(interpolation=None)
     new_data: dict[str, str] = {}
     for key in data:
-        if (value := data.get(key)) and key not in (*MEDIA_TYPES, "datetime"):
+        if (value := data.get(key)) and key not in (*MEDIA_TYPES, "datetime", "images"):
             if type(value) == str:
                 new_data[key] = value
             elif type(value) == list:

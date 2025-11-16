@@ -1,30 +1,77 @@
 {% extends "base.html" %}
 {% block title %}{{ _('Edit' if item else 'Add') }} {{ _('Item') }}{% endblock %}
 {% block content %}
-  <ul class="uk-tab" uk-tab="connect: .item-type; {% if item.text %} active: 1 {% endif %}">
-    <li><a href="#">
-      Media <span uk-icon="icon: image"></span>
+  <ul class="uk-tab" uk-tab="connect: .item-type; {% if item.images %} active: 2 {% elif item.text %} active: 1 {% endif %}">
+    <li data-name="media"><a {% if item and item.images %} class="uk-disabled" disabled {% endif %} href="#">
+      Media <span uk-icon="image"></span>
     </a></li>
-    <li><a href="#">
-      {{ _('Text') }} <span uk-icon="icon: quote-right"></span>
+    <li data-name="text"><a {% if item and item.images %} class="uk-disabled" disabled {% endif %} href="#">
+      {{ _('Text') }} <span uk-icon="quote-right"></span>
+    </a></li>
+    <li data-name="carousel"><a {% if item and not item.images %} class="uk-disabled" disabled {% endif %} href="#">
+      {{ _('Carousel') }} <span uk-icon="thumbnails"></span>
     </a></li>
   </ul>
   <form method="POST" enctype="multipart/form-data" class="add" up-layer="root">
     <input type="hidden" name="id" value="{{ item.id }}" />
+    <input type="hidden" name="images" value="{% if item.images %}{{ json.dumps(item.images) }}{% endif %}" />
     <input type="hidden" name="image" />
     <input type="hidden" name="video" />
     <input type="hidden" name="audio" />
-    <div class="uk-margin" {% if not item.image %} hidden {% endif %}>
-      <img src="{{ url_for('serve_media', filename=item.image) }}" class="image" />
+    <input type="hidden" name="doc" />
+    <div class="uk-card uk-card-default uk-card-small uk-card-body" {% if not item.image %} hidden {% endif %}>
+      <p><label><input class="uk-checkbox" type="checkbox" checked> {{ _('Image') }}</label></p>
+      <img src="{% if item.image %}{{ url_for('serve_media', filename=item.image) }}{% endif %}" class="image" style="cursor: pointer;" tabindex="0" />
     </div>
-    <div class="uk-margin" {% if not item.video %} hidden {% endif %}>
-      <video src="{{ url_for('serve_media', filename=item.video) }}" class="video" controls></video>
+    <div class="uk-card uk-card-default uk-card-small uk-card-body" {% if not item.video %} hidden {% endif %}>
+      <p><label><input class="uk-checkbox" type="checkbox" checked> {{ _('Video') }}</label></p>
+      <video src="{% if item.video %}{{ url_for('serve_media', filename=item.video) }}{% endif %}" class="video" controls></video>
     </div>
-    <div class="uk-margin" {% if not item.audio %} hidden {% endif %}>
-      <audio src="{{ url_for('serve_media', filename=item.audio) }}" class="audio" controls></audio>
+    <div class="uk-card uk-card-default uk-card-small uk-card-body" {% if not item.audio %} hidden {% endif %}>
+      <p><label><input class="uk-checkbox" type="checkbox" checked> {{ _('Audio') }}</label></p>
+      <audio src="{% if item.audio %}{{ url_for('serve_media', filename=item.audio) }}{% endif %}" class="audio" controls></audio>
     </div>
-    <div class="uk-margin" {% if not item.doc %} hidden {% endif %}>
-      <object data="{{ url_for('serve_media', filename=item.doc) }}" class="doc"></object>
+    <div class="uk-card uk-card-default uk-card-small uk-card-body" {% if not item.doc %} hidden {% endif %}>
+      <p><label><input class="uk-checkbox" type="checkbox" checked> {{ _('Document') }}</label></p>
+      <object data="{% if item.doc %}{{ url_for('serve_media', filename=item.doc) }}{% endif %}" class="doc"></object>
+    </div>
+    <div class="uk-switcher item-type">
+      <div></div>
+      <div></div>
+      <div class="uk-card uk-card-default uk-card-small uk-card-body">
+        <table class="uk-table uk-table-divider images">
+          <tbody>
+            {% for image in item.images %}
+              <tr>
+                <td>
+                  <button type="button" class="uk-icon-button uk-margin-xsmall-top uk-margin-xsmall-bottom" uk-icon="trash" title="{{ _('Delete') }}" uk-tooltip="{{ _('Delete') }}"></button>
+                  <br />
+                  <button type="button" class="uk-icon-button uk-margin-xsmall-top uk-margin-xsmall-bottom" uk-icon="chevron-up" title="{{ _('Up') }}" uk-tooltip="{{ _('Up') }}"></button>
+                  <br />
+                  <button type="button" class="uk-icon-button uk-margin-xsmall-top uk-margin-xsmall-bottom" uk-icon="chevron-down" title="{{ _('Down') }}" uk-tooltip="{{ _('Down') }}"></button>
+                </td>
+                <td><img src="{{ url_for('serve_media', filename=image) }}" data-file="{{ image }}" style="cursor: pointer;" tabindex="0" /></td>
+                {# <td><textarea class="uk-textarea" rows="5" placeholder="Alt Text"></textarea></td> #}
+              </tr>
+            {% endfor %}
+            {# <tr>
+              <td><button type="button" class="uk-icon-button" uk-icon="plus" title="{{ _('Add') }}" uk-tooltip="{{ _('Add') }}"></button></td>
+              <td class="uk-width-expand"><div class="uk-inline uk-width-1-1">
+                <span class="uk-form-icon" uk-icon="image"></span>
+                <input class="uk-input" type="text" placeholder="{{ _('Add Image from URL') }}" />
+              </div></td>
+            </tr> #}
+          </tbody>
+        </table>
+        <div class="uk-grid-small" uk-grid>
+          {# <div><button type="button" class="uk-icon-button" uk-icon="plus" title="{{ _('Add') }}" uk-tooltip="{{ _('Add') }}"></button></div> #}
+          <div class="uk-width-expand"><div class="uk-inline uk-width-1-1">
+            <span class="uk-form-icon" uk-icon="image"></span>
+            <input class="uk-input carousel-url" type="text" placeholder="{{ _('Add Image from URL') }}" />
+          </div></div>
+          <div><button type="button" class="uk-button uk-button-default carousel-add">Add</button></div>
+        </div>
+      </div>
     </div>
     <div class="uk-margin" uk-grid>
       <div>
@@ -64,8 +111,8 @@
             <button class="collections-reset uk-button uk-button-default uk-button-small" type="button">Reset</button>
             <select class="uk-select" name="collections" multiple>
               <option value="-" hidden></option>{# Sentinel value to allow sending of empty collections fields when no item is selected #}
-              {% for name in collections %}
-                <option value="{{ name }}" {% if not name %} selected {% endif %}>{{ name or _('Profile') }}</option>
+              {% for (name, data) in collections.items() %}
+                <option value="{{ name }}" {% if not name %} selected {% endif %}>{% if name %}{{ data.title or name }}{% else %}{{ _('Profile') }}{% endif %}</option>
               {% endfor %}
             </select>
           </label>

@@ -135,20 +135,47 @@ function searchExtraHandler(form) {
 }
 
 function addHandler(form) {
+  const rowButtonPrefix = '<button type="button" class="uk-icon-button uk-margin-xsmall-top uk-margin-xsmall-bottom uk-icon"';
+  const isForCarousel = () => document.querySelector('.uk-tab > li.uk-active[data-name="carousel"]'); // ('.uk-tab > li.uk-active > a[href="#carousel"]');
+
   var link = form.querySelector('input[name="link"]');
   var pasteLink = form.querySelector('button.paste-link');
   var checkLink = form.querySelector('input.from-link');
   // var checkProxatore = form.querySelector('input.with-proxatore');
   var langs = form.querySelector('select[name="langs"]');
   var collections = form.querySelector('select[name="collections"]');
+  var imagesUrls = form.querySelector('input[name="images"]');
+  var images = form.querySelector('table.images > tbody');
   var image = form.querySelector('img.image');
   var video = form.querySelector('video.video');
   var audio = form.querySelector('audio.audio');
   var doc = form.querySelector('object.doc');
   var upload = form.querySelector('input[name="file"]');
+  var carouselAdd = form.querySelector('button.carousel-add');
+  var carouselUrl = form.querySelector('input.carousel-url');
 
   form.querySelector('button.langs-reset').addEventListener('click', () => (langs.selectedIndex = -1));
-  form.querySelector('button.collections-reset').addEventListener('click', () => (collections.selectedIndex = 0));
+  form.querySelector('button.collections-reset')?.addEventListener('click', () => (collections.selectedIndex = 0));
+
+  ['image', 'video', 'audio', 'doc'].forEach(key => form.querySelector(`[class="${key}"]`).parentElement.querySelector('input[type="checkbox"]').addEventListener('change', ev => form.querySelector(`input[name="${key}"]`).disabled = !ev.target.checked));
+
+  addImagePreview(image);
+  images.querySelectorAll('img').forEach(img => addImagePreview(img));
+  images.querySelectorAll('tr').forEach(row => addRowEvents(row));
+
+  carouselAdd.addEventListener('click', () => {
+    carouselUrl.classList.remove('uk-form-danger');
+    fetch(API_BASE + '/v0/preview?url=' + encodeURIComponent(carouselUrl.value))
+    .then(res => res.json())
+    .then(data => {
+      if (data.image) {
+        addToCarousel(data.image);
+        carouselUrl.value = '';
+      } else {
+        carouselUrl.classList.add('uk-form-danger');
+      }
+    });
+  });
 
   pasteLink.addEventListener('click', () => navigator.clipboard.readText().then(text => {
     link.value = text;
@@ -161,20 +188,23 @@ function addHandler(form) {
     const reader = new FileReader();
     reader.onload = function(e) {
       const uri = e.target.result;
-      const [mime, ext] = uri.split(',')[0].split(';')[0].split(':')[1].toLowerCase().split('/')
-      image.parentElement.hidden = video.parentElement.hidden = audio.parentElement.hidden = doc.parentElement.hidden = true;
-      if (mime === 'image') {
-        image.src = uri;
-        image.parentElement.hidden = false;
-      } else if (mime === 'video') {
-        video.src = uri;
-        video.parentElement.hidden = false;
-      } else if (mime === 'audio') {
-        audio.src = uri;
-        audio.parentElement.hidden = false;
-      } else if (ext === 'pdf') {
-        doc.data = uri;
-        doc.parentElement.hidden = false;
+      const [mime, ext] = uri.split(',')[0].split(';')[0].split(':')[1].toLowerCase().split('/');
+      if (isForCarousel() && mime === 'image') {
+        addToCarousel(uri);
+        upload.value = null;
+      } else {
+        image.src = video.src = audio.src = doc.src = '';
+        image.parentElement.hidden = video.parentElement.hidden = audio.parentElement.hidden = doc.parentElement.hidden = true;
+        if (['image', 'video', 'audio'].includes(mime)) {
+          var el = form.querySelector(`[class="${mime}"]`);
+          if (el) {
+            el.src = uri;
+            el.parentElement.hidden = false;
+          }
+        } else if (ext === 'pdf') {
+          doc.data = uri;
+          doc.parentElement.hidden = false;
+        }
       }
     };
     reader.readAsDataURL(file);
@@ -187,12 +217,17 @@ function addHandler(form) {
         const file = item.getAsFile();
         const reader = new FileReader();
         reader.onload = function(e) {
-          video.parentElement.hidden = true;
-          image.src = e.target.result;
-          image.parentElement.hidden = false;
-          const dataTransfer = new DataTransfer();
-          dataTransfer.items.add(file);
-          upload.files = dataTransfer.files;
+          if (isForCarousel()) {
+            addToCarousel(e.target.result);
+          } else {
+            video.src = audio.src = doc.src = '';
+            video.parentElement.hidden = audio.parentElement.hidden = doc.parentElement.hidden = true;
+            image.src = e.target.result;
+            image.parentElement.hidden = false;
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            upload.files = dataTransfer.files;
+          }
         };
         reader.readAsDataURL(file);
         break;
@@ -209,18 +244,62 @@ function addHandler(form) {
       .then(res => res.json())
       .then(data => {
         for (var key in data) {
-          var field = form.querySelector(`[name="${key}"]`);
+          var field = form.querySelector(`input[name="${key}"]`);
           if (field) {
             field.value = data[key];
           }
           var el = form.querySelector(`[class="${key}"]`);
           if (el) {
-            el.src = data[key];
-            el.parentElement.hidden = false;
+            el.src = data[key] || '';
+            el.parentElement.hidden = !data[key];
           }
         }
       });
     }
+  }
+
+  function addImagePreview(img) {
+    img.addEventListener('click', () => window.open(img.src));
+    addEnterClick(img);
+  }
+
+  function addToCarousel(image) {
+    var row = Object.assign(document.createElement('tr'), { innerHTML: `
+      <td>
+        ${rowButtonPrefix} uk-icon="trash" title="Delete" uk-tooltip="Delete"></button>
+        <br />
+        ${rowButtonPrefix} uk-icon="chevron-up" title="Up" uk-tooltip="Up"></button>
+        <br />
+        ${rowButtonPrefix} uk-icon="chevron-down" title="Down" uk-tooltip="Down"></button>
+      </td>
+      <td><img src="${image}" style="cursor: pointer;" tabindex="0" /></td>
+    ` });
+    addImagePreview(row.querySelector('img'));
+    addRowEvents(row);
+    images.appendChild(row);
+    applyCarouselUrls();
+  }
+
+  function addRowEvents(row) {
+    const [del, up, down] = row.querySelectorAll('button');
+    del.addEventListener('click', () => {
+      row.remove();
+      applyCarouselUrls();
+    });
+    up.addEventListener('click', () => {
+      images.moveBefore(row, row.previousElementSibling);
+      applyCarouselUrls();
+    });
+    down.addEventListener('click', () => {
+      images.moveBefore(row, row.nextElementSibling?.nextElementSibling);
+      applyCarouselUrls();
+    });
+  }
+
+  function applyCarouselUrls() {
+    const urls = []; // JSON.parse(imagesUrls.value || '[]');
+    images.querySelectorAll('img').forEach(img => urls.push(img.dataset.file || img.src));
+    imagesUrls.value = JSON.stringify(urls);
   }
 }
 
@@ -338,10 +417,15 @@ function itemHandler(section) {
 
     Object.keys(data).forEach(name => pins.appendChild(Object.assign(document.createElement('li'), { innerHTML: `
       <label data-collection="${name}">
-        <input class="uk-checkbox" type="checkbox" ${data[name] ? 'checked' : ''}> ${name || STRINGS.get('Profile')}
+        <input class="uk-checkbox" type="checkbox" ${data[name] ? 'checked' : ''} />
+        <span>${name || STRINGS.get('Profile')}</span>
       </label>
       <a href="${userUrl}/${name}" class="uk-icon-link uk-float-right" uk-icon="link-external"></a>
     ` })));
+
+    fetch(`${API_BASE}/v0/collections`)
+    .then(res => (res.ok && res.json()))
+    .then(titles => Object.entries(titles).forEach(([cid, title]) => (cid && title && (pins.querySelector(`li > label[data-collection="${cid}"] > span`).textContent = title))));
 
     pins.querySelectorAll('li input').forEach(checkbox => {
       checkbox.addEventListener('change', () => {
@@ -365,6 +449,24 @@ function itemHandler(section) {
   });
 
   addSlugifyNoticeHandler(nameEl, notice, 'name', 0);
+
+  section.querySelectorAll('div.comment').forEach(el => {
+    var text = el.querySelector('p');
+    var editor = el.querySelector('div[hidden]');
+    var input = editor.querySelector('input[type="text"]');
+    el.querySelector('button.edit').addEventListener('click', () => {
+      text.innerHTML = '';
+      editor.hidden = false;
+    });
+    el.querySelector('button.save').addEventListener('click', () =>
+      fetch(`${API_BASE}/v0/comments/${section.dataset.itemId}/${el.id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ "text": input.value }) })
+      .then(res => (res.ok && res.json()))
+      .then(data => {
+        editor.hidden = true;
+        text.innerHTML = data.text;
+      })
+    );
+  });
 }
 
 function clickableHandler(clickable, lightbox, multiple) {
@@ -376,20 +478,13 @@ function clickableHandler(clickable, lightbox, multiple) {
     clickable.classList.add('lightbox');
     var imgs = Array.from(clickable.children);
     imgs.forEach(div => div.dataset.src = div.children[0].src);
-    simpleLightbox = new SimpleLightbox(imgs, { captions: false, sourceAttr: "data-src", animationSpeed: 150 });
+    simpleLightbox = makeLightbox(imgs);
   }
   clickable.addEventListener('click', function(ev){
     if (lightbox && !clickable.classList.contains('lightbox')) {
       clickable.classList.add('lightbox');
-      // var target;
-      // if (multiple) {
-      //   target = Array.from(clickable.children);
-      //   target.forEach(div => div.dataset.src = div.children[0].src);
-      // } else {
-        clickable.dataset.src = clickable.children[0].src;
-        // target = clickable;
-      // }
-      simpleLightbox = new SimpleLightbox(clickable, { captions: false, sourceAttr: "data-src", animationSpeed: 150 });
+      clickable.dataset.src = clickable.children[0].src;
+      simpleLightbox = makeLightbox(clickable);
     }
     if (clickable.classList.contains('tag-nsfw') && !clickable.dataset.unblur) {
       clickable.dataset.unblur = true;
@@ -398,9 +493,17 @@ function clickableHandler(clickable, lightbox, multiple) {
       simpleLightbox.open(multiple && ev.target.tagName === 'IMG' && ev.target);
     }
   });
-  clickable.addEventListener('keypress', ev => {
+  addEnterClick(clickable);
+}
+
+function makeLightbox(target) {
+  return new SimpleLightbox(target, { captions: false, sourceAttr: "data-src", animationSpeed: 150 });  
+}
+
+function addEnterClick(el) {
+  el.addEventListener('keypress', ev => {
     if (ev.key === 'Enter') {
-      clickable.click();
+      el.click();
     }
   });
 }

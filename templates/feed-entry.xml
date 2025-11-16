@@ -18,7 +18,9 @@
     {% with full=true, external=true %}
       <![CDATA[
         {% include "item-content.html" %}
-        {% include 'item-description.html' %}
+        {% with text=item.description %}
+          {% include 'parsed-text.html' %}
+        {% endwith %}
         <p><a href="{{ item.link }}" target="_blank">{{ item.link }}</a></p>
       ]]>
     {% endwith %}
