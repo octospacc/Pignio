@@ -54,22 +54,22 @@
                 {# <td><textarea class="uk-textarea" rows="5" placeholder="Alt Text"></textarea></td> #}
               </tr>
             {% endfor %}
-            {# <tr>
-              <td><button type="button" class="uk-icon-button" uk-icon="plus" title="{{ _('Add') }}" uk-tooltip="{{ _('Add') }}"></button></td>
-              <td class="uk-width-expand"><div class="uk-inline uk-width-1-1">
-                <span class="uk-form-icon" uk-icon="image"></span>
-                <input class="uk-input" type="text" placeholder="{{ _('Add Image from URL') }}" />
-              </div></td>
-            </tr> #}
           </tbody>
         </table>
-        <div class="uk-grid-small" uk-grid>
-          {# <div><button type="button" class="uk-icon-button" uk-icon="plus" title="{{ _('Add') }}" uk-tooltip="{{ _('Add') }}"></button></div> #}
+        <div class="uk-grid-small uk-margin-small" uk-grid>
           <div class="uk-width-expand"><div class="uk-inline uk-width-1-1">
             <span class="uk-form-icon" uk-icon="image"></span>
             <input class="uk-input carousel-url" type="text" placeholder="{{ _('Add Image from URL') }}" />
           </div></div>
           <div><button type="button" class="uk-button uk-button-default carousel-add">Add</button></div>
+        </div>
+        <div class="uk-grid-collapse uk-margin-small" uk-grid>
+          <div uk-form-custom class="uk-width-1-1">
+            <input class="carousel-upload uk-input" type="file" multiple />
+            <button class="uk-button uk-width-1-1 uk-button-default" type="button" tabindex="-1">
+              {{ _('upload-tip') }} <span uk-icon="upload"></span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -128,7 +128,7 @@
         <div uk-form-custom class="uk-width-1-1">
           <input class="uk-input" type="file" name="file" />
           <button class="uk-button uk-width-1-1 uk-button-default" type="button" tabindex="-1">
-            {{ _('upload-tip') }} <span uk-icon="icon: upload"></span>
+            {{ _('upload-tip') }} <span uk-icon="upload"></span>
           </button>
         </div>
       </div>

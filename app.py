@@ -37,6 +37,7 @@ app.jinja_env.globals["ATOM_CONTENT_TYPE"] = ATOM_CONTENT_TYPE
 app.config["DEVELOPMENT"] = Config.DEVELOPMENT
 app.config["SECRET_KEY"] = Config.SECRET_KEY
 app.config["BCRYPT_HANDLE_LONG_PASSWORDS"] = True
+app.config["MAX_FORM_MEMORY_SIZE"] = None
 
 app.config["FREEZING"] = False
 app.config["LINKS_PREFIX"] = Config.LINKS_PREFIX
@@ -373,9 +374,11 @@ def search():
         results = list(filter(lambda item: len(set(item.get("langs", [])) & set(langs)) > 0, results))
     if len(creators) > 0:
         results = list(filter(lambda item: item.get("creator") in creators, results))
+    if (provenance := request.args.get("provenance")):
+        results = list(filter(lambda item: provenance in item.get("systags", []) if provenance else provenance not in item.get("systags", []), results))
     if (nsfw := parse_bool(request.args.get("nsfw"))) != None:
         results = list(filter(lambda item: "nsfw" in item.get("systags", []) if nsfw else "nsfw" not in item.get("systags", []), results))
-    return pagination("search.html", "items", results, query=query_raw, cased=cased, field=field, langs=langs, creators=", ".join(creators), nsfw=nsfw)
+    return pagination("search.html", "items", results, query=query_raw, cased=cased, field=field, langs=langs, creators=", ".join(creators), provenance=provenance, nsfw=nsfw)
 
 @app.route("/trim", methods=["GET", "POST"])
 @query_params("iid")
@@ -506,6 +509,10 @@ def view_settings():
     # webhooks_changed = False
     if request.method == "POST":
         match request.form.get("action"):
+            case "update-profile":
+                flash(gettext("Profile updated") + '!')
+                user.data["title"] = request.form.get("title")
+                user.save()
             case "create-token":
                 token = token_urlsafe()
                 hashed = hash_api_token(token)
@@ -525,7 +532,7 @@ def view_settings():
         user.data["tokens"] = tokens_raw
         user.save()
     tokens.reverse()
-    return render_template("settings.html", tokens=tokens)
+    return render_template("settings.html", user=user, tokens=tokens)
 
 @app.route("/stats")
 @noindex
@@ -658,6 +665,7 @@ def collections_api(iid:str|None):
             collections[cid] = data.get("title")
         return collections
 
+# TODO check permissions
 @app.route("/api/v0/comments/<path:iid>", defaults={"cid": None})
 @app.route("/api/v0/comments/<path:iid>/<path:cid>", methods=["GET", "POST"])
 @auth_required
@@ -748,10 +756,14 @@ def feed_response(template:str, **kwargs:Any):
     return response_with_type(render_template(f"{template}.xml", limit=int(request.args.get("limit") or Config.RESULTS_LIMIT), content_type=ATOM_CONTENT_TYPE, **kwargs), ATOM_CONTENT_TYPE)
 
 def view_orderable_items(root:str):
-    if (ordering := request.args.get("ordering")) == "natural" or app.config["FREEZING"]:
-        return pagination("index.html", "items", walk_items(root), root=root, folders=list_folders(root), ordering=ordering)
-    else:
-        return view_random_items(root)
+    modifier: Any = False
+    ordering = request.args.get("ordering")
+    if ordering == "natural" or app.config["FREEZING"]:
+        modifier = None
+    elif ordering == "alphanumeric":
+        modifier = (lambda items: sorted(items, key=(lambda item: item["id"])))
+    return view_random_items(root) if modifier == False else \
+            pagination("index.html", "items", walk_items(root), modifier, root=root, folders=list_folders(root), ordering=ordering)
 
 def view_random_items(root:str|None=None):
     return pagination("index.html", "items", walk_items(root), (lambda items: shuffle(items)), root=root, folders=(list_folders(root) if root else []))

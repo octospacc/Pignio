@@ -136,7 +136,7 @@ function searchExtraHandler(form) {
 
 function addHandler(form) {
   const rowButtonPrefix = '<button type="button" class="uk-icon-button uk-margin-xsmall-top uk-margin-xsmall-bottom uk-icon"';
-  const isForCarousel = () => document.querySelector('.uk-tab > li.uk-active[data-name="carousel"]'); // ('.uk-tab > li.uk-active > a[href="#carousel"]');
+  const isForCarousel = () => document.querySelector('.uk-tab > li.uk-active[data-name="carousel"]');
 
   var link = form.querySelector('input[name="link"]');
   var pasteLink = form.querySelector('button.paste-link');
@@ -151,6 +151,7 @@ function addHandler(form) {
   var audio = form.querySelector('audio.audio');
   var doc = form.querySelector('object.doc');
   var upload = form.querySelector('input[name="file"]');
+  var carouselUpload = form.querySelector('input.carousel-upload');
   var carouselAdd = form.querySelector('button.carousel-add');
   var carouselUrl = form.querySelector('input.carousel-url');
 
@@ -165,6 +166,7 @@ function addHandler(form) {
 
   carouselAdd.addEventListener('click', () => {
     carouselUrl.classList.remove('uk-form-danger');
+    if (!carouselUrl.value.trim()) return;
     fetch(API_BASE + '/v0/preview?url=' + encodeURIComponent(carouselUrl.value))
     .then(res => res.json())
     .then(data => {
@@ -174,6 +176,10 @@ function addHandler(form) {
       } else {
         carouselUrl.classList.add('uk-form-danger');
       }
+    })
+    .catch(err => {
+      console.error(err);
+      carouselUrl.classList.add('uk-form-danger');
     });
   });
 
@@ -182,32 +188,17 @@ function addHandler(form) {
     linkHandler();
   }));
 
-  upload.addEventListener('change', function(ev) {
+  upload.addEventListener('change', function(ev){
     const file = ev.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      const uri = e.target.result;
-      const [mime, ext] = uri.split(',')[0].split(';')[0].split(':')[1].toLowerCase().split('/');
-      if (isForCarousel() && mime === 'image') {
-        addToCarousel(uri);
-        upload.value = null;
-      } else {
-        image.src = video.src = audio.src = doc.src = '';
-        image.parentElement.hidden = video.parentElement.hidden = audio.parentElement.hidden = doc.parentElement.hidden = true;
-        if (['image', 'video', 'audio'].includes(mime)) {
-          var el = form.querySelector(`[class="${mime}"]`);
-          if (el) {
-            el.src = uri;
-            el.parentElement.hidden = false;
-          }
-        } else if (ext === 'pdf') {
-          doc.data = uri;
-          doc.parentElement.hidden = false;
-        }
-      }
-    };
-    reader.readAsDataURL(file);
+    if (file) {
+      handleUpload(file, upload);
+    }
+  });
+
+  carouselUpload.addEventListener('change', function(ev){
+    for (const file of ev.target.files) {
+      handleUpload(file, carouselUpload);
+    }
   });
 
   form.addEventListener('paste', function(ev) {
@@ -244,6 +235,7 @@ function addHandler(form) {
       .then(res => res.json())
       .then(data => {
         for (var key in data) {
+          if (!(!isForCarousel() || !['image', 'video', 'audio'].includes(key))) continue;
           var field = form.querySelector(`input[name="${key}"]`);
           if (field) {
             field.value = data[key];
@@ -259,7 +251,15 @@ function addHandler(form) {
   }
 
   function addImagePreview(img) {
-    img.addEventListener('click', () => window.open(img.src));
+    img.addEventListener('click', () => {
+      let url = img.src;
+      if (url.startsWith('data:')) {
+        const type = url.split(',')[0].split(';')[0].split(':')[1];
+        const chars = atob(url.split(';')[1].split(',')[1]);
+        url = URL.createObjectURL(new Blob([new Uint8Array(new Array(chars.length).fill().map((_, i) => chars.charCodeAt(i)))], { type }));
+      }
+      window.open(url);
+    });
     addEnterClick(img);
   }
 
@@ -297,9 +297,35 @@ function addHandler(form) {
   }
 
   function applyCarouselUrls() {
-    const urls = []; // JSON.parse(imagesUrls.value || '[]');
+    const urls = [];
     images.querySelectorAll('img').forEach(img => urls.push(img.dataset.file || img.src));
     imagesUrls.value = JSON.stringify(urls);
+  }
+
+  function handleUpload(file, input) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const uri = e.target.result;
+      const [mime, ext] = uri.split(',')[0].split(';')[0].split(':')[1].toLowerCase().split('/');
+      if (isForCarousel() && mime === 'image') {
+        addToCarousel(uri);
+        input.value = null;
+      } else {
+        image.src = video.src = audio.src = doc.src = '';
+        image.parentElement.hidden = video.parentElement.hidden = audio.parentElement.hidden = doc.parentElement.hidden = true;
+        if (['image', 'video', 'audio'].includes(mime)) {
+          var el = form.querySelector(`[class="${mime}"]`);
+          if (el) {
+            el.src = uri;
+            el.parentElement.hidden = false;
+          }
+        } else if (ext === 'pdf') {
+          doc.data = uri;
+          doc.parentElement.hidden = false;
+        }
+      }
+    };
+    reader.readAsDataURL(file);
   }
 }
 

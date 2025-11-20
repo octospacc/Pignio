@@ -19,6 +19,14 @@
           </select>
         </label></p>
         <p><label>
+          {{ _('Provenance') }}
+          <select class="uk-select uk-width-auto" name="provenance">
+            <option value="">🌟 {{ _('Any') }}</option>
+            <option value="oc" {% if provenance == "oc" %} selected {% endif %}>🎨 Original content</option>
+            <option value="ai" {% if provenance == "ai" %} selected {% endif %}>👾 AI-generated</option>
+          </select>
+        </label></p>
+        <p><label>
           {{ _('NSFW') }}
           <select class="uk-select uk-width-auto" name="nsfw">
             <option value="">🌟 {{ _('Any') }}</option>

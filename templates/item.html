@@ -76,7 +76,7 @@
           <div class="uk-visible@s">
             <button class="uk-icon-button expand-shrink" uk-icon="expand" title="{{ _('Expand') }}" uk-tooltip="{{ _('Expand') }}" onclick="Pignio.expandShrinkContent();"></button>
           </div>
-          {% if item.image or item.video %}
+          {% if item.image or item.video or item.type == 'carousel' %}
             <div>
               <button class="uk-icon-button" uk-icon="bolt" title="{{ _('switch-render-mode') }}" uk-tooltip="{{ _('switch-render-mode') }}" onclick="Pignio.switchRenderMode();"></button>
             </div>

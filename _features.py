@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 from io import StringIO
 from configparser import ConfigParser
 from bs4 import BeautifulSoup
-from glob import glob
+from glob import glob, escape as glob_escape
 from datetime import datetime
 from snowflake import Snowflake # type: ignore[import-untyped]
 from hashlib import sha256
@@ -101,7 +101,7 @@ def list_folders(path:str):
         for folder in [name for name in os.listdir(base) if os.path.isdir(os.path.join(base, name))]:
             if is_items_folder(f"{path}/{folder}"):
                 folders.append(folder)
-    return folders
+    return sorted(folders)
 
 def make_folders(collections):
     folders = []
@@ -139,7 +139,7 @@ def load_item(iid:str) -> ItemDict|None:
     iid = filename_to_iid(iid)
     filename = iid_to_filename(iid)
     filepath = safe_join(ITEMS_ROOT, filename)
-    files = glob(f"{filepath}.*")
+    files = glob(f"{glob_escape(filepath)}.*")
 
     if len(files):
         data: ItemDict = {"id": iid}
@@ -159,6 +159,7 @@ def load_item(iid:str) -> ItemDict|None:
             for file in glob(f"{filepath}/*.*"):
                 if (kind := check_file_is_content(file)) == "image":
                     data["images"].append(file.replace(os.sep, "/").removeprefix(f"{ITEMS_ROOT}/"))
+            data["images"] = sorted(data["images"])
 
         if len(data) > 1: # prevent empty ini files with no valid media from being returned
             return data

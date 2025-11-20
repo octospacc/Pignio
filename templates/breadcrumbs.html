@@ -25,8 +25,9 @@
       <div>
         <form>
           <select class="uk-select uk-form-small" name="ordering">
-            <option value="random" {% if ordering == 'random' %} selected {% endif %}>Random order &nbsp;</option>
-            <option value="natural" {% if ordering == 'natural' %} selected {% endif %}>Natural order &nbsp;</option>
+            <option value="random" {% if ordering == 'random' %} selected {% endif %}>{{ _('Random order') }} &nbsp;</option>
+            <option value="natural" {% if ordering == 'natural' %} selected {% endif %}>{{ _('Natural order') }} &nbsp;</option>
+            <option value="alphanumeric" {% if ordering == 'alphanumeric' %} selected {% endif %}>{{ _('Alphanumeric order') }} &nbsp;</option>
           </select>
         </form>
       </div>

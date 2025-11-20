@@ -1,6 +1,17 @@
 {% extends "base.html" %}
 {% block section %}{{ _('Settings') }}{% endblock %}
 {% block content %}
+  <form method="POST">
+    <h2>
+      {{ _('Profile') }}
+      <button class="uk-button uk-button-default" type="submit">{{ _('Apply') }}</button>
+    </h2>
+    <input type="hidden" name="action" value="update-profile" />
+    <div class="uk-inline uk-width-1-1">
+      <span class="uk-form-icon" uk-icon="user"></span>
+      <input class="uk-input" type="text" name="title" placeholder="{{ _('Title') }}" value="{{ user.data.title }}" />
+    </div>
+  </form>
   <h2>{{ _('API Tokens') }}</h2>
   <form method="POST">
     <button class="uk-button uk-button-default" name="action" value="create-token" type="submit">{{ _('Create New Token') }}</button>
@@ -11,7 +22,7 @@
       {% for token in tokens %}
         <li>
           {{ token.date }} — {{ token.name }}
-          <button class="uk-icon-button uk-button-danger" uk-icon="trash" title="{{ _('Delete') }}" name="token" value="{{ token.hash }}" type="submit"></button>
+          <button class="uk-icon-button uk-button-danger" uk-icon="trash" title="{{ _('Delete') }}" uk-tooltip="{{ _('Delete') }}" name="token" value="{{ token.hash }}" type="submit"></button>
         </li>
       {% endfor %}
     </ul>

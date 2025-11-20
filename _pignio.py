@@ -177,6 +177,9 @@ STRINGS = {
     "Temp files cleared": {
         "it": "File temporanei puliti",
     },
+    "Profile updated": {
+        "it": "Profilo aggiornato",
+    },
     "Statistics": {
         "it": "Statistiche",
     },
@@ -296,6 +299,15 @@ STRINGS = {
     },
     "Note": {
         "it": "Nota",
+    },
+    "Random order": {
+        "it": "Ordine casuale",
+    },
+    "Natural order": {
+        "it": "Ordine naturale",
+    },
+    "Alphanumeric order": {
+        "it": "Ordine alfanumerico",
     },
     "Content Languages": {
         "it": "Lingue del Contenuto",

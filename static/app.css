@@ -28,19 +28,26 @@ form.add table.images img {
   filter: blur(16px);
 }
 
-.rendering-pixelated article.item .content > img,
-.rendering-pixelated article.item .content > video,
-.rendering-pixelated .sl-image > img {
+.rendering-pixelated article.item .content img,
+.rendering-pixelated article.item .content video,
+.rendering-pixelated .sl-image img {
   image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
   image-rendering: pixelated;
 }
 
 /* workaround for old or no-js browsers not loading icons and buttons size not being set */
-/* [uk-icon] > [class="uk-visible@s"] { display: initial !important; }
-[uk-icon].uk-icon > [class="uk-visible@s"] { display: none !important; } */
+[uk-icon]:not(.uk-icon) > [class="uk-visible@s"] {
+  display: initial !important;
+}
 
 /* ensure carousels gracefully fall back to stacked images with no JS */
 div[uk-slider]:not(.uk-slider) .uk-slider-items.uk-grid {
   flex-wrap: wrap;
+}
+
+/* make dropdown links in breadcrumbs more clickable by forcing container width */
+.uk-breadcrumb .uk-dropdown > ul.uk-list > li > a {
+  display: inline-block;
+  width: 100%;
 }
