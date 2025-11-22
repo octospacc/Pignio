@@ -342,10 +342,15 @@ def fetch_url_data(url:str) -> dict[str, str|None]:
         soup = BeautifulSoup(response.text, "html.parser")
         media = {"image": None, "video": None, "audio": None}
 
+        title_tag = soup.find("meta", attrs={"property": "og:title", "content": True}) or \
+                    soup.find("meta", attrs={"name": "twitter:title", "content": True})
+        title = (title_tag["content"] if title_tag else None) or (soup.title.string if soup.title else None) # type: ignore[index]
+
         description = None
-        desc_tag = soup.find("meta", attrs={"name": "description"}) or \
-                soup.find("meta", attrs={"property": "og:description"})
-        if desc_tag and "content" in desc_tag.attrs: # type: ignore[attr-defined]
+        desc_tag = soup.find("meta", attrs={"property": "og:description", "content": True}) or \
+                   soup.find("meta", attrs={"name": "twitter:description", "content": True}) or \
+                   soup.find("meta", attrs={"name": "description", "content": True})
+        if desc_tag: # type: ignore[attr-defined]
             description = desc_tag["content"] # type: ignore[index]
 
         img_tag = soup.find("meta", attrs={"property": "og:image", "content": True}) or \
@@ -367,6 +372,12 @@ def fetch_url_data(url:str) -> dict[str, str|None]:
         if audio_tag: # type: ignore[attr-defined]
             media["audio"] = audio_tag["content"] # type: ignore[index]
 
+        alttext = None
+        alt_tag = soup.find("meta", attrs={"property": "og:image:alt", "content": True}) or \
+                  soup.find("meta", attrs={"name": "twitter:image:alt", "content": True})
+        if alt_tag:
+            alttext = alt_tag["content"] # type: ignore[index]
+
         for kind in media.keys():
             if (source := media[kind]):
                 parsed = urlparse(source)
@@ -375,9 +386,10 @@ def fetch_url_data(url:str) -> dict[str, str|None]:
                     media[kind] = f"{parsed.scheme}://{parsed.netloc}" + source
 
         return {
-            "title": soup_or_default(soup, "meta", {"property": "og:title"}, "content", (soup.title.string if soup.title else None)),
+            "title": title,
             "description": description,
             **media,
+            "alttext": alttext,
             "link": soup_or_default(soup, "link", {"rel": "canonical"}, "href", response.url),
         }
 

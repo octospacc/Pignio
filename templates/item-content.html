@@ -61,7 +61,7 @@
   {% elif item.image %}
     <img class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ image }}" alt="{{ alttext }}" title="{{ alttext }}" {% if full %} onload="this.parentElement.style='';" {% else %} loading="lazy" {% endif %} />
   {% elif item.video %}
-    {% if full or not config.VIDEO_THUMBS %}
+    {% if full or not config.VIDEO_THUMBS or layout == 'gallery' %}
       <video class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('serve_media', filename=item.video) }}"
              aria-label="{{ alttext }}" title="{{ alttext }}" {% if full %} controls {% else %} autoplay muted tabindex="-1" {% endif %} loop></video>
     {% else %}

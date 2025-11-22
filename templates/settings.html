@@ -1,10 +1,11 @@
 {% extends "base.html" %}
 {% block section %}{{ _('Settings') }}{% endblock %}
+{% block section_pre %}<a class="uk-icon-button" href="{{ url_for('view_user', username=user.username) }}" uk-icon="arrow-left" title="{{ _('Back') }}" uk-tooltip="{{ _('Back') }}"></a>{% endblock %}
 {% block content %}
   <form method="POST">
     <h2>
       {{ _('Profile') }}
-      <button class="uk-button uk-button-default" type="submit">{{ _('Apply') }}</button>
+      <button class="uk-button uk-button-default" type="submit">{{ _('Save') }}</button>
     </h2>
     <input type="hidden" name="action" value="update-profile" />
     <div class="uk-inline uk-width-1-1">

@@ -92,7 +92,7 @@
     <div class="uk-container">
       <main>
         {% if section %}
-          <h1>{{ section }}</h1>
+          <h1>{% block section_pre %}{% endblock %} {{ section }}</h1>
         {% endif %}
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}

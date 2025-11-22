@@ -46,6 +46,7 @@
           </a>
         </div>
       {% endif %}
+      <div>{% with small=false %}{% include 'layout-switch.html' %}{% endwith %}</div>
     </div>
     {% if not name %}
       <ul class="uk-flex-center uk-tab" uk-tab>

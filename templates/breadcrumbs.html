@@ -1,5 +1,5 @@
 {% if always or path.split('/') | length > 1 %}
-  <div class="uk-grid uk-margin" uk-grid>
+  <div class="uk-grid uk-grid-small uk-margin" uk-grid>
     <div class="uk-width-expand">
       <ul class="uk-breadcrumb">
         {% for token in path.split('/')[:-1] %}
@@ -8,7 +8,7 @@
         <li>
           {% if items and (folders | length > 0) %}
             <a>{{ path.split('/')[-1] }} <span uk-drop-parent-icon></span></a>
-            <div uk-dropdown>
+            <div class="{{ colortheme }}" uk-dropdown>
               <ul class="uk-list">
                 {% for folder in folders %}
                   <li><a class="uk-link-muted" href="{{ url_for('view_item', iid=(path + '/' + folder)) }}">{{ folder }}</a></li>
@@ -31,6 +31,7 @@
           </select>
         </form>
       </div>
+      <div>{% include 'layout-switch.html' %}</div>
     {% endif %}
   </div>
 {% endif %}

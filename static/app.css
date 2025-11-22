@@ -15,6 +15,21 @@ form.add table.images img {
   max-height: 25vh;
 }
 
+.results.gallery {
+  margin: auto;
+}
+
+.results.gallery > div {
+  width: 100%;
+  text-align: center;
+}
+
+.results.gallery img,
+.results.gallery video {
+  width: auto;
+  max-height: 100vh;
+}
+
 .clickable, .alt-clickable {
   cursor: pointer;
 }

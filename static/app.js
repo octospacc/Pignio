@@ -236,7 +236,7 @@ function addHandler(form) {
       .then(data => {
         for (var key in data) {
           if (!(!isForCarousel() || !['image', 'video', 'audio'].includes(key))) continue;
-          var field = form.querySelector(`input[name="${key}"]`);
+          var field = form.querySelector(`[name="${key}"]`); // select both input and textarea
           if (field) {
             field.value = data[key];
           }
@@ -477,21 +477,36 @@ function itemHandler(section) {
   addSlugifyNoticeHandler(nameEl, notice, 'name', 0);
 
   section.querySelectorAll('div.comment').forEach(el => {
+    var edit = el.querySelector('button.edit');
     var text = el.querySelector('p');
     var editor = el.querySelector('div[hidden]');
     var input = editor.querySelector('input[type="text"]');
-    el.querySelector('button.edit').addEventListener('click', () => {
-      text.innerHTML = '';
-      editor.hidden = false;
+    var current = input.value;
+    edit.addEventListener('click', () => {
+      if (editor.hidden) {
+        text.innerHTML = '';
+        edit.setAttribute('uk-tooltip', edit.title = 'Close');
+        edit.setAttribute('uk-icon', 'close');
+      } else {
+        text.innerHTML = current;
+        input.value = current;
+        setClosed();
+      }
+      editor.hidden = !editor.hidden;
     });
     el.querySelector('button.save').addEventListener('click', () =>
       fetch(`${API_BASE}/v0/comments/${section.dataset.itemId}/${el.id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ "text": input.value }) })
       .then(res => (res.ok && res.json()))
       .then(data => {
         editor.hidden = true;
-        text.innerHTML = data.text;
+        current = text.innerHTML = data.text;
+        setClosed();
       })
     );
+    function setClosed() {
+      edit.setAttribute('uk-tooltip', edit.title = 'Edit');
+      edit.setAttribute('uk-icon', 'pencil');
+    }
   });
 }
 
@@ -544,8 +559,7 @@ function expandShrinkContent() {
   style.width = (style.width ? '' : '100%');
   const title = style.width ? STRINGS.get('Shrink') : STRINGS.get('Expand');
   const toggle = document.querySelector('button.uk-icon.expand-shrink');
-  toggle.title = title;
-  toggle.setAttribute('uk-tooltip', title);
+  toggle.setAttribute('uk-tooltip', toggle.title = title);
   toggle.setAttribute('uk-icon', title.toLowerCase());
 }
 

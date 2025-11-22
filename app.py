@@ -499,40 +499,44 @@ def report_item():
 def view_notifications():
     return pagination("notifications.html", "events", load_events(current_user))
 
-@app.route("/settings", methods=["GET", "POST"])
+@app.route("/settings", defaults={"cid": None}, methods=["GET", "POST"])
+# @app.route("/settings/<path:cid>", methods=["GET", "POST"])
 @extra_login_required
-def view_settings():
-    user = load_user(current_user.username)
-    tokens = []
-    tokens_raw = user.data.get("tokens", [])
-    tokens_changed = False
-    # webhooks_changed = False
-    if request.method == "POST":
-        match request.form.get("action"):
-            case "update-profile":
-                flash(gettext("Profile updated") + '!')
-                user.data["title"] = request.form.get("title")
-                user.save()
-            case "create-token":
-                token = token_urlsafe()
-                hashed = hash_api_token(token)
-                tokens_raw.append(f"{time.time()}:{hashed}")
-                tokens_changed = True
-                flash(f'{gettext("created-token")}: ({urlsafe_b64decode(hashed).hex()[:16]}) <input class="uk-input" style="width: 100%;" type="text" value="{user.username}:{token}" readonly />', "primary")
-            case "delete-token" if (hashed := request.form.get("token")) and (token := check_user_token(tokens_raw, hashed)):
-                tokens_raw.remove(token)
-                tokens_changed = True
-                flash(gettext("deleted-token"))
-            # case "create-webhook":
-            # case "delete-webhook":
-    for token in tokens_raw:
-        [timestamp, hashed] = token.split(":")
-        tokens.append({"date": datetime.fromtimestamp(float(timestamp)), "hash": hashed, "name": urlsafe_b64decode(hashed).hex()[:16]})
-    if tokens_changed:
-        user.data["tokens"] = tokens_raw
-        user.save()
-    tokens.reverse()
-    return render_template("settings.html", user=user, tokens=tokens)
+def view_settings(cid:str|None):
+    if cid:
+        ... # TODO
+    else:
+        user = load_user(current_user.username)
+        tokens = []
+        tokens_raw = user.data.get("tokens", [])
+        tokens_changed = False
+        # webhooks_changed = False
+        if request.method == "POST":
+            match request.form.get("action"):
+                case "update-profile":
+                    flash(gettext("Profile updated") + '!')
+                    user.data["title"] = request.form.get("title")
+                    user.save()
+                case "create-token":
+                    token = token_urlsafe()
+                    hashed = hash_api_token(token)
+                    tokens_raw.append(f"{time.time()}:{hashed}")
+                    tokens_changed = True
+                    flash(f'{gettext("created-token")}: ({urlsafe_b64decode(hashed).hex()[:16]}) <input class="uk-input" style="width: 100%;" type="text" value="{user.username}:{token}" readonly />', "primary")
+                case "delete-token" if (hashed := request.form.get("token")) and (token := check_user_token(tokens_raw, hashed)):
+                    tokens_raw.remove(token)
+                    tokens_changed = True
+                    flash(gettext("deleted-token"))
+                # case "create-webhook":
+                # case "delete-webhook":
+        for token in tokens_raw:
+            [timestamp, hashed] = token.split(":")
+            tokens.append({"date": datetime.fromtimestamp(float(timestamp)), "hash": hashed, "name": urlsafe_b64decode(hashed).hex()[:16]})
+        if tokens_changed:
+            user.data["tokens"] = tokens_raw
+            user.save()
+        tokens.reverse()
+        return render_template("settings.html", user=user, tokens=tokens)
 
 @app.route("/stats")
 @noindex
@@ -777,7 +781,7 @@ def pagination(template:str, key:str, all_items:list, modifier=None, **kwargs):
         return abort(404)
     if modifier:
         modifier(items)
-    return render_template(template, **kwargs, **{key: items}, limit=limit, next_page=(page + 1 if len(all_items) > next_count else None))
+    return render_template(template, **kwargs, **{key: items}, layout=request.args.get("layout"), limit=limit, next_page=(page + 1 if len(all_items) > next_count else None))
 
 if __name__ == "__main__":
     print(f"Running Pignio on {Config.HTTP_HOST}:{Config.HTTP_PORT}...")

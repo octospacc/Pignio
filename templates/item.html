@@ -22,14 +22,17 @@
   {% endif %}
   {% if image %}
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" property="og:image" content="{{ image }}" />
+    <meta name="twitter:image" property="og:image" content="{% include 'links-prefix.txt' %}{{ image }}" />
+    {% if item.alttext %}
+      <meta name="twitter:image:alt" property="og:image:alt" content="{{ item.alttext }}" />
+    {% endif %}
   {% endif %}
   {% if item.video %}
-    <meta property="og:video" content="{{ url_for('serve_media', filename=item.video) }}" />
+    <meta property="og:video" content="{% include 'links-prefix.txt' %}{{ url_for('serve_media', filename=item.video) }}" />
     <meta property="og:video:type" content="video/{{ item.video.split('.')[-1] }}" />
   {% endif %}
   {% if item.audio %}
-    <meta property="og:audio" content="{{ url_for('serve_media', filename=item.audio) }}" />
+    <meta property="og:audio" content="{% include 'links-prefix.txt' %}{{ url_for('serve_media', filename=item.audio) }}" />
   {% endif %}
 {% endblock %}
 {% block content %}
@@ -72,6 +75,12 @@
             <button class="uk-button uk-button-default uk-button-small uk-disabled" disabled>{{ lang }}</button>
           {% endfor %}
         </div>
+        {% if item.alttext %}
+          <details>
+            <summary>Alt Text</summary>
+            <pre>{{ item.alttext }}</pre>
+          </details>
+        {% endif %}
         <div class="uk-margin uk-grid-small uk-grid" uk-grid>
           <div class="uk-visible@s">
             <button class="uk-icon-button expand-shrink" uk-icon="expand" title="{{ _('Expand') }}" uk-tooltip="{{ _('Expand') }}" onclick="Pignio.expandShrinkContent();"></button>

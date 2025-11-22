@@ -297,6 +297,9 @@ STRINGS = {
     "Back": {
         "it": "Indietro",
     },
+    "Save": {
+        "it": "Salva",
+    },
     "Note": {
         "it": "Nota",
     },
@@ -308,6 +311,12 @@ STRINGS = {
     },
     "Alphanumeric order": {
         "it": "Ordine alfanumerico",
+    },
+    "Gallery": {
+        "it": "Galleria",
+    },
+    "Masonry": {
+        "it": "Griglia",
     },
     "Content Languages": {
         "it": "Lingue del Contenuto",

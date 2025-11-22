@@ -1,7 +1,7 @@
 {%- if item.text -%}
   {{- url_for('render_media', iid=item.id) -}}
 {%- elif item.image -%}
-  {%- if full or not config.CONFIG.USE_THUMBNAILS -%}
+  {%- if full or not config.CONFIG.USE_THUMBNAILS or layout == 'gallery' -%}
     {{- url_for('serve_media', filename=item.image) -}}
   {%- else -%}
     {{- url_for('serve_thumb', iid=item.id) -}}

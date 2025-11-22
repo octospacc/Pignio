@@ -1,6 +1,10 @@
 {% if name %}
   <div class="uk-text-center">
-    <h3>{{ collection_meta.title or name }}</h3>
+    <h3>
+      {{ collection_meta.title or name }}
+      {# <a class="uk-icon-button" href="{{ url_for('view_settings', cid=cid) }}" uk-icon="cog" title="{{ _('Settings') }}" uk-tooltip="{{ _('Settings') }}"></a> #}
+      {# {% include 'layout-switch.html' %} #}
+    </h3>
     {% if collection_meta.description %}
       <p>{{ collection_meta.description }}</p>
     {% endif %}
