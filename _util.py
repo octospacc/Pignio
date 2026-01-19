@@ -72,7 +72,7 @@ def list_to_wsv(data:list[str], sep="\n") -> str:
 def wsv_to_list(data:str) -> list[str]:
     return [urllib.parse.unquote(item) for item in data.strip().replace(" ", "\n").replace("\t", "\n").splitlines()]
 
-def safe_str_get(dikt:dict[str,str]|dict[str,str|None], key:str) -> str:
+def safe_str_get(dikt:dict[str,str]|MetaDict|dict[str,str|None], key:str) -> str:
     return dikt and dikt.get(key) or ""
 
 def generate_user_hash(username:str, password:str) -> str:
@@ -88,7 +88,7 @@ def write_textual(filepath:str, content:str, allow_bak:bool=True) -> None:
 
 def read_metadata(text:str) -> MetaDict:
     data = read_ini(text)
-    for key in ("items", "systags", "langs", "roles", "tokens"):
+    for key in ("items", "systags", "langs", "roles", "tokens", "images"):
         if key in data:
             data[key] = wsv_to_list(data[key])
     return data
@@ -98,7 +98,7 @@ def write_metadata(data:dict[str, str]|MetaDict) -> str:
     config = ConfigParser(interpolation=None)
     new_data: dict[str, str] = {}
     for key in data:
-        if (value := data.get(key)) and key not in ("datetime", "images"):
+        if (value := data.get(key)) and key not in ("datetime"):
             if type(value) == str:
                 new_data[key] = value
             elif type(value) == list:

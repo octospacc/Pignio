@@ -20,14 +20,6 @@ from _util import *
 from _pignio import *
 from _media import check_ffmpeg_available
 from _users import User, RemoteUser
-# from _features import *
-
-# class Item(DataContainer):
-#     def __init__(self, data:ItemDict):
-#         self.data = data
-
-#     # def save(self):
-#     #     write_textual(filepath + ITEMS_EXT, write_metadata(self.data))
 
 def load_events(user:User) -> list[dict[str,str]]:
     events = []
@@ -69,29 +61,6 @@ def noindex(view_func):
         response.headers["X-Robots-Tag"] = "noindex"
         return response
     return wrapped_view
-
-def auth_required(func):
-    @noindex
-    @wraps(func)
-    def wrapped(*args, **kwargs):
-        return func(*args, **kwargs) if (current_user.is_authenticated or verify_token_auth() or app.config["FREEZING"]) else app.login_manager.unauthorized()
-    return wrapped
-
-def extra_login_required(func):
-    @noindex
-    @login_required
-    @wraps(func)
-    def wrapped(*args, **kwargs):
-        return func(*args, **kwargs)
-    return wrapped
-
-def auth_required_config(config_value:bool):
-    def decorator(f):
-        @wraps(f)
-        def wrapper(*args, **kwargs):
-            return f(*args, **kwargs) if not config_value or (current_user.is_authenticated or verify_token_auth()) else app.login_manager.unauthorized()
-        return wrapper
-    return decorator
 
 def query_params(*param_names):
     def decorator(f):
@@ -137,6 +106,10 @@ def setprefs(**props:Any) -> Response:
 
 def clean_url_for(endpoint:str, **values:Any) -> str:
     return url_for(endpoint, **{k: v for k, v in values.items() if not isinstance(v, Undefined)})
+
+def extra_params(**values:Any) -> str:
+    extra = "&".join([f"{k}={v}" for k, v in values.items() if not isinstance(v, Undefined)])
+    return f"&{extra}" if extra else ""
 
 def is_for_activitypub():
     return (request.headers.get("Accept") in ACTIVITYPUB_TYPES)

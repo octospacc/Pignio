@@ -111,13 +111,6 @@ EXTENSIONS = {
 ITEMS_EXT = ".ini"
 LISTS_EXT = ".wsv"
 # EVENTS_EXT = f".events{LISTS_EXT}"
-VIDEO_THUMB_DURATION = 4
-VIDEO_THUMB_WIDTH = 200
-VIDEO_THUMB_FPS = 15
-THUMB_QUALITY = 75
-THUMB_WIDTH = 600
-THUMB_TYPE = "webp"
-RENDER_TYPE = "png"
 MEDIA_TYPES = [kind for kind in EXTENSIONS.keys() if "." not in kind]
 MODERATION_LIST = f"{DATA_ROOT}/moderation{LISTS_EXT}"
 ATOM_CONTENT_TYPE = "application/atom+xml; charset=UTF-8"
@@ -152,12 +145,24 @@ class Config:
     AUTO_OCR = parse_bool_strict(_get("auto_ocr"))
     INSTANCE_NAME = _get("instance_name")
     INSTANCE_DESCRIPTION = _get("instance_description")
+    RESTRICT_INDEX = parse_bool_strict(_get("restrict_index"))
+    RESTRICT_ITEMS = parse_bool_strict(_get("restrict_items"))
+    RESTRICT_USERS = parse_bool_strict(_get("restrict_users"))
+    RESTRICT_FEEDS = parse_bool_strict(_get("restrict_feeds"))
+    RESTRICT_SEARCH = parse_bool_strict(_get("restrict_search"))
     ALLOW_REGISTRATION = parse_bool_strict(_get("allow_registration"))
     # ALLOW_FEDERATION = False
     USE_THUMBNAILS = parse_bool_strict(_get("use_thumbnails"))
     THUMBNAIL_CACHE = parse_bool_strict(_get("thumbnail_cache"))
     RENDER_CACHE = parse_bool_strict(_get("render_cache"))
     PROXY_CACHE = parse_bool_strict(_get("proxy_cache"))
+    VIDEO_THUMB_DURATION = int(_get("video_thumbnail_duration"))
+    VIDEO_THUMB_WIDTH = int(_get("video_thumbnail_width"))
+    VIDEO_THUMB_FPS = int(_get("video_thumbnail_fps"))
+    THUMB_QUALITY = int(_get("image_thumbnail_quality"))
+    THUMB_WIDTH = int(_get("image_thumbnail_width"))
+    THUMB_TYPE = _get("image_thumbnail_type")
+    RENDER_TYPE = _get("image_render_type")
     USE_BAK_FILES = parse_bool_strict(_get("use_bak_files"))
     # PANSTORAGE_URL = ""
     SITE_VERIFICATION = {
@@ -340,6 +345,9 @@ STRINGS = {
     },
     "Add": {
         "it": "Aggiungi",
+    },
+    "Add image from URL": {
+        "it": "Aggiungi immagine da URL",
     },
     "Edit": {
         "it": "Modifica",

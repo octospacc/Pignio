@@ -1,1 +1,4 @@
-<a class="uk-icon-button {% if small != false %} uk-form-small {% endif %} uk-float-right" {% if layout == 'gallery' %} href="?layout=masonry" uk-icon="thumbnails" title="{{ _('Masonry') }}" uk-tooltip="{{ _('Masonry') }}" {% else %} href="?layout=gallery" uk-icon="image" title="{{ _('Gallery') }}" uk-tooltip="{{ _('Gallery') }}" {% endif %}></a>
+<a class="uk-icon-button {% if small != false %} uk-form-small {% endif %} uk-float-right"
+  {% if layout == 'gallery' %} href="?layout=masonry{{ extra_params(mode=mode, ordering=ordering) }}" uk-icon="thumbnails" title="{{ _('Masonry') }}" uk-tooltip="{{ _('Masonry') }}"
+  {% else                   %} href="?layout=gallery{{ extra_params(mode=mode, ordering=ordering) }}" uk-icon="image"      title="{{ _('Gallery') }}" uk-tooltip="{{ _('Gallery') }}"
+{% endif %}></a>

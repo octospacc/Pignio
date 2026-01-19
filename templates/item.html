@@ -49,12 +49,14 @@
           <span class="uk-text-meta">{{ _(kindname) }}</span>
         {% endif %}
         <h3 class="uk-text-break uk-margin-small-top">{% include "item-title.txt" %}</h3>
-        {% if item.creator %}
-          by <a href="{{ url_for('view_user', username=item.creator) }}" {% if embed %} target="_blank" {% endif %}>{{ item.creator }}</a>
-        {% endif %}
-        {% if item.datetime %}
-          at <span>{{ item.datetime }}</span>
-        {% endif %}
+        <p class="uk-margin-small">
+          {% if item.creator %}
+            by <a href="{{ url_for('view_user', username=item.creator) }}" {% if embed %} target="_blank" {% endif %}>{{ item.creator }}</a>
+          {% endif %}
+          {% if item.datetime %}
+            at <span>{{ item.datetime }}</span>
+          {% endif %}
+        </p>
         {% if item.link %}
         <div class="uk-text-truncate">
           <a href="{{ item.link }}" target="_blank">{{ item.link }}</a>

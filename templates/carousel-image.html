@@ -1,0 +1,5 @@
+{%- if image.lower().startswith(("//", "http://", "https://")) -%}
+  {{- url_for('proxy_media', iid=item.id, n=loop.index) -}}
+{%- else -%}
+  {{- url_for('serve_media', filename=image) -}}
+{%- endif -%}

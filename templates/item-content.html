@@ -50,7 +50,8 @@
       <div class="uk-position-relative uk-visible-toggle uk-light" tabindex="-1">
         <div class="uk-slider-items uk-grid">
           {% for image in item.images %}
-            <div class="uk-width-4-5"><img src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{- url_for('serve_media', filename=image) -}}" alt="{{ alttext }}" title="{{ alttext }}" /></div>
+            {% set __ = loop.index %}
+            <div class="uk-width-4-5"><img src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{% include 'carousel-image.html' %}" alt="{{ alttext }}" title="{{ alttext }}" /></div>
           {% endfor %}
         </div>
         <a style="color: gray;" class="uk-position-center-left uk-position-small uk-hidden-hover" href="#" uk-slidenav-previous uk-slider-item="previous"></a>

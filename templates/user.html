@@ -51,11 +51,11 @@
     {% if not name %}
       <ul class="uk-flex-center uk-tab" uk-tab>
         {% if current_user.is_authenticated and current_user.username == user.username %}
-          <li {% if mode == 'comments' %} class="uk-active" {% endif %}><a href="{{ url_for('view_user', username=user.username, mode='comments') }}">{{ _('Comments') }}</a></li>
+          <li {% if mode == 'comments' %} class="uk-active" {% endif %}><a href="{{ url_for('view_user', username=user.username, mode='comments', layout=layout) }}">{{ _('Comments') }}</a></li>
         {% endif %}
-        <li {% if mode == 'created' %} class="uk-active" {% endif %}><a href="{{ url_for('view_user', username=user.username, mode='created') }}">{{ _('Created') }}</a></li>
-        <li {% if mode not in ['comments', 'created', 'all'] %} class="uk-active" {% endif %}><a href="{{ url_for('view_user', username=user.username, mode='pinned') }}">{{ _('Pinned') }}</a></li>
-        <li {% if mode == 'all' %} class="uk-active" {% endif %}><a href="{{ url_for('view_user', username=user.username, mode='all') }}">{{ _('All') }}</a></li>
+        <li {% if mode == 'created' %} class="uk-active" {% endif %}><a href="{{ url_for('view_user', username=user.username, mode='created', layout=layout) }}">{{ _('Created') }}</a></li>
+        <li {% if mode not in ['comments', 'created', 'all'] %} class="uk-active" {% endif %}><a href="{{ url_for('view_user', username=user.username, mode='pinned', layout=layout) }}">{{ _('Pinned') }}</a></li>
+        <li {% if mode == 'all' %} class="uk-active" {% endif %}><a href="{{ url_for('view_user', username=user.username, mode='all', layout=layout) }}">{{ _('All') }}</a></li>
       </ul>
     {% else %} <hr />
     {% endif %}

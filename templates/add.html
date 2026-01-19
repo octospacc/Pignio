@@ -21,7 +21,7 @@
     <input type="hidden" name="doc" />
     <div class="uk-card uk-card-default uk-card-small uk-card-body" {% if not item.image %} hidden {% endif %}>
       <p><label><input class="uk-checkbox" type="checkbox" checked> {{ _('Image') }}</label></p>
-      <img src="{% if item.image %}{{ url_for('serve_media', filename=item.image) }}{% endif %}" class="image" style="cursor: pointer;" tabindex="0" />
+      <img src="{% if item.image %}{% include "item-full-image.html" %}{% endif %}" class="image" style="cursor: pointer;" tabindex="0" />
     </div>
     <div class="uk-card uk-card-default uk-card-small uk-card-body" {% if not item.video %} hidden {% endif %}>
       <p><label><input class="uk-checkbox" type="checkbox" checked> {{ _('Video') }}</label></p>
@@ -42,6 +42,7 @@
         <table class="uk-table uk-table-divider images">
           <tbody>
             {% for image in item.images %}
+              {% set __ = loop.index %}
               <tr>
                 <td>
                   <button type="button" class="uk-icon-button uk-margin-xsmall-top uk-margin-xsmall-bottom" uk-icon="trash" title="{{ _('Delete') }}" uk-tooltip="{{ _('Delete') }}"></button>
@@ -50,7 +51,7 @@
                   <br />
                   <button type="button" class="uk-icon-button uk-margin-xsmall-top uk-margin-xsmall-bottom" uk-icon="chevron-down" title="{{ _('Down') }}" uk-tooltip="{{ _('Down') }}"></button>
                 </td>
-                <td><img src="{{ url_for('serve_media', filename=image) }}" data-file="{{ image }}" style="cursor: pointer;" tabindex="0" /></td>
+                <td><img src="{% include 'carousel-image.html' %}" data-file="{{ image }}" style="cursor: pointer;" tabindex="0" /></td>
                 {# <td><textarea class="uk-textarea" rows="5" placeholder="Alt Text"></textarea></td> #}
               </tr>
             {% endfor %}
@@ -59,9 +60,9 @@
         <div class="uk-grid-small uk-margin-small" uk-grid>
           <div class="uk-width-expand"><div class="uk-inline uk-width-1-1">
             <span class="uk-form-icon" uk-icon="image"></span>
-            <input class="uk-input carousel-url" type="text" placeholder="{{ _('Add Image from URL') }}" />
+            <input class="uk-input carousel-url" type="text" placeholder="{{ _('Add image from URL') }}" />
           </div></div>
-          <div><button type="button" class="uk-button uk-button-default carousel-add">Add</button></div>
+          <div><button type="button" class="uk-button uk-button-default carousel-add">{{ _('Add') }}</button></div>
         </div>
         <div class="uk-grid-collapse uk-margin-small" uk-grid>
           <div uk-form-custom class="uk-width-1-1">
@@ -81,7 +82,7 @@
         </label></p>
         <p><label>
           <input name="archive" type="checkbox" class="from-link uk-checkbox" checked {% if item.id %} disabled {% endif %} />
-          {{ _('Archive media files') }} 💾
+          {{ _('Archive remote files') }} 💾
         </label></p>
         <p><label>
           <input name="nsfw" type="checkbox" class="uk-checkbox" {% if 'nsfw' in item.systags %} checked {% endif %} />

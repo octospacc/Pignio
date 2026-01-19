@@ -5,6 +5,7 @@ import subprocess
 import ffmpeg # type: ignore[import-untyped]
 import json
 import requests
+from io import BytesIO
 from hashlib import sha256
 from shutil import rmtree, move, copyfile
 from typing import Any, cast
@@ -37,6 +38,7 @@ app.jinja_env.globals["getlang"] = getlang
 app.jinja_env.globals["gettheme"] = gettheme
 app.jinja_env.globals["json"] = json
 app.jinja_env.globals["clean_url_for"] = clean_url_for
+app.jinja_env.globals["extra_params"] = extra_params
 app.jinja_env.globals["ATOM_CONTENT_TYPE"] = ATOM_CONTENT_TYPE
 app.config["DEVELOPMENT"] = Config.DEVELOPMENT
 app.config["SECRET_KEY"] = Config.SECRET_KEY
@@ -73,7 +75,7 @@ class RegisterForm(LoginForm):
     submit = SubmitField("Register")
 
 @app.route("/")
-# @auth_required_config(False) # Restrict_Index
+@auth_required_config(Config.RESTRICT_INDEX)
 def view_index():
     return view_random_items()
 
@@ -177,135 +179,74 @@ def serve_module_simplelightbox(filename:str):
 def serve_media(filename:str):
     return send_from_directory(ITEMS_ROOT, filename)
 
-# @app.route("/proxy/<path:iid>")
-# def proxy_media(iid:str):
-#     if (item := load_item(iid)) and (image := item.get("image")) and (url := parse_absolute_url(image)):
-#         filepath = None
-#         metapath = os.path.join(PROXY_ROOT, f"{iid}.inf")
-#         if Config.PROXY_CACHE and os.path.exists(metapath):
-#             [kind, ext] = read_textual(metapath).split("/")
-#             filepath = os.path.join(PROXY_ROOT, f"{iid}.{ext}")
-#             if os.path.exists(filepath):
-#                 return send_file(filepath)
-#         resp = requests.get(url)
-#         if Config.PROXY_CACHE:
-#             [kind, ext] = get_http_mime(resp)
-#             filepath = os.path.join(PROXY_ROOT, f"{iid}.{ext}")
-#             mkfiledir(filepath)
-#             with open(filepath, "wb") as f:
-#                 f.write(resp.content)
-#             write_textual(metapath, f"{kind}/{ext}")
-#         return resp.content, resp.status_code, resp.headers.items()
-#     return abort(404)
-
-@app.route("/proxy/<path:iid>")
-def proxy_media(iid: str):
-    if (item := load_item(iid)) and (image := item.get("image")) and (url := parse_absolute_url(image)):
-        data, mime = fetch_proxy_media(iid, url)
-        return response_with_type(data, mime)
+@app.route("/proxy/<path:iid>", defaults={"n": 0})
+@app.route("/proxy/<path:iid>/<path:n>")
+def proxy_media(iid:str, n:int):
+    n = int(n)
+    if (item := load_item(iid)):
+        if not n and (image := item.get("image")) and (url := parse_absolute_url(image)):
+            data, mime = fetch_proxy_media(iid, url)
+            return response_with_type(data, mime)
+        elif n and (images := item.get("images")) and (url := parse_absolute_url(images[n - 1])):
+            data, mime = fetch_proxy_media(iid, url, n)
+            return response_with_type(data, mime)
     return abort(404)
-
-# @app.route("/thumb/<path:iid>")
-# def serve_thumb(iid:str):
-#     if Config.USE_THUMBNAILS and (item := load_item(iid)):
-#         image = item.get("image")
-#         video = FFMPEG_AVAILABLE and item.get("video")
-#         if video:
-#             filename = f'{item["id"]}.gif'
-#             filepath = os.path.join(THUMBS_ROOT, filename)
-#             if Config.THUMBNAIL_CACHE and os.path.exists(filepath):
-#                 return send_from_directory(THUMBS_ROOT, filename)
-#             else:
-#                 streams = (ffmpeg
-#                     ).input(os.path.join(ITEMS_ROOT, video), t=VIDEO_THUMB_DURATION
-#                     ).video.filter("fps", VIDEO_THUMB_FPS
-#                     ).filter("scale", VIDEO_THUMB_WIDTH, -1, flags="lanczos"
-#                     ).filter_multi_output("split")
-#                 gif = ffmpeg.filter([streams[1], streams[0].filter("palettegen")], "paletteuse", dither="none")
-#                 if Config.THUMBNAIL_CACHE:
-#                     mkfiledir(filepath)
-#                     ffmpeg.output(gif, filepath, format="gif").run()
-#                     return send_from_directory(THUMBS_ROOT, filename)
-#                 else:
-#                     return send_file(BytesIO(ffmpeg.output(gif, 'pipe:1', format="gif").run(capture_stdout=True)[0]), f"image/gif")
-#         elif image:
-#             if image.lower().endswith(".gif"):
-#                 # TODO: implement thumbnails for big GIFs
-#                 return redirect(url_for("serve_media", filename=image))
-#             filename = f'{item["id"]}.{THUMB_TYPE}'
-#             filepath = os.path.join(THUMBS_ROOT, filename)
-#             if Config.THUMBNAIL_CACHE and os.path.exists(filepath):
-#                 return send_from_directory(THUMBS_ROOT, filename)
-#             else:
-#                 pil = Image.open(os.path.join(ITEMS_ROOT, image))
-#                 if pil.width > THUMB_WIDTH:
-#                     pil = pil.resize((THUMB_WIDTH, int(pil.height * (THUMB_WIDTH / float(pil.width)))), Image.LANCZOS) # type: ignore[assignment, attr-defined]
-#                 pil = pil.convert("RGBA") # type: ignore[assignment]
-#                 ImageFile.MAXBLOCK = pil.size[0] * pil.size[1]
-#                 if Config.THUMBNAIL_CACHE:
-#                     mkfiledir(filepath)
-#                     pil.save(filepath, format=THUMB_TYPE, quality=THUMB_QUALITY, optimize=True, progressive=True)
-#                     return send_from_directory(THUMBS_ROOT, filename)
-#                 else:
-#                     buffer = BytesIO()
-#                     pil.save(buffer, format=THUMB_TYPE, quality=THUMB_QUALITY, optimize=True, progressive=True)
-#                     buffer.seek(0)
-#                     return send_file(buffer, f"image/{THUMB_TYPE}")
-#     return abort(404)
-
-# @app.route("/thumb/<path:iid>")
-# def serve_thumb(iid: str):
-#     if Config.USE_THUMBNAILS and (item := load_item(iid)):
-#         if video := (FFMPEG_AVAILABLE and item.get("video")):
-#             path = os.path.join(THUMBS_ROOT, f"{iid}.gif")
-#             return serve_or_build(
-#                 path,
-#                 Config.THUMBNAIL_CACHE,
-#                 lambda: build_video_thumb(os.path.join(ITEMS_ROOT, video)),
-#                 "image/gif",
-#             )
-#         elif image := item.get("image"):
-#             if image.lower().endswith(".gif"):
-#                 return redirect(url_for("serve_media", filename=image))
-
-#             path = os.path.join(THUMBS_ROOT, f"{iid}.{THUMB_TYPE}")
-#             return serve_or_build(
-#                 path,
-#                 Config.THUMBNAIL_CACHE,
-#                 lambda: build_image_thumb(os.path.join(ITEMS_ROOT, image)),
-#                 f"image/{THUMB_TYPE}",
-#             )
-#     abort(404)
 
 @app.route("/thumb/<path:iid>")
 def serve_thumb(iid: str):
-    if Config.USE_THUMBNAILS and (item := load_item(iid)):
-        if FFMPEG_AVAILABLE and (video := item.get("video")) and (src := get_item_media_source(iid, item, "video")):
+    if not Config.USE_THUMBNAILS:
+        abort(404)
+
+    item = load_item(iid)
+    if not item:
+        abort(404)
+
+    if FFMPEG_AVAILABLE and item.get("video"):
+        src = resolve_media(item, "video")
+        if src:
             path = os.path.join(THUMBS_ROOT, f"{iid}.gif")
+
+            def build():
+                if isinstance(src, str):
+                    return build_video_thumb(src)
+                bio, _ = src
+                return build_video_thumb(bio)
+
             return serve_or_build(
                 path,
                 Config.THUMBNAIL_CACHE,
-                lambda: build_video_thumb(src),
+                build,
                 "image/gif",
             )
-        elif (image := item.get("image")) and (src := get_item_media_source(iid, item, "image")):
-            if src.lower().endswith(".gif"):
-                return send_file(src)
-            else:
-                path = os.path.join(THUMBS_ROOT, f"{iid}.{THUMB_TYPE}")
-                return serve_or_build(
-                    path,
-                    Config.THUMBNAIL_CACHE,
-                    lambda: build_image_thumb(src),
-                    f"image/{THUMB_TYPE}",
-                )
-    return abort(404)
 
+    if item.get("image"):
+        src = resolve_media(item, "image")
+        if src:
+            # GIF: passthrough solo se locale
+            if isinstance(src, str) and src.lower().endswith(".gif"):
+                return send_file(src)
+
+            path = os.path.join(THUMBS_ROOT, f"{iid}.{Config.THUMB_TYPE}")
+
+            def build():
+                if isinstance(src, str):
+                    return build_image_thumb(src)
+                bio, _ = src
+                return build_image_thumb(bio)
+
+            return serve_or_build(
+                path,
+                Config.THUMBNAIL_CACHE,
+                build,
+                f"image/{Config.THUMB_TYPE}",
+            )
+
+    abort(404)
 
 @app.route("/render/<path:iid>")
 def render_media(iid:str):
     if (item := load_item(iid)) and (text := item.get("text")):
-        filename = f'{item["id"]}.{RENDER_TYPE}'
+        filename = f'{item["id"]}.{Config.RENDER_TYPE}'
         filepath = os.path.join(RENDERS_ROOT, filename)
         if Config.RENDER_CACHE and os.path.exists(filepath):
             return send_from_directory(RENDERS_ROOT, filename)
@@ -318,7 +259,7 @@ def render_media(iid:str):
                 mkfiledir(filepath)
                 with open(filepath, "wb") as f:
                     f.write(image)
-            return response_with_type(image, f"image/{RENDER_TYPE}")
+            return response_with_type(image, f"image/{Config.RENDER_TYPE}")
     return abort(404)
 
 @app.route("/model-viewer/<path:iid>")
@@ -338,7 +279,7 @@ def emulator_player(iid:str):
     return view_embedded(iid, "emulatorjs", "rom")
 
 @app.route("/item/<path:iid>", methods=["GET", "POST"])
-# @auth_required_config(False) # Restrict_Items
+@auth_required_config(Config.RESTRICT_ITEMS)
 def view_item(iid:str, embed:bool=False):
     if (item := load_item(iid)) and get_item_permissions(item)["view"]:
         if request.method == "GET":
@@ -363,7 +304,7 @@ def view_item(iid:str, embed:bool=False):
 # TODO: also add @app.route("/@<path:username>"), redirecting to main url of user ?
 @app.route("/user/<path:username>")
 @app.route("/user/<path:username>/<path:cid>")
-# @auth_required_config(False) # Restrict_Users
+@auth_required_config(Config.RESTRICT_USERS)
 def view_user(username:str, cid:str|None=None):
     userparts = username.lstrip("@").split("@")
     if len(userparts) > 1:
@@ -407,16 +348,19 @@ def view_user(username:str, cid:str|None=None):
                 return pagination("user.html", "items", pinned["items"], user=user, collection_meta=pinned, name=cid, folders=folders, load_item=load_item, mode=mode)
     return abort(404)
 
-@app.route("/user/<path:username>/feed") # TODO deprecate this which could conflict with collections
-@app.route("/feed/user/<path:username>")
+@app.route("/user/<path:username>/feed", defaults={"cid": None}) # TODO deprecate this which could conflict with collections
+@app.route("/feed/user/<path:username>", defaults={"cid": None})
+@app.route("/feed/user/<path:username>/<path:cid>")
+@auth_required_config(Config.RESTRICT_FEEDS)
 @noindex
-def view_user_feed(username:str):
-    if (user := load_user(username)):
-        return feed_response("user-feed", user=user, collections=walk_collections(username), load_item=load_item)
+def view_user_feed(username:str, cid:str|None):
+    if (user := load_user(username)) and (collection := walk_collections(username).get(cid or "")):
+        return feed_response("user-feed", user=user, collections={cid: collection}, load_item=load_item)
     else:
         return abort(404)
 
 @app.route("/feed/item/<path:fid>")
+@auth_required_config(Config.RESTRICT_FEEDS)
 @noindex
 def view_folder_feed(fid:str):
     if is_items_folder(fid):
@@ -435,7 +379,7 @@ def view_embed(kind:str, path:str):
 
 @app.route("/search")
 @noindex
-# @auth_required_config(False) # Restrict_Search
+@auth_required_config(Config.RESTRICT_SEARCH)
 def search():
     query_raw = query = request.args.get("query", "")
     cased = parse_bool(request.args.get("cased"))
@@ -466,13 +410,14 @@ def search():
 @query_params("iid")
 @extra_login_required
 def media_trim(iid:str):
-    if FFMPEG_AVAILABLE and (item := load_item(iid)) and ((video := item.get("video")) or ((audio := item.get("audio")) and not audio.lower().endswith((".mid", ".midi")))) and (perms := get_item_permissions(item))["view"]:
+    if FFMPEG_AVAILABLE and (item := load_item(iid)) and ((video := item.get("video")) or ((audio := item.get("audio")) and not str(audio).lower().endswith((".mid", ".midi")))) and (perms := get_item_permissions(item))["view"]:
         if request.method == "GET":
             return render_template("media-trim.html", item=item, can_overwrite=perms["edit"])
         elif request.method == "POST" and (action := request.form.get("action")):
-            media_path = os.path.join(ITEMS_ROOT, video or audio)
-            media_ext = (video or audio).split('.')[-1]
-            temp_path = os.path.join(TEMP_ROOT, f"{time.time()}-{sha256((video or audio).encode()).hexdigest()}.{media_ext}")
+            media = str(video or audio)
+            media_path = os.path.join(ITEMS_ROOT, media)
+            media_ext = media.split('.')[-1]
+            temp_path = os.path.join(TEMP_ROOT, f"{time.time()}-{sha256(media.encode()).hexdigest()}.{media_ext}")
             mkdirs(TEMP_ROOT)
             (ffmpeg
                 ).input(media_path, ss=request.form.get("start")
@@ -866,89 +811,6 @@ def pagination(template:str, key:str, all_items:list, modifier=None, **kwargs):
     if modifier:
         modifier(items)
     return render_template(template, **kwargs, **{key: items}, layout=request.args.get("layout"), limit=limit, next_page=(page + 1 if len(all_items) > next_count else None))
-
-def serve_or_build(
-    path: str,
-    cachable: bool,
-    builder: Callable[[], bytes],
-    mimetype: str | None = None,
-):
-    if cachable and os.path.exists(path):
-        return send_file(path, mimetype=mimetype)
-
-    data = builder()
-
-    if cachable:
-        mkfiledir(path)
-        with open(path, "wb") as f:
-            f.write(data)
-
-    return send_file(
-        BytesIO(data),
-        mimetype=mimetype,
-        download_name=os.path.basename(path),
-    )
-
-def build_video_thumb(video_path: str) -> bytes:
-    streams = (
-        ffmpeg
-        .input(video_path, t=VIDEO_THUMB_DURATION)
-        .video.filter("fps", VIDEO_THUMB_FPS)
-        .filter("scale", VIDEO_THUMB_WIDTH, -1, flags="lanczos")
-        .filter_multi_output("split")
-    )
-    gif = ffmpeg.filter(
-        [streams[1], streams[0].filter("palettegen")],
-        "paletteuse",
-        dither="none",
-    )
-    return ffmpeg.output(gif, "pipe:1", format="gif").run(capture_stdout=True)[0]
-
-def build_image_thumb(image_path: str) -> bytes:
-    pil = Image.open(image_path)
-    if pil.width > THUMB_WIDTH:
-        pil = pil.resize(
-            (THUMB_WIDTH, int(pil.height * THUMB_WIDTH / pil.width)),
-            Image.LANCZOS,
-        )
-    pil = pil.convert("RGBA")
-    ImageFile.MAXBLOCK = pil.size[0] * pil.size[1]
-
-    buf = BytesIO()
-    pil.save(
-        buf,
-        format=THUMB_TYPE,
-        quality=THUMB_QUALITY,
-        optimize=True,
-        progressive=True,
-    )
-    return buf.getvalue()
-
-def get_item_media_source(iid: str, item: dict, field: str) -> str | None:
-    media = item.get(field)
-    if not media:
-        return None
-
-    # --- locale ---
-    local_path = safe_join(ITEMS_ROOT, media)
-    if local_path and os.path.exists(local_path):
-        return local_path
-
-    # --- remoto / proxato ---
-    url = parse_absolute_url(media)
-    if not url:
-        return None
-
-    data, mime = fetch_proxy_media(iid, url)
-    kind, ext = mime.split("/")
-
-    proxypath = os.path.join(PROXY_ROOT, f"{iid}.{field}.{ext}")
-    if not os.path.exists(proxypath):
-        mkfiledir(proxypath)
-        with open(proxypath, "wb") as f:
-            f.write(data)
-
-    return proxypath
 
 if __name__ == "__main__":
     print(f"Running Pignio on {Config.HTTP_HOST}:{Config.HTTP_PORT}...")

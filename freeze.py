@@ -1,6 +1,6 @@
 import os
 from shutil import copytree, rmtree
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup # type: ignore[import-untyped]
 from urllib.parse import unquote, urlparse, parse_qs
 from app import *
 

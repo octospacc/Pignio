@@ -20,6 +20,7 @@ from _util import *
 from _pignio import *
 from _functions import *
 from _media import *
+from _auth import *
 
 def sort_items(items, key:str="datetime", inverse:bool=False):
     items = sorted(items, key=(lambda item: item.get(key, '0')))
@@ -147,7 +148,8 @@ def load_item(iid:str) -> ItemDict|None:
         if data.get("type") == "comment":
             data["datetime"] = str(datetime_from_snowflake(iid.split("/")[-1])).split(".")[0]
         elif data.get("type") == "carousel":
-            data["images"] = []
+            if not data.get("images"):
+                data["images"] = []
             for file in glob(f"{filepath}/*.*"):
                 if (kind := check_file_is_content(file)) == "image":
                     data["images"].append(file.replace(os.sep, "/").removeprefix(f"{ITEMS_ROOT}/"))
@@ -178,8 +180,8 @@ def store_item(iid:str, data:dict[str, str], files:dict|None=None, ocr:bool=Fals
     media_path: str|None = None
     existing_media: str|None = None
 
-    extra = {key: data[key] for key in ["provenance", "nsfw", "archive"] if key in data}
-    data = {key: data[key] for key in ["link", "title", "description", "images", "image", "video", "audio", "text", "alttext", "langs", "collections", "status"] if key in data}
+    extra = {key: data[key] for key in ["provenance", "nsfw", "archive", "collections"] if key in data}
+    data = {key: data[key] for key in ["link", "title", "description", "images", "image", "video", "audio", "text", "alttext", "langs", "status"] if key in data}
     if comment:
         data["type"] = "comment"
 
@@ -200,10 +202,12 @@ def store_item(iid:str, data:dict[str, str], files:dict|None=None, ocr:bool=Fals
             has_media = True
     
     if not has_media and (images := data.get("images")) and (images := json.loads(str(images))) and len(images) >= 2:
-        mkdirs(filepath)
-        for i, image in enumerate(images):
-            if store_url_file(image, f"{filepath}/{i + 1}") == False:
-                return False
+        data["images"] = images
+        if extra.get("archive"):
+            mkdirs(filepath)
+            for i, image in enumerate(images):
+                if store_url_file(image, f"{filepath}/{i + 1}") == False:
+                    return False
         has_media = "images"
 
     if not (existing or has_media or safe_str_get(data, "text")):
@@ -222,25 +226,26 @@ def store_item(iid:str, data:dict[str, str], files:dict|None=None, ocr:bool=Fals
         if (creator := existing.get("creator")):
             data["creator"] = creator
         for kind in MEDIA_TYPES:
-            if (media := existing.get(kind)) and type(media) == str and is_absolute_url(media): # and not data.get(kind):
+            if (media := safe_str_get(existing, kind)) and type(media) == str and is_absolute_url(media): # and not data.get(kind):
                 data[kind] = media
     else:
         data["creator"] = (username := get_current_user().username)
         if has_media == "images":
             data["type"] = "carousel"
         if not comment:
-            if (collections := data["collections"] if "collections" in data else None):
+            if (collections := extra.get("collections")):
                 for collection in list(collections):
                     if collection != "-":
                         toggle_in_collection(username, collection, iid, True)
             else:
                 toggle_in_collection(username, "", iid, True)
 
-    data["systags"] = []
+    systags = []
     if (provenance := safe_str_get(extra, "provenance")):
-        data["systags"].append(provenance)
+        systags.append(provenance)
     if extra.get("nsfw"):
-        data["systags"].append("nsfw")
+        systags.append("nsfw")
+    data["systags"] = systags # type: ignore[assignment]
 
     write_textual(filepath + ITEMS_EXT, write_metadata(data))
     delete_item_cache(iid)
@@ -268,11 +273,6 @@ def delete_item_cache(item:dict|str) -> int:
 def get_item_permissions(item:ItemDict|str) -> dict[str, bool]:
     item = ensure_item_dict(item)
     return {"view": True, "edit": (user := get_current_user()).is_authenticated and (item.get("creator") == user.username or user.is_admin)}
-
-def get_current_user():
-    if not current_user.is_authenticated and (user := verify_token_auth()):
-        return user
-    return current_user
 
 def ensure_item_id(data:dict|str) -> str:
     return cast(str, data["id"] if type(data) == dict else data)

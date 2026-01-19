@@ -24,6 +24,9 @@
     {% if items and not config.FREEZING %}
       <div>
         <form>
+          {% if layout %}
+            <input type="hidden" name="layout" value="{{ layout }}" />
+          {% endif %}
           <select class="uk-select uk-form-small" name="ordering">
             <option value="random" {% if ordering == 'random' %} selected {% endif %}>{{ _('Random order') }} &nbsp;</option>
             <option value="natural" {% if ordering == 'natural' %} selected {% endif %}>{{ _('Natural order') }} &nbsp;</option>

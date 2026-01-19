@@ -2,11 +2,7 @@
   {{- url_for('render_media', iid=item.id) -}}
 {%- elif item.image -%}
   {%- if full or not config.CONFIG.USE_THUMBNAILS or layout == 'gallery' -%}
-    {%- if item.image.lower().startswith(("//", "http://", "https://")) -%}
-      {{- url_for('proxy_media', iid=item.id) -}}
-    {%- else -%}
-      {{- url_for('serve_media', filename=item.image) -}}
-    {%- endif -%}
+    {% include "item-full-image.html" %}
   {%- else -%}
     {{- url_for('serve_thumb', iid=item.id) -}}
   {%- endif -%}
