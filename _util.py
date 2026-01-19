@@ -5,6 +5,12 @@ from slugify import slugify
 from configparser import ConfigParser
 from shutil import copyfile
 from io import StringIO
+from base64 import urlsafe_b64encode
+from hashlib import sha256
+from typing import TypedDict
+
+class MetaDict(TypedDict):
+    ...
 
 def parse_bool(v:str|bool) -> bool|None:
     if type(v) == bool:
@@ -17,15 +23,29 @@ def parse_bool(v:str|bool) -> bool|None:
             return False
     return None
 
+def parse_bool_strict(v:str|bool) -> bool:
+    return parse_bool(v) or False
+
 def mkdirs(*paths:str) -> None:
     for path in paths:
         Path(path).mkdir(parents=True, exist_ok=True)
+
+def mkfiledir(path:str) -> None:
+    mkdirs(os.path.dirname(path))
 
 def slugify_name(text:str):
     return slugify(text)[:64]
 
 def strip_ext(filename:str) -> str:
     return os.path.splitext(filename)[0]
+
+def is_absolute_url(text:str) -> bool:
+    return text.lower().startswith(("//", "http://", "https://"))
+
+def parse_absolute_url(url:str) -> str|None:
+    if is_absolute_url(url):
+        return f"https:{url}" if url.lower().startswith("//") else url
+    return None
 
 def host_to_absolute(host:str) -> str:
     scheme = urllib.parse.urlsplit(host).scheme
@@ -55,10 +75,13 @@ def wsv_to_list(data:str) -> list[str]:
 def safe_str_get(dikt:dict[str,str]|dict[str,str|None], key:str) -> str:
     return dikt and dikt.get(key) or ""
 
+def generate_user_hash(username:str, password:str) -> str:
+    return f"{username}:" + urlsafe_b64encode(sha256(password.encode()).digest()).decode()
+
 from _pignio import *
 
-def write_textual(filepath:str, content:str) -> None:
-    if Config.USE_BAK_FILES and os.path.isfile(filepath):
+def write_textual(filepath:str, content:str, allow_bak:bool=True) -> None:
+    if allow_bak and Config.USE_BAK_FILES and os.path.isfile(filepath):
         copyfile(filepath, f"{filepath}.bak")
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(content)
@@ -75,7 +98,7 @@ def write_metadata(data:dict[str, str]|MetaDict) -> str:
     config = ConfigParser(interpolation=None)
     new_data: dict[str, str] = {}
     for key in data:
-        if (value := data.get(key)) and key not in (*MEDIA_TYPES, "datetime", "images"):
+        if (value := data.get(key)) and key not in ("datetime", "images"):
             if type(value) == str:
                 new_data[key] = value
             elif type(value) == list:

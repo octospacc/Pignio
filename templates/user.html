@@ -1,14 +1,14 @@
 {%- extends "base.html" -%}
 {%- set feed_url -%}{{ url_for('view_user_feed', username=user.username) }}{%- endset -%}
-{% block title %}{% if name %}{{ _('Collection') }}: {{ (collection_meta and collection_meta.title) or name }} | {% endif %}{{ _('User') }}: {{ user.data.title or user.username }}{% endblock %}
+{% block title %}{% if name %}{{ _('Collection') }}: {{ (collection_meta and collection_meta.title) or name }} | {% endif %}{{ _('User') }}: {{ user.title or user.username }}{% endblock %}
 {% block canonical %}{{ url_for('view_user', username=user.username) }}{% endblock %}
 {% block external %}{{ user.url or "" }}{% endblock %}
 {% block metadata %}
   <link rel="alternate" type="{{ ATOM_CONTENT_TYPE }}" href="{{ feed_url }}" title="@{{ user.username }} Feed" />
   <meta name="twitter:title" property="og:title" content="{{ title }}" />
-  {% if (collection_meta and collection_meta.description) or user.data.description %}
-    <meta name="twitter:description" property="og:description" content="{{ (collection_meta and collection_meta.description) or user.data.description }}" />
-    <meta name="description" content="{{ (collection_meta and collection_meta.description) or user.data.description }}" />
+  {% if (collection_meta and collection_meta.description) or user.description %}
+    <meta name="twitter:description" property="og:description" content="{{ (collection_meta and collection_meta.description) or user.description }}" />
+    <meta name="description" content="{{ (collection_meta and collection_meta.description) or user.description }}" />
   {% endif %}
 {% endblock %}
 {% block content %}
@@ -16,18 +16,18 @@
     <h2>
       {% if user.url %}<a target="_blank" href="{{ user.url }}">{% endif %}
       {% if name %}<a href="{{ url_for('view_user', username=user.username) }}">{% endif %}
-        {{ user.data.title or user.username }}
+        {{ user.title or user.username }}
       {% if name %}</a>{% endif %}
       {% if user.url %}</a>{% endif %}
     </h2>
-    {% if user.data.propic %}
-      {% with item=load_item(user.data.propic) %}
+    {% if user.propic %}
+      {% with item=load_item(user.propic) %}
         <div class="uk-width-medium uk-align-center">
           {% include "item-content.html" %}
         </div>
       {% endwith %}
     {% endif %}
-    <p>{{ user.data.description }}</p>
+    <p>{{ user.description }}</p>
     <div class="uk-margin uk-flex-center uk-grid-small uk-grid" uk-grid>
       <div>
         <a class="uk-button uk-button-default uk-icon-link" href="{{ feed_url }}" target="_blank" rel="nofollow">

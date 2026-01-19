@@ -77,11 +77,15 @@
       <div>
         <p><label>
           <input type="checkbox" class="from-link uk-checkbox" {% if not item.id %} checked {% endif %} />
-          {{ _('link-fill') }}
+          {{ _('link-fill') }} 🔗
+        </label></p>
+        <p><label>
+          <input name="archive" type="checkbox" class="from-link uk-checkbox" checked {% if item.id %} disabled {% endif %} />
+          {{ _('Archive media files') }} 💾
         </label></p>
         <p><label>
           <input name="nsfw" type="checkbox" class="uk-checkbox" {% if 'nsfw' in item.systags %} checked {% endif %} />
-          {{ _('Mark as sensitive') }} (NSFW)
+          {{ _('Mark as sensitive') }} (NSFW) 🔞
         </label></p>
         <p><label>
           {{ _('Visibility') }}

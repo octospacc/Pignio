@@ -7,15 +7,66 @@ from queue import Queue
 from threading import Thread
 from _util import *
 
-class MetaDict(TypedDict):
-    ...
+class DataContainer:
+    data: MetaDict
 
-class ItemDict(MetaDict, total=False):
-    id: str
+    def __init__(self, data_dict:MetaDict):
+        # Initialize an instance attribute to store the dictionary data
+        self.data = data_dict
+
+    def __getattr__(self, key):
+        """Fallback for dot notation (obj.a)"""
+        if key in self.data:
+            return self.data[key]
+        # raise AttributeError(f"'{key}' not found")
+        return None
+
+    def __setitem__(self, key, value):
+        """Implementation for bracket notation (obj['a'] = value)"""
+        # This updates the underlying dictionary
+        self.data[key] = value
+
+    def __getitem__(self, key):
+        """Implementation for bracket notation access (obj['a'])"""
+        return self.data[key]
+
+    def __or__(self, other):
+        """
+        Handles the pipe operator: obj | dict
+        Returns a NEW instance with merged data.
+        """
+        if not isinstance(other, dict):
+            return NotImplemented
+        # Create a new dictionary merging the two
+        new_data = self.data | other 
+        return DataContainer(new_data)
+
+    def __ior__(self, other):
+        """
+        Handles the in-place pipe operator: obj |= dict
+        Updates the existing instance.
+        """
+        if not isinstance(other, dict):
+            return NotImplemented
+        # Update the internal dictionary in place
+        self.data |= other
+        return self
+    
+    def get(self, key):
+        return self.__getattr__(key)
+
+    def __len__(self):
+        return len(self.data)
+
+class MetaDict(TypedDict):
     title: str
+
+class ItemDict(MetaDict, total=False): # type: ignore[call-arg]
+    id: str
     description: str
     datetime: str
     link: str
+    images: list[str]
     image: str
     video: str
     model: str
@@ -26,21 +77,25 @@ class ItemDict(MetaDict, total=False):
     systags: list[str]
     status: Literal["public", "silent"]
     type: str
+    creator: str
 
-class CollectionDict(MetaDict, total=False):
+class CollectionDict(MetaDict, total=False): # type: ignore[call-arg]
     items: list[str]
-    title: str
     description: str
 
-class UserDict(CollectionDict, total=False):
+class UserDict(CollectionDict, total=False): # type: ignore[call-arg]
     password: str
+    tokens: list[str]
 
 DATA_ROOT = "data"
 ITEMS_ROOT = f"{DATA_ROOT}/items"
-CACHE_ROOT = f"{DATA_ROOT}/cache"
 TEMP_ROOT = f"{DATA_ROOT}/temp"
 USERS_ROOT = f"{DATA_ROOT}/users"
 EVENTS_ROOT = f"{DATA_ROOT}/events"
+CACHE_ROOT = f"{DATA_ROOT}/cache"
+THUMBS_ROOT = f"{CACHE_ROOT}/thumbs"
+RENDERS_ROOT = f"{CACHE_ROOT}/renders"
+PROXY_ROOT = f"{CACHE_ROOT}/proxy"
 EXTENSIONS = {
     "image": ("mpo", "jpg", "jpeg", "jfif", "bmp", "png", "apng", "gif", "webp", "avif", "svg"),
     "video": ("mp4", "mov", "mpg", "ogv", "webm", "mkv"),
@@ -88,21 +143,22 @@ class Config:
     _get = _makeget()
 
     SECRET_KEY = _get("secret_key")
-    DEVELOPMENT = parse_bool(_get("development"))
+    DEVELOPMENT = parse_bool_strict(_get("development"))
     HTTP_HOST = _get("http_host")
     HTTP_PORT = int(_get("http_port"))
     HTTP_THREADS = int(_get("http_threads"))
     LINKS_PREFIX = _get("links_prefix")
     RESULTS_LIMIT = int(_get("results_limit"))
-    AUTO_OCR = parse_bool(_get("auto_ocr"))
+    AUTO_OCR = parse_bool_strict(_get("auto_ocr"))
     INSTANCE_NAME = _get("instance_name")
     INSTANCE_DESCRIPTION = _get("instance_description")
-    ALLOW_REGISTRATION = parse_bool(_get("allow_registration"))
+    ALLOW_REGISTRATION = parse_bool_strict(_get("allow_registration"))
     # ALLOW_FEDERATION = False
-    USE_THUMBNAILS = parse_bool(_get("use_thumbnails"))
-    THUMBNAIL_CACHE = parse_bool(_get("thumbnail_cache"))
-    RENDER_CACHE = parse_bool(_get("render_cache"))
-    USE_BAK_FILES = parse_bool(_get("use_bak_files"))
+    USE_THUMBNAILS = parse_bool_strict(_get("use_thumbnails"))
+    THUMBNAIL_CACHE = parse_bool_strict(_get("thumbnail_cache"))
+    RENDER_CACHE = parse_bool_strict(_get("render_cache"))
+    PROXY_CACHE = parse_bool_strict(_get("proxy_cache"))
+    USE_BAK_FILES = parse_bool_strict(_get("use_bak_files"))
     # PANSTORAGE_URL = ""
     SITE_VERIFICATION = {
         "GOOGLE": _get("site_verification_google"),

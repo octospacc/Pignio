@@ -4,6 +4,7 @@ import urllib.parse
 import subprocess
 import ffmpeg # type: ignore[import-untyped]
 import json
+import requests
 from hashlib import sha256
 from shutil import rmtree, move, copyfile
 from typing import Any, cast
@@ -25,6 +26,9 @@ from _util import *
 from _pignio import *
 from _functions import *
 from _features import *
+from _media import *
+from _users import *
+from _auth import *
 
 FFMPEG_AVAILABLE = check_ffmpeg_available()
 
@@ -173,69 +177,147 @@ def serve_module_simplelightbox(filename:str):
 def serve_media(filename:str):
     return send_from_directory(ITEMS_ROOT, filename)
 
-@app.route("/thumb/<path:iid>")
-def serve_thumb(iid:str):
-    if Config.USE_THUMBNAILS and (item := load_item(iid)):
-        image = item.get("image")
-        video = FFMPEG_AVAILABLE and item.get("video")
-        if video:
-            filename = f'{item["id"]}.gif'
-            filepath = os.path.join(CACHE_ROOT, filename)
-            if Config.THUMBNAIL_CACHE and os.path.exists(filepath):
-                return send_from_directory(CACHE_ROOT, filename)
-            else:
-                streams = (ffmpeg
-                    ).input(os.path.join(ITEMS_ROOT, video), t=VIDEO_THUMB_DURATION
-                    ).video.filter("fps", VIDEO_THUMB_FPS
-                    ).filter("scale", VIDEO_THUMB_WIDTH, -1, flags="lanczos"
-                    ).filter_multi_output("split")
-                gif = ffmpeg.filter([streams[1], streams[0].filter("palettegen")], "paletteuse", dither="none")
-                if Config.THUMBNAIL_CACHE:
-                    mkdirs(os.path.dirname(filepath))
-                    ffmpeg.output(gif, filepath, format="gif").run()
-                    return send_from_directory(CACHE_ROOT, filename)
-                else:
-                    return send_file(BytesIO(ffmpeg.output(gif, 'pipe:1', format="gif").run(capture_stdout=True)[0]), f"image/gif")
-        elif image:
-            if image.lower().endswith(".gif"):
-                return redirect(url_for("serve_media", filename=image))
-            filename = f'{item["id"]}.{THUMB_TYPE}'
-            filepath = os.path.join(CACHE_ROOT, filename)
-            if Config.THUMBNAIL_CACHE and os.path.exists(filepath):
-                return send_from_directory(CACHE_ROOT, filename)
-            else:
-                pil = Image.open(os.path.join(ITEMS_ROOT, image))
-                if pil.width > THUMB_WIDTH:
-                    pil = pil.resize((THUMB_WIDTH, int(pil.height * (THUMB_WIDTH / float(pil.width)))), Image.LANCZOS) # type: ignore[assignment, attr-defined]
-                pil = pil.convert("RGBA") # type: ignore[assignment]
-                ImageFile.MAXBLOCK = pil.size[0] * pil.size[1]
-                if Config.THUMBNAIL_CACHE:
-                    mkdirs(os.path.dirname(filepath))
-                    pil.save(filepath, format=THUMB_TYPE, quality=THUMB_QUALITY, optimize=True, progressive=True)
-                    return send_from_directory(CACHE_ROOT, filename)
-                else:
-                    buffer = BytesIO()
-                    pil.save(buffer, format=THUMB_TYPE, quality=THUMB_QUALITY, optimize=True, progressive=True)
-                    buffer.seek(0)
-                    return send_file(buffer, f"image/{THUMB_TYPE}")
+# @app.route("/proxy/<path:iid>")
+# def proxy_media(iid:str):
+#     if (item := load_item(iid)) and (image := item.get("image")) and (url := parse_absolute_url(image)):
+#         filepath = None
+#         metapath = os.path.join(PROXY_ROOT, f"{iid}.inf")
+#         if Config.PROXY_CACHE and os.path.exists(metapath):
+#             [kind, ext] = read_textual(metapath).split("/")
+#             filepath = os.path.join(PROXY_ROOT, f"{iid}.{ext}")
+#             if os.path.exists(filepath):
+#                 return send_file(filepath)
+#         resp = requests.get(url)
+#         if Config.PROXY_CACHE:
+#             [kind, ext] = get_http_mime(resp)
+#             filepath = os.path.join(PROXY_ROOT, f"{iid}.{ext}")
+#             mkfiledir(filepath)
+#             with open(filepath, "wb") as f:
+#                 f.write(resp.content)
+#             write_textual(metapath, f"{kind}/{ext}")
+#         return resp.content, resp.status_code, resp.headers.items()
+#     return abort(404)
+
+@app.route("/proxy/<path:iid>")
+def proxy_media(iid: str):
+    if (item := load_item(iid)) and (image := item.get("image")) and (url := parse_absolute_url(image)):
+        data, mime = fetch_proxy_media(iid, url)
+        return response_with_type(data, mime)
     return abort(404)
+
+# @app.route("/thumb/<path:iid>")
+# def serve_thumb(iid:str):
+#     if Config.USE_THUMBNAILS and (item := load_item(iid)):
+#         image = item.get("image")
+#         video = FFMPEG_AVAILABLE and item.get("video")
+#         if video:
+#             filename = f'{item["id"]}.gif'
+#             filepath = os.path.join(THUMBS_ROOT, filename)
+#             if Config.THUMBNAIL_CACHE and os.path.exists(filepath):
+#                 return send_from_directory(THUMBS_ROOT, filename)
+#             else:
+#                 streams = (ffmpeg
+#                     ).input(os.path.join(ITEMS_ROOT, video), t=VIDEO_THUMB_DURATION
+#                     ).video.filter("fps", VIDEO_THUMB_FPS
+#                     ).filter("scale", VIDEO_THUMB_WIDTH, -1, flags="lanczos"
+#                     ).filter_multi_output("split")
+#                 gif = ffmpeg.filter([streams[1], streams[0].filter("palettegen")], "paletteuse", dither="none")
+#                 if Config.THUMBNAIL_CACHE:
+#                     mkfiledir(filepath)
+#                     ffmpeg.output(gif, filepath, format="gif").run()
+#                     return send_from_directory(THUMBS_ROOT, filename)
+#                 else:
+#                     return send_file(BytesIO(ffmpeg.output(gif, 'pipe:1', format="gif").run(capture_stdout=True)[0]), f"image/gif")
+#         elif image:
+#             if image.lower().endswith(".gif"):
+#                 # TODO: implement thumbnails for big GIFs
+#                 return redirect(url_for("serve_media", filename=image))
+#             filename = f'{item["id"]}.{THUMB_TYPE}'
+#             filepath = os.path.join(THUMBS_ROOT, filename)
+#             if Config.THUMBNAIL_CACHE and os.path.exists(filepath):
+#                 return send_from_directory(THUMBS_ROOT, filename)
+#             else:
+#                 pil = Image.open(os.path.join(ITEMS_ROOT, image))
+#                 if pil.width > THUMB_WIDTH:
+#                     pil = pil.resize((THUMB_WIDTH, int(pil.height * (THUMB_WIDTH / float(pil.width)))), Image.LANCZOS) # type: ignore[assignment, attr-defined]
+#                 pil = pil.convert("RGBA") # type: ignore[assignment]
+#                 ImageFile.MAXBLOCK = pil.size[0] * pil.size[1]
+#                 if Config.THUMBNAIL_CACHE:
+#                     mkfiledir(filepath)
+#                     pil.save(filepath, format=THUMB_TYPE, quality=THUMB_QUALITY, optimize=True, progressive=True)
+#                     return send_from_directory(THUMBS_ROOT, filename)
+#                 else:
+#                     buffer = BytesIO()
+#                     pil.save(buffer, format=THUMB_TYPE, quality=THUMB_QUALITY, optimize=True, progressive=True)
+#                     buffer.seek(0)
+#                     return send_file(buffer, f"image/{THUMB_TYPE}")
+#     return abort(404)
+
+# @app.route("/thumb/<path:iid>")
+# def serve_thumb(iid: str):
+#     if Config.USE_THUMBNAILS and (item := load_item(iid)):
+#         if video := (FFMPEG_AVAILABLE and item.get("video")):
+#             path = os.path.join(THUMBS_ROOT, f"{iid}.gif")
+#             return serve_or_build(
+#                 path,
+#                 Config.THUMBNAIL_CACHE,
+#                 lambda: build_video_thumb(os.path.join(ITEMS_ROOT, video)),
+#                 "image/gif",
+#             )
+#         elif image := item.get("image"):
+#             if image.lower().endswith(".gif"):
+#                 return redirect(url_for("serve_media", filename=image))
+
+#             path = os.path.join(THUMBS_ROOT, f"{iid}.{THUMB_TYPE}")
+#             return serve_or_build(
+#                 path,
+#                 Config.THUMBNAIL_CACHE,
+#                 lambda: build_image_thumb(os.path.join(ITEMS_ROOT, image)),
+#                 f"image/{THUMB_TYPE}",
+#             )
+#     abort(404)
+
+@app.route("/thumb/<path:iid>")
+def serve_thumb(iid: str):
+    if Config.USE_THUMBNAILS and (item := load_item(iid)):
+        if FFMPEG_AVAILABLE and (video := item.get("video")) and (src := get_item_media_source(iid, item, "video")):
+            path = os.path.join(THUMBS_ROOT, f"{iid}.gif")
+            return serve_or_build(
+                path,
+                Config.THUMBNAIL_CACHE,
+                lambda: build_video_thumb(src),
+                "image/gif",
+            )
+        elif (image := item.get("image")) and (src := get_item_media_source(iid, item, "image")):
+            if src.lower().endswith(".gif"):
+                return send_file(src)
+            else:
+                path = os.path.join(THUMBS_ROOT, f"{iid}.{THUMB_TYPE}")
+                return serve_or_build(
+                    path,
+                    Config.THUMBNAIL_CACHE,
+                    lambda: build_image_thumb(src),
+                    f"image/{THUMB_TYPE}",
+                )
+    return abort(404)
+
 
 @app.route("/render/<path:iid>")
 def render_media(iid:str):
     if (item := load_item(iid)) and (text := item.get("text")):
         filename = f'{item["id"]}.{RENDER_TYPE}'
-        filepath = os.path.join(CACHE_ROOT, filename)
+        filepath = os.path.join(RENDERS_ROOT, filename)
         if Config.RENDER_CACHE and os.path.exists(filepath):
-            return send_from_directory(CACHE_ROOT, filename)
+            return send_from_directory(RENDERS_ROOT, filename)
         else:
             args = ["node", "render.js"]
             if (background := item.get("image")):
                 args.append(os.path.join(ITEMS_ROOT, background))
             image, err = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate(input=text.encode("utf-8"))
             if Config.RENDER_CACHE:
-                mkdirs(os.path.dirname(filepath))
+                mkfiledir(filepath)
                 with open(filepath, "wb") as f:
-                    f.write(image) # TODO handle creation of parent directories when necessary
+                    f.write(image)
             return response_with_type(image, f"image/{RENDER_TYPE}")
     return abort(404)
 
@@ -505,8 +587,7 @@ def view_notifications():
 def view_settings(cid:str|None):
     if cid:
         ... # TODO
-    else:
-        user = load_user(current_user.username)
+    elif (user := load_user(current_user.username)):
         tokens = []
         tokens_raw = user.data.get("tokens", [])
         tokens_changed = False
@@ -515,7 +596,7 @@ def view_settings(cid:str|None):
             match request.form.get("action"):
                 case "update-profile":
                     flash(gettext("Profile updated") + '!')
-                    user.data["title"] = request.form.get("title")
+                    user.data["title"] = request.form.get("title", "")
                     user.save()
                 case "create-token":
                     token = token_urlsafe()
@@ -684,7 +765,10 @@ def comments_api(iid:str, cid:str|None):
         if request.method == "GET":
             return comment
         elif request.method == "POST":
-            store_item(comment["id"], request.get_json(), comment=True)
+            data = request.get_json()
+            if data.get("archive", None) == None:
+                data["archive"] = True
+            store_item(comment["id"], data, comment=True)
             return load_item(comment["id"])
     else:
         return comments
@@ -744,7 +828,7 @@ def remove_trailing_slash():
 
 @app.after_request
 def request_headers(response):
-    if request.endpoint != "view_embed":
+    if request.endpoint not in ["view_embed", "serve_media"]:
         response.headers["X-Frame-Options"] = "SAMEORIGIN"
     return response
 
@@ -782,6 +866,89 @@ def pagination(template:str, key:str, all_items:list, modifier=None, **kwargs):
     if modifier:
         modifier(items)
     return render_template(template, **kwargs, **{key: items}, layout=request.args.get("layout"), limit=limit, next_page=(page + 1 if len(all_items) > next_count else None))
+
+def serve_or_build(
+    path: str,
+    cachable: bool,
+    builder: Callable[[], bytes],
+    mimetype: str | None = None,
+):
+    if cachable and os.path.exists(path):
+        return send_file(path, mimetype=mimetype)
+
+    data = builder()
+
+    if cachable:
+        mkfiledir(path)
+        with open(path, "wb") as f:
+            f.write(data)
+
+    return send_file(
+        BytesIO(data),
+        mimetype=mimetype,
+        download_name=os.path.basename(path),
+    )
+
+def build_video_thumb(video_path: str) -> bytes:
+    streams = (
+        ffmpeg
+        .input(video_path, t=VIDEO_THUMB_DURATION)
+        .video.filter("fps", VIDEO_THUMB_FPS)
+        .filter("scale", VIDEO_THUMB_WIDTH, -1, flags="lanczos")
+        .filter_multi_output("split")
+    )
+    gif = ffmpeg.filter(
+        [streams[1], streams[0].filter("palettegen")],
+        "paletteuse",
+        dither="none",
+    )
+    return ffmpeg.output(gif, "pipe:1", format="gif").run(capture_stdout=True)[0]
+
+def build_image_thumb(image_path: str) -> bytes:
+    pil = Image.open(image_path)
+    if pil.width > THUMB_WIDTH:
+        pil = pil.resize(
+            (THUMB_WIDTH, int(pil.height * THUMB_WIDTH / pil.width)),
+            Image.LANCZOS,
+        )
+    pil = pil.convert("RGBA")
+    ImageFile.MAXBLOCK = pil.size[0] * pil.size[1]
+
+    buf = BytesIO()
+    pil.save(
+        buf,
+        format=THUMB_TYPE,
+        quality=THUMB_QUALITY,
+        optimize=True,
+        progressive=True,
+    )
+    return buf.getvalue()
+
+def get_item_media_source(iid: str, item: dict, field: str) -> str | None:
+    media = item.get(field)
+    if not media:
+        return None
+
+    # --- locale ---
+    local_path = safe_join(ITEMS_ROOT, media)
+    if local_path and os.path.exists(local_path):
+        return local_path
+
+    # --- remoto / proxato ---
+    url = parse_absolute_url(media)
+    if not url:
+        return None
+
+    data, mime = fetch_proxy_media(iid, url)
+    kind, ext = mime.split("/")
+
+    proxypath = os.path.join(PROXY_ROOT, f"{iid}.{field}.{ext}")
+    if not os.path.exists(proxypath):
+        mkfiledir(proxypath)
+        with open(proxypath, "wb") as f:
+            f.write(data)
+
+    return proxypath
 
 if __name__ == "__main__":
     print(f"Running Pignio on {Config.HTTP_HOST}:{Config.HTTP_PORT}...")

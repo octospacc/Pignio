@@ -8,7 +8,7 @@ from base64 import b64decode, urlsafe_b64encode
 from urllib.parse import urlparse
 from io import StringIO
 from configparser import ConfigParser
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup # type: ignore[import-untyped]
 from glob import glob, escape as glob_escape
 from datetime import datetime
 from snowflake import Snowflake # type: ignore[import-untyped]
@@ -19,18 +19,7 @@ from werkzeug.utils import safe_join
 from _util import *
 from _pignio import *
 from _functions import *
-
-def check_file_supported(filename:str) -> bool:
-    return check_file_is_meta(filename) or bool(check_file_is_content(filename))
-
-def check_file_is_meta(filename:str) -> bool:
-    return filename.lower().endswith(ITEMS_EXT)
-
-def check_file_is_content(filename:str) -> str|Literal[False]:
-    for kind in MEDIA_TYPES:
-        if filename.lower().endswith(tuple([f".{ext}" for ext in EXTENSIONS[kind]])):
-            return kind
-    return False
+from _media import *
 
 def sort_items(items, key:str="datetime", inverse:bool=False):
     items = sorted(items, key=(lambda item: item.get(key, '0')))
@@ -139,9 +128,12 @@ def load_item(iid:str) -> ItemDict|None:
     iid = filename_to_iid(iid)
     filename = iid_to_filename(iid)
     filepath = safe_join(ITEMS_ROOT, filename)
-    files = glob(f"{glob_escape(filepath)}.*")
+    if not filepath:
+        return None
 
+    files = glob(f"{glob_escape(filepath)}.*")
     if len(files):
+        # data = Item({"id": iid})
         data: ItemDict = {"id": iid}
         if iid != filename:
             data["datetime"] = str(datetime_from_snowflake(iid)).split(".")[0]
@@ -186,7 +178,7 @@ def store_item(iid:str, data:dict[str, str], files:dict|None=None, ocr:bool=Fals
     media_path: str|None = None
     existing_media: str|None = None
 
-    extra = {key: data[key] for key in ["provenance", "nsfw"] if key in data}
+    extra = {key: data[key] for key in ["provenance", "nsfw", "archive"] if key in data}
     data = {key: data[key] for key in ["link", "title", "description", "images", "image", "video", "audio", "text", "alttext", "langs", "collections", "status"] if key in data}
     if comment:
         data["type"] = "comment"
@@ -201,10 +193,13 @@ def store_item(iid:str, data:dict[str, str], files:dict|None=None, ocr:bool=Fals
                 has_media = kind
 
     if not has_media and (media := (data.get("video") or data.get("audio") or data.get("image"))):
-        if (stored := store_url_file(media, filepath)):
-            has_media, media_path = stored
+        if extra.get("archive"):
+            if (stored := store_url_file(media, filepath)):
+                has_media, media_path = stored
+        else:
+            has_media = True
     
-    if not has_media and (images := data.get("images")) and (images := json.loads(images)) and len(images) >= 2:
+    if not has_media and (images := data.get("images")) and (images := json.loads(str(images))) and len(images) >= 2:
         mkdirs(filepath)
         for i, image in enumerate(images):
             if store_url_file(image, f"{filepath}/{i + 1}") == False:
@@ -226,6 +221,9 @@ def store_item(iid:str, data:dict[str, str], files:dict|None=None, ocr:bool=Fals
             data["type"] = kind
         if (creator := existing.get("creator")):
             data["creator"] = creator
+        for kind in MEDIA_TYPES:
+            if (media := existing.get(kind)) and type(media) == str and is_absolute_url(media): # and not data.get(kind):
+                data[kind] = media
     else:
         data["creator"] = (username := get_current_user().username)
         if has_media == "images":
@@ -275,31 +273,6 @@ def get_current_user():
     if not current_user.is_authenticated and (user := verify_token_auth()):
         return user
     return current_user
-
-def store_url_file(url:str, filepath:str) -> tuple[str, str]|Literal[False]|None:
-    if (urllow := url.lower()).startswith("data:") and "/" in urllow:
-        [kind, ext] = urllow.split(",")[0].split(";")[0].split(":")[1].split("/")
-        if (newext := get_allowed_filetype(kind, ext)):
-            with open(media_path := f"{filepath}.{newext}", "wb") as f:
-                f.write(b64decode(url.split(",")[1]))
-                return (kind, media_path)
-    elif urllow.startswith(("http://", "https://", "//")):
-        response = requests.get(url, timeout=15)
-        [kind, ext] = response.headers["Content-Type"].lower().split(";")[0].split("/")
-        if (newext := get_allowed_filetype(kind, ext)):
-            with open(media_path := f"{filepath}.{newext}", "wb") as f:
-                f.write(response.content)
-                return (kind, media_path)
-    else:
-        return None
-    return False
-
-def get_allowed_filetype(kind:str, ext:str) -> str|Literal[False]:
-    for testkind in MEDIA_TYPES:
-        if ext in EXTENSIONS[testkind]:
-            return ext
-    extra = EXTENSIONS.get(f"{kind}.extra")
-    return extra and cast(dict, extra).get(ext) or False
 
 def ensure_item_id(data:dict|str) -> str:
     return cast(str, data["id"] if type(data) == dict else data)
@@ -396,17 +369,6 @@ def fetch_url_data(url:str) -> dict[str, str|None]:
 def soup_or_default(soup:BeautifulSoup, tag:str, attrs:dict, prop:str, default:Any) -> Any:
     elem = soup.find(tag, attrs=attrs)
     return (elem.get(prop) if elem else None) or default # type: ignore[attr-defined]
-
-def ocr_image(filepath:str, langs:list[str]) -> str:
-    text = ""
-    try:
-        image = Image.open(filepath)
-        width, height = image.size
-        monochrome = image.resize((width * 2, height * 2), resample=Image.Resampling.LANCZOS).convert("L").point(lambda x: 0 if x < 140 else 255, "1")
-        text = image_to_string(monochrome, lang=("+".join(langs) if len(langs) > 0 else None))
-    except TesseractNotFoundError:
-        pass
-    return text
 
 def generate_iid() -> str:
     return str(next(snowflake))

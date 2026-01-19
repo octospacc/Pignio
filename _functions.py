@@ -2,10 +2,10 @@ import os
 import json
 import requests
 import urllib.parse
-import ffmpeg
+import ffmpeg # type: ignore[import-untyped]
 from io import BytesIO
-from zipstream import ZipFile, ZIP_DEFLATED
-from bs4 import BeautifulSoup
+from zipstream import ZipFile, ZIP_DEFLATED # type: ignore[import-untyped]
+from bs4 import BeautifulSoup # type: ignore[import-untyped]
 from functools import wraps
 from typing import Callable, Any, Literal, cast
 from base64 import b64decode, urlsafe_b64encode
@@ -18,47 +18,16 @@ from werkzeug.utils import safe_join
 from _app_factory import app
 from _util import *
 from _pignio import *
+from _media import check_ffmpeg_available
+from _users import User, RemoteUser
 # from _features import *
 
-class User(UserMixin):
-    data: UserDict = {}
-    is_admin = False
-    is_authed = False
+# class Item(DataContainer):
+#     def __init__(self, data:ItemDict):
+#         self.data = data
 
-    def __init__(self, username:str, filepath:str|None=None, url:str|None=None):
-        self.username = username
-        self.filepath = filepath
-        self.url = self.json_url = url
-        if filepath:
-            try:
-                self.data = cast(UserDict, read_metadata(read_textual(filepath)))
-                self.is_admin = ("admin" in cast(list[str], self.data.get("roles", [])))
-            except FileNotFoundError:
-                pass
-
-    def get_id(self) -> str:
-        return generate_user_hash(self.username, self.data["password"])
-    
-    def save(self) -> None:
-        if self.filepath:
-            write_textual(self.filepath, write_metadata(self.data))
-        else:
-            raise Exception
-
-class RemoteUser(User):
-    url: str
-    json_url: str
-
-    def __init__(self, username:str, url:str):
-        super().__init__(username, url=url)
-
-def load_user(username:str) -> User|None:
-    username = slugify_name(username)
-    filepath = safe_join(USERS_ROOT, (username + ITEMS_EXT))
-    if filepath and os.path.exists(filepath):
-        return User(username, filepath)
-    else:
-        return None
+#     # def save(self):
+#     #     write_textual(filepath + ITEMS_EXT, write_metadata(self.data))
 
 def load_events(user:User) -> list[dict[str,str]]:
     events = []
@@ -86,31 +55,6 @@ def parse_event(text:str) -> dict[str,str]:
         [item, user] = extra.split(",")[:2]
         event = event | {"item": item, "user": user}
     return event
-
-def generate_user_hash(username:str, password:str) -> str:
-    return f"{username}:" + urlsafe_b64encode(sha256(password.encode()).digest()).decode()
-
-def verify_token_auth() -> User|Literal[False]:
-    if (auth := request.headers.get("Authorization", "")).startswith("Bearer "):
-        [username, token] = auth.split(" ")[1].split(":")
-        if ((user := load_user(username)) and check_user_token(cast(list[str], user.data.get("tokens", [])), hash_api_token(token))):
-            user.__dict__["is_authenticated"] = True
-            return user
-    return False
-
-def check_user_token(tokens:list[str], hashed:str) -> str|Literal[False]:
-    for token in tokens:
-        if token.endswith(f":{hashed}"):
-            return token
-    return False
-
-def hash_api_token(token:str) -> str:
-    return urlsafe_b64encode(sha256(token.encode()).digest()).decode()
-
-def init_user_session(user:User, remember:bool):
-    session["session_hash"] = generate_user_hash(user.username, user.data["password"])
-    login_user(user, remember=remember)
-    return redirect_next()
 
 def redirect_next(strict:bool=False):
     if (next_arg := request.args.get("next", "")) or not strict:
@@ -236,12 +180,3 @@ def load_remote_user(username:str, host:str) -> RemoteUser|None:
         return RemoteUser(username, url)
     except (json.JSONDecodeError, requests.ConnectionError):
         return None
-
-def check_ffmpeg_available():
-    try:
-        ffmpeg.probe("")
-    except FileNotFoundError:
-        return False
-    except ffmpeg.Error:
-        pass
-    return True
