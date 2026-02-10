@@ -10,6 +10,7 @@
   {%- elif item.audio -%} Audio
   {%- elif item.video -%} Video
   {%- elif item.image and not item.text -%} Image
+  {%- elif item.type == 'carousel' -%} Carousel
   {%- endif -%}
 {% endset %}
 {% block title %}{% include "item-title.txt" %}{% endblock %}
@@ -45,7 +46,9 @@
     </div>
     <div class="uk-width-1-1 uk-width-1-2@s uk-padding-small">
       <div>
-        {% if kindname %}
+        {% if kindname == 'Document' %}
+          <a class="uk-text-meta" href="{{ url_for('serve_media', filename=item.doc) }}" target="_blank" rel="nofollow"><u>{{ _(kindname) }}</u></a>
+        {% else %}
           <span class="uk-text-meta">{{ _(kindname) }}</span>
         {% endif %}
         <h3 class="uk-text-break uk-margin-small-top">{% include "item-title.txt" %}</h3>
@@ -95,6 +98,12 @@
           <div>
             <button class="uk-icon-button" uk-icon="forward" title="{{ _('Copy to clipboard') }}" uk-tooltip="{{ _('Copy to clipboard') }}" onclick="Pignio.copyToClipboard();"></button>
           </div>
+          {% if item.type != 'carousel' and (not config.CONFIG.RESTRICT_ITEMS_DOWNLOAD or current_user.is_authenticated) %}
+            <div>
+              <a class="uk-icon-button" uk-icon="download" title="{{ _('Download') }}" uk-tooltip="{{ _('Download') }}"
+              href="{{ url_for('download_api', iid=item.id) }}" target="_blank" rel="nofollow"></a>
+            </div>
+          {% endif %}
           <div class="pin">
             {% if embed %}
               <a class="uk-button uk-button-primary" href="{{ url_for('view_item', iid=item.id) }}" target="_blank">

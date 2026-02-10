@@ -662,10 +662,17 @@ def export_api():
             files.append([filename])
     return send_zip_archive(username, files)
 
-@app.route("/api/v0/download/<path:fid>")
-@auth_required
-def download_api(fid:str):
-    if (dirpath := is_items_folder(fid)):
+@app.route("/api/v0/download/<path:iid>")
+@noindex
+def download_api(iid:str):
+    if (not Config.RESTRICT_ITEMS_DOWNLOAD or is_request_authed()) and (root := iid_to_filename(iid)) and len(files := find_files_for_iid(iid)):
+        results = []
+        for file in files:
+            print(file)
+            if check_file_supported(file):
+                results.append([file, os.path.split(file)[1]])
+        return send_zip_archive(iid, results)
+    elif (not Config.RESTRICT_FOLDERS_DOWNLOAD or is_request_authed()) and (dirpath := is_items_folder(iid)):
         results = []
         for root, dirs, files in os.walk(dirpath):
             for file in files:

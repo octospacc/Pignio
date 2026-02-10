@@ -3,13 +3,13 @@
 {% set placeholder %}
   <div class="uk-overflow-hidden">
     <span class="{% if folder %} uk-heading-medium {% else %} uk-heading-large {% endif %}">
-      {%- if item.doc -%} 📄
-      {%- elif item.swf -%} 📀
+      {%- if item.swf -%} 📀
       {%- elif item.rom -%} 🕹️
       {%- elif item.font -%} 🔣
       {%- elif item.model -%} 📦
       {%- elif item.audio -%} 🎶
       {%- elif item.type == 'carousel' -%} 🖼️
+      {%- elif item.doc -%} 📄
       {%- endif -%}
     </span>
   </div>

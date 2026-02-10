@@ -8,8 +8,8 @@
   {% if root %}
     <div class="uk-text-center">
       <h2>{{ root.split('/')[-1] }}</h2>
-      {% if current_user.is_authenticated %}
-        <a class="uk-button uk-button-default uk-icon-link" href="{{ url_for('download_api', fid=root) }}" target="_blank" rel="nofollow">
+      {% if not config.CONFIG.RESTRICT_FOLDERS_DOWNLOAD or current_user.is_authenticated %}
+        <a class="uk-button uk-button-default uk-icon-link" href="{{ url_for('download_api', iid=root) }}" target="_blank" rel="nofollow">
           {{ _('Download folder') }} (ZIP) <span uk-icon="download"></span>
         </a>
       {% endif %}

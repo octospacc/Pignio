@@ -3,7 +3,7 @@ import json
 import requests
 import urllib.parse
 from PIL import Image
-from typing import Any, Literal, cast
+from typing import Any, Literal, List, AnyStr, cast
 from base64 import b64decode, urlsafe_b64encode
 from urllib.parse import urlparse
 from io import StringIO
@@ -125,6 +125,14 @@ def filename_to_iid(iid:str) -> str:
         iid = toks[2]
     return iid
 
+def find_files_for_iid(iid:str, prefix_root:bool=True) -> List[AnyStr]:
+    filepath: str = iid_to_filename(iid)
+    if prefix_root:
+        filepath = safe_join(ITEMS_ROOT, filepath) # type: ignore[assignment]
+        if not filepath:
+            return []
+    return glob(f"{glob_escape(filepath)}.*") # type: ignore[arg-type]
+
 def load_item(iid:str) -> ItemDict|None:
     iid = filename_to_iid(iid)
     filename = iid_to_filename(iid)
@@ -132,7 +140,7 @@ def load_item(iid:str) -> ItemDict|None:
     if not filepath:
         return None
 
-    files = glob(f"{glob_escape(filepath)}.*")
+    files = find_files_for_iid(filepath, False)
     if len(files):
         # data = Item({"id": iid})
         data: ItemDict = {"id": iid}
@@ -150,7 +158,7 @@ def load_item(iid:str) -> ItemDict|None:
         elif data.get("type") == "carousel":
             if not data.get("images"):
                 data["images"] = []
-            for file in glob(f"{filepath}/*.*"):
+            for file in glob(f"{glob_escape(filepath)}/*.*"):
                 if (kind := check_file_is_content(file)) == "image":
                     data["images"].append(file.replace(os.sep, "/").removeprefix(f"{ITEMS_ROOT}/"))
             data["images"] = sorted(data["images"])
@@ -254,7 +262,7 @@ def store_item(iid:str, data:dict[str, str], files:dict|None=None, ocr:bool=Fals
 def delete_item(item:dict|str, only_media:bool=False) -> int:
     deleted = 0
     if (filepath := safe_join(ITEMS_ROOT, iid_to_filename(ensure_item_id(item)))):
-        files = glob(f"{filepath}.*")
+        files = find_files_for_iid(filepath, False)
         for file in files:
             if not only_media or not file.lower().endswith(ITEMS_EXT):
                 os.remove(file)
@@ -263,11 +271,12 @@ def delete_item(item:dict|str, only_media:bool=False) -> int:
 
 def delete_item_cache(item:dict|str) -> int:
     deleted = 0
-    if (filepath := safe_join(CACHE_ROOT, ensure_item_id(item))):
-        files = glob(f"{filepath}.*")
-        for file in files:
-            os.remove(file)
-            deleted += 1
+    for kind in [CACHE_ROOT, THUMBS_ROOT, RENDERS_ROOT, PROXY_ROOT]:
+        if (filepath := safe_join(kind, ensure_item_id(item))):
+            files = find_files_for_iid(filepath, False)
+            for file in files:
+                os.remove(file)
+                deleted += 1
     return deleted
 
 def get_item_permissions(item:ItemDict|str) -> dict[str, bool]:

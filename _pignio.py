@@ -150,6 +150,8 @@ class Config:
     RESTRICT_USERS = parse_bool_strict(_get("restrict_users"))
     RESTRICT_FEEDS = parse_bool_strict(_get("restrict_feeds"))
     RESTRICT_SEARCH = parse_bool_strict(_get("restrict_search"))
+    RESTRICT_ITEMS_DOWNLOAD = parse_bool_strict(_get("restrict_items_download"))
+    RESTRICT_FOLDERS_DOWNLOAD = parse_bool_strict(_get("restrict_folders_download"))
     ALLOW_REGISTRATION = parse_bool_strict(_get("allow_registration"))
     # ALLOW_FEDERATION = False
     USE_THUMBNAILS = parse_bool_strict(_get("use_thumbnails"))

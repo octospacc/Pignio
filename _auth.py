@@ -36,11 +36,14 @@ def get_current_user():
         return user
     return current_user
 
+def is_request_authed():
+    return current_user.is_authenticated or verify_token_auth()
+
 def auth_required(func):
     @noindex
     @wraps(func)
     def wrapped(*args, **kwargs):
-        return func(*args, **kwargs) if (current_user.is_authenticated or verify_token_auth() or app.config["FREEZING"]) else app.login_manager.unauthorized()
+        return func(*args, **kwargs) if (is_request_authed() or app.config["FREEZING"]) else app.login_manager.unauthorized()
     return wrapped
 
 def extra_login_required(func):
@@ -55,6 +58,6 @@ def auth_required_config(config_value:bool):
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
-            return f(*args, **kwargs) if not config_value or (current_user.is_authenticated or verify_token_auth()) else app.login_manager.unauthorized()
+            return f(*args, **kwargs) if (not config_value or is_request_authed()) else app.login_manager.unauthorized()
         return wrapper
     return decorator
