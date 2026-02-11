@@ -276,7 +276,7 @@ def flash_player(iid:str):
 
 @app.route("/emulator-player/<path:iid>")
 def emulator_player(iid:str):
-    return view_embedded(iid, "emulatorjs", "rom")
+    return view_embedded(iid, "emulatorjs", "rom", lambda item: {"cover": item.get("image")})
 
 @app.route("/item/<path:iid>", methods=["GET", "POST"])
 @auth_required_config(Config.RESTRICT_ITEMS)
@@ -297,8 +297,8 @@ def view_item(iid:str, embed:bool=False):
         elif request.method == "POST" and current_user.is_authenticated and (comment := request.form.get("comment")):
             store_item(f"{iid_to_filename(iid)}/{generate_iid()}", {"text": comment}, comment=True)
             return redirect(url_for("view_item", iid=iid))
-    elif not embed and has_subitems_directory(iid):
-        return view_orderable_items(iid)
+    elif has_subitems_directory(iid):
+        return view_orderable_items(iid, embed)
     return abort(404)
 
 # TODO: also add @app.route("/@<path:username>"), redirecting to main url of user ?
@@ -738,7 +738,10 @@ def items_api(iid:str|None):
     elif not app.config["FREEZING"]:
         if request.method == "POST" or request.method == "PUT":
             iid = iid or generate_iid()
-            status = store_item(iid, request.get_json(), None, Config.AUTO_OCR)
+            data = request.get_json()
+            if data.get("archive", None) == None:
+                data["archive"] = True
+            status = store_item(iid, data, None, Config.AUTO_OCR)
             return {"id": iid if status else None}
         elif iid and request.method == "DELETE" and get_item_permissions(iid)["edit"]:
             delete_item(iid)
@@ -780,7 +783,7 @@ def remove_trailing_slash():
 
 @app.after_request
 def request_headers(response):
-    if request.endpoint not in ["view_embed", "serve_media"]:
+    if request.endpoint not in ["view_embed", "serve_media", "proxy_media", "render_media", "model_viewer", "font_viewer", "flash_player", "emulator_player"]:
         response.headers["X-Frame-Options"] = "SAMEORIGIN"
     return response
 
@@ -795,18 +798,18 @@ def error_404(e):
 def feed_response(template:str, **kwargs:Any):
     return response_with_type(render_template(f"{template}.xml", limit=int(request.args.get("limit") or Config.RESULTS_LIMIT), content_type=ATOM_CONTENT_TYPE, **kwargs), ATOM_CONTENT_TYPE)
 
-def view_orderable_items(root:str):
+def view_orderable_items(root:str, embed:bool=False):
     modifier: Any = False
     ordering = request.args.get("ordering")
     if ordering == "natural" or app.config["FREEZING"]:
         modifier = None
     elif ordering == "alphanumeric":
         modifier = (lambda items: sorted(items, key=(lambda item: item["id"])))
-    return view_random_items(root) if modifier == False else \
-            pagination("index.html", "items", walk_items(root), modifier, root=root, folders=list_folders(root), ordering=ordering)
+    return view_random_items(root, embed) if modifier == False else \
+            pagination("index.html", "items", walk_items(root), modifier, embed=embed, root=root, folders=list_folders(root), ordering=ordering)
 
-def view_random_items(root:str|None=None):
-    return pagination("index.html", "items", walk_items(root), (lambda items: shuffle(items)), root=root, folders=(list_folders(root) if root else []))
+def view_random_items(root:str|None=None, embed:bool=False):
+    return pagination("index.html", "items", walk_items(root), (lambda items: shuffle(items)), embed=embed, root=root, folders=(list_folders(root) if root else []))
 
 def pagination(template:str, key:str, all_items:list, modifier=None, **kwargs):
     page = int(request.args.get("page") or 1)

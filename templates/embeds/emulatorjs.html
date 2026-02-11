@@ -1,5 +1,8 @@
 <!DOCTYPE html>
 {% set rom_url %}{{ url_for('serve_media', filename=rom) }}{% endset %}
+{%- if cover -%}
+  {% set cover_url %}{{ url_for('serve_media', filename=cover) }}{% endset %}
+{%- endif -%}
 <html>
 <head>
 <style>
@@ -8,10 +11,15 @@ body, html, #game { margin: 0; padding: 0; width:100%; height:100%; max-width:10
 </head>
 <body>
 <div id="game"><noscript><p>EmulatorJS requires JavaScript. Alternatively, download the ROM file: <a href="{{ rom_url }}">{{ rom }}</a>.</p></noscript></div>
-<script data-romurl="{{ rom_url }}">
+<script data-romurl="{{ rom_url }}" data-coverurl="{{ cover_url }}">
 EJS_player = "#game";
-EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
+EJS_alignStartButton = "center";
+EJS_backgroundBlur = true;
+if (document.currentScript.dataset.coverurl) {
+  EJS_backgroundImage = location.origin + document.currentScript.dataset.coverurl;
+}
 EJS_gameUrl = document.currentScript.dataset.romurl;
+EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
 var ext = EJS_gameUrl.split('.').slice(-1)[0];
 EJS_core = {sfc: "snes", z64: "n64", gbc: "gb"}[ext] || ext;
 </script>

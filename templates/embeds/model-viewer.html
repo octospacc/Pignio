@@ -1,8 +1,8 @@
 <!doctype html>
 {% set model_url %}{{ url_for('serve_media', filename=model) }}{% endset %}
-{% if poster %}
+{%- if poster -%}
   {% set poster_url %}{{ url_for('serve_media', filename=poster) }}{% endset %}
-{% endif %}
+{%- endif -%}
 <html lang="en">
   <head>
     <title>&lt;model-viewer&gt; template</title>

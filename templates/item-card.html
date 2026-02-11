@@ -1,6 +1,6 @@
 {% if item %}
   <div {% if layout == 'gallery' %} class="uk-margin" {% endif %}>
-    <a class="uk-link-text" href="{{ url_for('view_item', iid=item.id) }}">
+    <a class="uk-link-text" href="{{ url_for('view_item', iid=item.id) }}" {% if embed %} target="_blank" {% endif %}>
       {% include "item-content.html" %}
       <span class="uk-text-break">{% include "item-title.txt" %}</span>
     </a>

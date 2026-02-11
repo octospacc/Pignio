@@ -3,7 +3,7 @@
     <div class="uk-width-expand">
       <ul class="uk-breadcrumb">
         {% for token in path.split('/')[:-1] %}
-          <li><a href="{{ url_for('view_item', iid='/'.join(path.split('/')[:loop.index])) }}">{{ token }}</a></li>
+          <li><a {% if embed %} target="_blank" {% endif %} href="{{ url_for('view_item', iid='/'.join(path.split('/')[:loop.index])) }}">{{ token }}</a></li>
         {% endfor %}
         <li>
           {% if items and (folders | length > 0) %}
@@ -11,7 +11,7 @@
             <div class="{{ colortheme }}" uk-dropdown>
               <ul class="uk-list">
                 {% for folder in folders %}
-                  <li><a class="uk-link-muted" href="{{ url_for('view_item', iid=(path + '/' + folder)) }}">{{ folder }}</a></li>
+                  <li><a class="uk-link-muted" {% if embed %} target="_blank" {% endif %} href="{{ url_for('view_item', iid=(path + '/' + folder)) }}">{{ folder }}</a></li>
                 {% endfor %}
               </ul>
             </div>
