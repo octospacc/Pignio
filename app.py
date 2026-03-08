@@ -184,7 +184,7 @@ def serve_media(filename:str):
 def proxy_media(iid:str, n:int):
     n = int(n)
     if (item := load_item(iid)):
-        if not n and (image := item.get("image")) and (url := parse_absolute_url(image)):
+        if not n and ((media := item.get("video")) or (media := item.get("audio")) or (media := item.get("image"))) and (url := parse_absolute_url(media)):
             data, mime = fetch_proxy_media(iid, url)
             return response_with_type(data, mime)
         elif n and (images := item.get("images")) and (url := parse_absolute_url(images[n - 1])):

@@ -147,21 +147,30 @@ def load_item(iid:str) -> ItemDict|None:
         if iid != filename:
             data["datetime"] = str(datetime_from_snowflake(iid)).split(".")[0]
 
+        filesdata = {}
         for file in files:
             if check_file_is_meta(file):
                 data = data | read_metadata(read_textual(file))
             elif (kind := check_file_is_content(file)):
-                cast(dict, data)[kind] = file.replace(os.sep, "/").removeprefix(f"{ITEMS_ROOT}/")
+                filesdata[kind] = file.replace(os.sep, "/").removeprefix(f"{ITEMS_ROOT}/")
+        data = data | cast(ItemDict, filesdata)
 
         if data.get("type") == "comment":
             data["datetime"] = str(datetime_from_snowflake(iid.split("/")[-1])).split(".")[0]
         elif data.get("type") == "carousel":
             if not data.get("images"):
                 data["images"] = []
+            fromfiles = False
             for file in glob(f"{glob_escape(filepath)}/*.*"):
                 if (kind := check_file_is_content(file)) == "image":
-                    data["images"].append(file.replace(os.sep, "/").removeprefix(f"{ITEMS_ROOT}/"))
-            data["images"] = sorted(data["images"])
+                    if not fromfiles:
+                        data["images"] = []
+                    fromfiles = True
+                    mediapath = file.replace(os.sep, "/").removeprefix(f"{ITEMS_ROOT}/")
+                    if mediapath not in data["images"]:
+                        data["images"].append(mediapath)
+            if fromfiles:
+                data["images"] = sorted(data["images"])
 
         if len(data) > 1: # prevent empty ini files with no valid media from being returned
             return data

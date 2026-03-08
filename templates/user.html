@@ -1,15 +1,12 @@
 {%- extends "base.html" -%}
 {%- set feed_url -%}{{ url_for('view_user_feed', username=user.username) }}{%- endset -%}
 {% block title %}{% if name %}{{ _('Collection') }}: {{ (collection_meta and collection_meta.title) or name }} | {% endif %}{{ _('User') }}: {{ user.title or user.username }}{% endblock %}
+{% block description %}{{ (collection_meta and collection_meta.description) or user.description }}{% endblock %}
 {% block canonical %}{{ url_for('view_user', username=user.username) }}{% endblock %}
 {% block external %}{{ user.url or "" }}{% endblock %}
 {% block metadata %}
   <link rel="alternate" type="{{ ATOM_CONTENT_TYPE }}" href="{{ feed_url }}" title="@{{ user.username }} Feed" />
   <meta name="twitter:title" property="og:title" content="{{ title }}" />
-  {% if (collection_meta and collection_meta.description) or user.description %}
-    <meta name="twitter:description" property="og:description" content="{{ (collection_meta and collection_meta.description) or user.description }}" />
-    <meta name="description" content="{{ (collection_meta and collection_meta.description) or user.description }}" />
-  {% endif %}
 {% endblock %}
 {% block content %}
   <div class="uk-text-center">
@@ -27,7 +24,9 @@
         </div>
       {% endwith %}
     {% endif %}
-    <p>{{ user.description }}</p>
+    {% if user.description %}
+      <p>{{ user.description }}</p>
+    {% endif %}
     <div class="uk-margin uk-flex-center uk-grid-small uk-grid" uk-grid>
       <div>
         <a class="uk-button uk-button-default uk-icon-link" href="{{ feed_url }}" target="_blank" rel="nofollow">

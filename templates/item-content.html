@@ -1,3 +1,4 @@
+{% from 'macros.html' import item_full_media %}
 {% set image %}{% include 'item-image.html' %}{% endset %}
 {% set alttext %}{% if item.alttext %}{{ item.alttext }}{% else %}{{ item.description }}{% endif %}{% endset %}
 {% set placeholder %}
@@ -63,7 +64,7 @@
     <img class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ image }}" alt="{{ alttext }}" title="{{ alttext }}" {% if full %} onload="this.parentElement.style='';" {% else %} loading="lazy" {% endif %} />
   {% elif item.video %}
     {% if full or not config.VIDEO_THUMBS or layout == 'gallery' %}
-      <video class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('serve_media', filename=item.video) }}"
+      <video class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ item_full_media(item, 'video') }}"
              aria-label="{{ alttext }}" title="{{ alttext }}" {% if full %} controls {% else %} autoplay muted tabindex="-1" {% endif %} loop></video>
     {% else %}
       <img class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('serve_thumb', iid=item.id) }}" alt="{{ alttext }}" title="{{ alttext }}" loading="lazy" />
@@ -75,7 +76,7 @@
     {% else %}
       {{ placeholder }}
       {% if not midi %}
-        <audio {% if not full %} tabindex="-1" {% endif %} class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ url_for('serve_media', filename=item.audio) }}" controls loop></audio>
+        <audio {% if not full %} tabindex="-1" {% endif %} class="uk-width-expand" src="{% if external %}{% include 'links-prefix.txt' %}{% endif %}{{ item_full_media(item, 'audio') }}" controls loop></audio>
       {% endif %}
     {% endif %}
   {% endif %}

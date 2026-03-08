@@ -1,0 +1,7 @@
+{%- macro item_full_media(item, key) -%}
+  {%- if item[key].lower().startswith(("//", "http://", "https://")) -%}
+    {{- url_for('proxy_media', iid=item.id) -}}
+  {%- else -%}
+    {{- url_for('serve_media', filename=item[key]) -}}
+  {%- endif -%}
+{%- endmacro -%}

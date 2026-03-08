@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 import ffmpeg # type: ignore[import-untyped]
 from PIL import Image, ImageFile
@@ -8,7 +9,7 @@ from pytesseract import image_to_string, TesseractError, TesseractNotFoundError 
 from base64 import b64decode
 from typing import Literal, Callable, cast
 from werkzeug.utils import safe_join
-from _pignio import ItemDict, ITEMS_ROOT, ITEMS_EXT, MEDIA_TYPES, PROXY_ROOT, EXTENSIONS, Config
+from _pignio import ItemDict, ITEMS_ROOT, TEMP_ROOT, ITEMS_EXT, MEDIA_TYPES, PROXY_ROOT, EXTENSIONS, Config
 from _util import read_textual, write_textual, mkfiledir, parse_absolute_url
 
 def check_file_supported(filename:str) -> bool:
@@ -94,10 +95,15 @@ def fetch_proxy_media(iid:str, url:str, n:int=0) -> tuple[bytes, str]:
 
     return resp.content, mime
 
-def build_video_thumb(video_path: str) -> bytes:
+def build_video_thumb(video: str) -> bytes:
+    if isinstance(video, BytesIO):
+        newpath = os.path.join(TEMP_ROOT, str(time.time()))
+        with open(newpath, "wb") as f:
+            f.write(video.getbuffer())
+        video = newpath
     streams = (
         ffmpeg
-        .input(video_path, t=Config.VIDEO_THUMB_DURATION)
+        .input(video, t=Config.VIDEO_THUMB_DURATION)
         .video.filter("fps", Config.VIDEO_THUMB_FPS)
         .filter("scale", Config.VIDEO_THUMB_WIDTH, -1, flags="lanczos")
         .filter_multi_output("split")

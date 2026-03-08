@@ -81,7 +81,7 @@
           {{ _('link-fill') }} 🔗
         </label></p>
         <p><label>
-          <input name="archive" type="checkbox" class="from-link uk-checkbox" checked {% if item.id %} disabled {% endif %} />
+          <input name="archive" type="checkbox" class="from-link uk-checkbox" {% if not item.id %} checked {% endif %} />
           {{ _('Archive remote files') }} 💾
         </label></p>
         <p><label>

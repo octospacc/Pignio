@@ -14,13 +14,10 @@
   {%- endif -%}
 {% endset %}
 {% block title %}{% include "item-title.txt" %}{% endblock %}
+{% block description %}{{ item.description }}{% endblock %}
 {% block canonical %}{{ url_for('view_item', iid=item.id) }}{% endblock %}
 {% block metadata %}
   <meta name="twitter:title" property="og:title" content="{{ title }}" />
-  {% if item.description %}
-    <meta name="twitter:description" property="og:description" content="{{ item.description }}" />
-    <meta name="description" content="{{ item.description }}" />
-  {% endif %}
   {% if image %}
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" property="og:image" content="{% include 'links-prefix.txt' %}{{ image }}" />

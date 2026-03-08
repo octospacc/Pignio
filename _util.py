@@ -1,4 +1,5 @@
 import os
+# import time
 import urllib.parse
 from pathlib import Path
 from slugify import slugify
@@ -98,11 +99,20 @@ def write_metadata(data:dict[str, str]|MetaDict) -> str:
     config = ConfigParser(interpolation=None)
     new_data: dict[str, str] = {}
     for key in data:
-        if (value := data.get(key)) and key not in ("datetime"):
+        if (value := data.get(key)) and (key not in ("datetime",) or (key in ("image", "video", "audio") and not safe_str_get(data, key).lower().startswith("data:"))):
             if type(value) == str:
                 new_data[key] = value
             elif type(value) == list:
+                if key in ("images",):
+                    old = value
+                    value = []
+                    for item in old:
+                        if not str(item).lower().startswith("data:"):
+                            value.append(item)
                 new_data[key] = list_to_wsv(value)
     config["DEFAULT"] = new_data
     config.write(output)
     return "\n".join(output.getvalue().splitlines()[1:]) # remove section header
+
+# def media_temp_path(filename: str = '-') -> str:
+#     return os.path.join(TEMP_ROOT, f"{time.time()}-{sha256(filename.encode()).hexdigest()}.{filename.split('.')[-1]}")

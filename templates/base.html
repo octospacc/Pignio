@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 {%- set section -%}{% block section %}{% endblock %}{%- endset -%}
 {%- set title -%}{% block title %}{{ section }}{% endblock %}{%- endset -%}
+{%- set description -%}{% block description %}{% endblock %}{%- endset -%}
 {%- set canonical -%}{% block canonical %}{% endblock %}{%- endset -%}
 {%- set external -%}{% block external %}{% endblock %}{%- endset -%}
 {%- set colortheme -%} {% if gettheme() == 'dark' %} uk-light uk-background-secondary {% endif %} {%- endset -%}
@@ -35,9 +36,9 @@
     <meta property="og:url" content="{% include 'links-prefix.txt' %}{{ canonical }}" />
   {% endif %}
   <meta property="og:site_name" content="{{ config.INSTANCE_NAME }}" />
-  {% block metadata %}
-    <meta name="description" property="og:description" content="{{ config.INSTANCE_DESCRIPTION }}" />
-  {% endblock %}
+  {% block metadata %}{% endblock %}
+  <meta name="twitter:description" property="og:description" content="{{ description or config.INSTANCE_DESCRIPTION }}" />
+  <meta name="description" content="{{ description or config.INSTANCE_DESCRIPTION }}" />
   <link rel="manifest" href="{{ url_for('serve_manifest') }}" />
   <link rel="shortcut icon" href="{{ url_for('static', filename='icon.png') }}" type="image/png" />
   <meta name="generator" content="{{ config.APP_NAME }}" />
