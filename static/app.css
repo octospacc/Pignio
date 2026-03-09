@@ -2,7 +2,8 @@ body {
   overflow-x: auto;
 }
 
-up-modal .back {
+up-modal .back,
+body > section.global-player {
   display: none;
 }
 
@@ -65,4 +66,27 @@ div[uk-slider]:not(.uk-slider) .uk-slider-items.uk-grid {
 .uk-breadcrumb .uk-dropdown > ul.uk-list > li > a {
   display: inline-block;
   width: 100%;
+}
+
+html.global-player-active {
+  body > section.global-player {
+    display: revert;
+    position: fixed;
+    z-index: 1;
+    bottom: 0;
+    width: 100%;
+    max-height: 60vh;
+    overflow-y: auto;
+
+    audio {
+      /* height: 48px; */
+      /* max-width: 100%; */
+      width: calc(100% - 220px);
+    }
+
+    & div { position: sticky; bottom: 0; }
+    & div > div { display: inline-block; }
+  }
+
+  body > footer { padding-bottom: 64px; }
 }

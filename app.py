@@ -726,8 +726,15 @@ def comments_api(iid:str, cid:str|None):
         return comments
     return abort(404)
 
+@app.route("/api/v1/items/<path:iid>", methods=["GET"])
+def item_api(iid:str):
+    if request.method == "GET" and iid and (item := load_item(iid)) and get_item_permissions(item)["view"]:
+        return item
+    else:
+        return abort(404)
+
 @app.route("/api/v1/items", defaults={"iid": None}, methods=["GET", "POST"])
-@app.route("/api/v1/items/<path:iid>", methods=["GET", "PUT", "DELETE"])
+@app.route("/api/v1/items/<path:iid>", methods=["PUT", "DELETE"])
 @auth_required
 def items_api(iid:str|None):
     if request.method == "GET":

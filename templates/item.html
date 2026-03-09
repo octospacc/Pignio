@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'macros.html' import item_full_media %}
 {% set full = true %}
 {% set image %}{% include 'item-image.html' %}{% endset %}
 {% set kindname %}
@@ -26,11 +27,11 @@
     {% endif %}
   {% endif %}
   {% if item.video %}
-    <meta property="og:video" content="{% include 'links-prefix.txt' %}{{ url_for('serve_media', filename=item.video) }}" />
+    <meta property="og:video" content="{% include 'links-prefix.txt' %}{{ item_full_media(item, 'video') }}" />
     <meta property="og:video:type" content="video/{{ item.video.split('.')[-1] }}" />
   {% endif %}
   {% if item.audio %}
-    <meta property="og:audio" content="{% include 'links-prefix.txt' %}{{ url_for('serve_media', filename=item.audio) }}" />
+    <meta property="og:audio" content="{% include 'links-prefix.txt' %}{{ item_full_media(item, 'audio') }}" />
   {% endif %}
 {% endblock %}
 {% block content %}
@@ -99,6 +100,11 @@
             <div>
               <a class="uk-icon-button" uk-icon="download" title="{{ _('Download') }}" uk-tooltip="{{ _('Download') }}"
               href="{{ url_for('download_api', iid=item.id) }}" target="_blank" rel="nofollow"></a>
+            </div>
+          {% endif %}
+          {% if item.video or item.audio %}
+            <div>
+              <button class="uk-icon-button" uk-icon="future" title="{{ _('Enqueue audio') }}" uk-tooltip="{{ _('Enqueue audio') }}" onclick="Pignio.enqueueAudio();"></button>
             </div>
           {% endif %}
           <div class="pin">

@@ -66,6 +66,145 @@ registerHandler('form.prefs button[value="theme"]', button => button.addEventLis
   fetch(form.action, { method: form.method, body: data }).then(() => location.reload());
 }));
 
+registerHandler('main.collection div.results', results => {
+  const playable = results.querySelectorAll('.item-video, .item-audio');
+  if (playable.length > 0) {
+    const button = document.querySelector('main.collection button[onclick="Pignio.enqueueAudio();"]')
+    button.hidden = false;
+  }
+});
+
+registerHandler('section.global-player', section => {
+  // let handledFirst = false;
+  const list = section.querySelector('ul');
+  const player = section.querySelector('audio');
+  player.addEventListener('ended', () => {
+    // play next media; TODO: support inverted and shuffled playback orders, as well as looped
+    const next = list.querySelector(`[data-i="${getPlayIndex() + 1}"] button.playpause`);
+    if (next) {
+      next.click();
+    } else {
+      setPlayIndex(0);
+    }
+  });
+  const toggle = section.querySelector('button.toggle');
+  toggle.addEventListener('click', () => {
+    toggle.setAttribute('uk-icon', (list.hidden = !list.hidden) ? 'triangle-up' : 'triangle-down');
+  });
+  section.querySelector('button.empty').addEventListener('click', () => {
+    setPlayIndex(0);
+    list.innerHTML = '';
+    savePlaylist(list);
+    shouldShowPlayer();
+  });
+  // const playlist = loadPlaylist();
+  // if (playlist.length > 0) {
+  //   playlist.forEach(enqueueAudio);
+  //   player.src = list.children[0].dataset.url;
+  // }
+  const playindex = getPlayIndex();
+  loadPlaylist().forEach((item, i) => enqueueAudio(item, i === playindex));
+  UIkit.sortable(list);
+  UIkit.util.on(list, 'moved', () => savePlaylist(list));
+  // if (playlist.length > 0) {
+  //   document.documentElement.classList.add('global-player-active');
+  // }
+  shouldShowPlayer();
+});
+
+function shouldShowPlayer() {
+  document.documentElement.classList.toggle('global-player-active', loadPlaylist().length > 0);
+}
+
+function loadPlaylist() {
+  return JSON.parse(localStorage.getItem('playlist')) || [];
+}
+function savePlaylist(list) {
+  const lis = Array.from(list.children);
+  lis.forEach((li, i) => li.dataset.i = i);
+  localStorage.setItem('playlist', JSON.stringify(lis.map(li => li.dataset)));
+}
+
+function getPlayIndex() {
+  return JSON.parse(localStorage.getItem('playindex')) || 0;
+}
+function setPlayIndex(i) {
+  const url = document.querySelector(`section.global-player ul [data-i="${i}"]`)?.dataset?.url;
+  if (url) {
+    document.querySelector('section.global-player audio').src = url;
+  }
+  localStorage.setItem('playindex', i);
+}
+
+function enqueueAudio(item, setSrc) {
+  const list = document.querySelector('section.global-player ul');
+  const player = document.querySelector('section.global-player audio');
+  let fromUser = false;
+  if (!item) {
+    setSrc = (list.children.length === 0);
+    fromUser = true;
+    const iid = document.querySelector('article.item')?.dataset?.itemId;
+    if (iid) {
+      item = { iid };
+    } else {
+      document.querySelectorAll('main.collection div.results > .item-video, main.collection div.results > .item-audio').forEach((item, i) => enqueueAudio({ iid: item.dataset.iid }, i === 0));
+      savePlaylist(list);
+      shouldShowPlayer();
+      return;
+    }
+  }
+  const li = Object.assign(document.createElement('li'), { innerHTML: `
+    <span class="uk-sortable-handle" uk-icon="table"></span>
+    <button class="playpause uk-icon-button uk-icon-small" uk-icon="play"></button>
+    <button class="remove uk-icon-button uk-icon-small" uk-icon="close"></button>
+    <a class="title" href="${HTTP_BASE}/item/${item.iid}">${item.iid}</a>
+  `, className: "uk-text-truncate" });
+  li.dataset.iid = item.iid;
+  fetch(`${API_BASE}/v1/items/${item.iid}`)
+  .then(res => res.json())
+  .then(data => {
+    const media = data.video || data.audio;
+    if (!media) {
+      li.hidden = true;
+      return;
+    }
+    li.dataset.url = HTTP_BASE + (!isAbsoluteUrl(media) ? `/media/${media}` : `/proxy/${item.iid}`);
+    li.dataset.title = data.title;
+    li.querySelector('.title').textContent = data.title;
+    // if (!handledFirst) {
+    //   player.src = li.dataset.url;
+    //   handledFirst = true;
+    // }
+    // if (!fromUser) {
+    //   player.src = list.children[0].dataset.url;
+    // }
+    if (setSrc) {
+      player.src = li.dataset.url;
+      if (fromUser) {
+        player.play();
+      }
+    }
+  });
+  const playpause = li.querySelector('button.playpause');
+  playpause.addEventListener('click', () => {
+    setPlayIndex(li.dataset.i);
+    // player.src = li.dataset.url;
+    player.play();
+    // playpause.setAttribute('uk-icon', 'pause');
+  });
+  li.querySelector('button.remove').addEventListener('click', () => {
+    li.remove();
+    savePlaylist(list);
+  });
+  list.querySelector(`[data-iid="${item.iid}"]`)?.remove?.();
+  li.dataset.i = list.children.length;
+  list.appendChild(li);
+  if (fromUser) {
+    savePlaylist(list);
+  }
+  shouldShowPlayer();
+}
+
 up.compiler('.notifications.placeholder', target => {
   target.classList.toggle('content');
   up.request('/notifications').then(response => {
@@ -567,5 +706,10 @@ function switchRenderMode() {
   document.body.classList.toggle('rendering-pixelated');
 }
 
-window.Pignio = {copyToClipboard, expandShrinkContent, switchRenderMode};
+function isAbsoluteUrl(str) {
+  str = str.toLowerCase();
+  return str.startsWith('http://') || str.startsWith('https://') || str.startsWith('//');
+}
+
+window.Pignio = {copyToClipboard, expandShrinkContent, switchRenderMode, enqueueAudio};
 })();

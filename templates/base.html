@@ -91,7 +91,7 @@
   </nav>
   <div class="uk-margin uk-flex-auto">
     <div class="uk-container">
-      <main>
+      <main class="{% block meta_section %}{% endblock %}">
         {% if section %}
           <h1>{% block section_pre %}{% endblock %} {{ section }}</h1>
         {% endif %}
@@ -106,6 +106,21 @@
       </main>
     </div>
   </div>
+  <section class="global-player uk-section-secondary">
+    <ul class="uk-list uk-list-divider uk-margin-small-top uk-margin-small-bottom" uk-sortable="handle: .uk-sortable-handle" hidden></ul>
+    <div>
+      <div>
+        <button class="toggle uk-icon-button uk-icon-small" uk-icon="triangle-up" title="{{ _('Toggle playlist') }}" uk-tooltip="{{ _('Toggle playlist') }}"></button>
+        <button class="empty uk-icon-button uk-icon-small" uk-icon="trash" title="{{ _('Empty queue') }}" uk-tooltip="{{ _('Empty queue') }}"></button>
+        <select class="uk-select uk-form-width-small" disabled>
+          <option value="ordered">Ordered</option>
+          <option value="looped">Looped</option>
+          <option value="shuffled">Shuffled</option>
+        </select>
+      </div>
+      <audio controls></audio>
+    </div>
+  </section>
   {% if not embed %}
     <footer class="uk-section uk-section-xsmall {{ colortheme_alt }}">
       <form class="prefs" method="POST" action="{{ url_for('set_http_prefs') }}" up-submit="false">

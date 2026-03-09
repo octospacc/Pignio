@@ -83,6 +83,7 @@
       {% endfor %}
     </ul>
   {% else %}
+    {% set meta_section %}{% block meta_section %}collection{% endblock %}{% endset %}
     {% with username=user.username, cid=name %}
       {% include 'collection.html' %}
     {% endwith %}
