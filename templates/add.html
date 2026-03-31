@@ -91,10 +91,12 @@
         <p><label>
           {{ _('Visibility') }}
           <select class="uk-select" name="status">
-            <option value="public" {% if item.status == 'public' %} selected {% endif %}>🌐 {{ _('Public') }}</option>
-            <option value="silent" {% if item.status == 'silent' %} selected {% endif %}>🔇 {{ _('Silent') }}</option>
-            <!-- <option value="unlisted">🔗 {{ _('Unlisted') }}</option> -->
-            <!-- <option value="private">🔒 {{ _('Private') }}</option> -->
+            <option value="public"   {% if item.status == 'public'   %} selected {% endif %}>🌐 {{ _('Public') }}</option>
+            <option value="silent"   {% if item.status == 'silent'   %} selected {% endif %}>🔇 {{ _('Silent') }}</option>
+            <option value="unlisted" {% if item.status == 'unlisted' %} selected {% endif %}>🔗 {{ _('Unlisted') }}</option>
+            <option value="hidden"   {% if item.status == 'hidden'   %} selected {% endif %}>🌚 {{ _('Hidden') }}</option>
+            <option value="secret"   {% if item.status == 'secret'   %} selected {% endif %}>🛂 {{ _('Secret') }}</option>
+            <option value="private"  {% if item.status == 'private'  %} selected {% endif %}>🔒 {{ _('Private') }}</option>
           </select>
         </label></p>
         <p><label>

@@ -702,28 +702,28 @@ def collections_api(iid:str|None):
             collections[cid] = data.get("title")
         return collections
 
-# TODO check permissions
 @app.route("/api/v0/comments/<path:iid>", defaults={"cid": None})
 @app.route("/api/v0/comments/<path:iid>/<path:cid>", methods=["GET", "POST"])
 @auth_required
 def comments_api(iid:str, cid:str|None):
-    comments = list(filter(lambda item: item.get("type") == "comment", walk_items(iid_to_filename(iid))))
-    comment = None
-    if cid:
-        for item in comments:
-            if item["id"].endswith(f"/{cid}"):
-                comment = item
-    if comment:
-        if request.method == "GET":
-            return comment
-        elif request.method == "POST":
-            data = request.get_json()
-            if data.get("archive", None) == None:
-                data["archive"] = True
-            store_item(comment["id"], data, comment=True)
-            return load_item(comment["id"])
-    else:
-        return comments
+    if (target := load_item(iid)) and get_item_permissions(target)["view"]:
+        comments = list(filter(lambda item: item.get("type") == "comment", walk_items(iid_to_filename(iid))))
+        comment = None
+        if cid:
+            for item in comments:
+                if item["id"].endswith(f"/{cid}"):
+                    comment = item
+        if comment:
+            if request.method == "GET":
+                return comment
+            elif request.method == "POST" and (user := get_current_user()).is_authenticated and comment.get("creator") == user.username:
+                data = request.get_json()
+                if data.get("archive", None) == None:
+                    data["archive"] = True
+                store_item(comment["id"], data, comment=True)
+                return load_item(comment["id"])
+        else:
+            return comments
     return abort(404)
 
 @app.route("/api/v1/items/<path:iid>", methods=["GET"])
@@ -796,11 +796,11 @@ def request_headers(response):
 
 @app.errorhandler(400)
 def error_400(e):
-    return render_template("error.html", code=400, name="Bad Request", description="The browser (or proxy) sent a request that this server could not understand."), 400
+    return render_template("error.html", code=400, name="Bad Request", message="The browser (or proxy) sent a request that this server could not understand."), 400
 
 @app.errorhandler(404)
 def error_404(e):
-    return render_template("error.html", code=404, name=gettext("Not Found"), description="The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again."), 404
+    return render_template("error.html", code=404, name=gettext("Not Found"), message="The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again."), 404
 
 def feed_response(template:str, **kwargs:Any):
     return response_with_type(render_template(f"{template}.xml", limit=int(request.args.get("limit") or Config.RESULTS_LIMIT), content_type=ATOM_CONTENT_TYPE, **kwargs), ATOM_CONTENT_TYPE)

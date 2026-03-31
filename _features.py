@@ -57,7 +57,7 @@ def walk_items(walk_path:str|None=None, only_ids:bool=False, creator:str|None=No
                         results[rel_path][iid] = item
 
     output = [value for inner in results.values() for value in inner.values()]
-    return [item for item in output if item]
+    return [item for item in output if (item and (only_ids or get_item_permissions(item, True)["view"]))]
 
 def count_items() -> int:
     return len(walk_items(only_ids=True))
@@ -288,9 +288,18 @@ def delete_item_cache(item:dict|str) -> int:
                 deleted += 1
     return deleted
 
-def get_item_permissions(item:ItemDict|str) -> dict[str, bool]:
+def get_item_permissions(item:ItemDict|str, for_search:bool=False) -> dict[str, bool]:
     item = ensure_item_dict(item)
-    return {"view": True, "edit": (user := get_current_user()).is_authenticated and (item.get("creator") == user.username or user.is_admin)}
+    user = get_current_user()
+    is_authed = user.is_authenticated
+    is_creator = is_authed and item.get("creator") == user.username
+    is_admin = is_authed and user.is_admin
+    can_view = not (status := item.get("status")) or \
+               status in ["public", "silent", "unlisted"] or \
+               (status in ["hidden", "secret"] and is_authed) or \
+               (status == "private" and is_creator) or \
+               is_admin
+    return {"view": can_view and (not for_search or status not in ["unlisted", "secret"] or is_creator), "edit": is_creator or is_admin}
 
 def ensure_item_id(data:dict|str) -> str:
     return cast(str, data["id"] if type(data) == dict else data)

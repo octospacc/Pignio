@@ -75,7 +75,7 @@ class ItemDict(MetaDict, total=False): # type: ignore[call-arg]
     text: str
     alttext: str
     systags: list[str]
-    status: Literal["public", "silent"]
+    status: Literal["public", "silent", "unlisted", "hidden", "secret", "private"]
     type: str
     creator: str
 
@@ -308,6 +308,9 @@ STRINGS = {
     },
     "Silent": {
         "it": "Silenzioso",
+    },
+    "Private": {
+        "it": "Privato",
     },
     "Title": {
         "it": "Titolo",

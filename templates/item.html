@@ -57,6 +57,15 @@
           {% if item.datetime %}
             at <span>{{ item.datetime }}</span>
           {% endif %}
+          <a href="{{ url_for('view_item', iid=item.id) }}"
+            {% if item.status == 'public' or not item.status %} title="{{ _('Public') }}">🌐
+            {% elif item.status == 'silent'                  %} title="{{ _('Silent') }}">🔇
+            {% elif item.status == 'unlisted'                %} title="{{ _('Unlisted') }}">🔗
+            {% elif item.status == 'hidden'                  %} title="{{ _('Hidden') }}">🌚
+            {% elif item.status == 'secret'                  %} title="{{ _('Secret') }}">🛂
+            {% elif item.status == 'private'                 %} title="{{ _('Private') }}">🔒
+            {% endif %}
+          </a>
         </p>
         {% if item.link %}
         <div class="uk-text-truncate">
